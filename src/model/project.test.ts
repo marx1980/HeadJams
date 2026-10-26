@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addChannel, addCustomSound, audibleChannels, createChannel, createProject, removeChannel, setBpm, setLoopBars,
+  addChannel, addCustomSound, addSampleSound, audibleChannels, createChannel, createProject, removeChannel, setBpm, setLoopBars,
   setNoteLength, toggleStep, totalSteps, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
@@ -44,6 +44,12 @@ describe('project model', () => {
     const { project, sound } = addCustomSound(createProject(), ' ', { wave: 'sine', freq: 100, freqEnd: 50, decay: 0.2, cutoff: 1000 });
     expect(project.customSounds).toEqual([sound]);
     expect(sound.name).toBe('My sound');
+  });
+  it('stores sample metadata separately from sample audio', () => {
+    const project = addSampleSound(createProject(), 'Field recording', 'sample-1', ['field', 'outdoor']);
+    expect(project.customSounds[0]).toMatchObject({
+      name: 'Field recording', category: 'Samples', sampleId: 'sample-1', tags: ['field', 'outdoor'],
+    });
   });
   it('templates are consistent', () => {
     for (const t of TEMPLATES) {

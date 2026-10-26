@@ -65,4 +65,12 @@ export const TUTORIALS: Tutorial[] = [
       { text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
+  {
+    id: 'record-sample',
+    title: '6. Record a sample',
+    steps: [
+      { text: 'Allow microphone access and record a sound.', target: '#record-sample', done: (s) => s.events.has('record-start') },
+      { text: 'Stop the recording, trim it if needed, and save it to your library.', target: '#save-sample', done: (s) => s.events.has('sample-saved') },
+    ],
+  },
 ];

@@ -15,6 +15,8 @@ export interface SoundDef {
   name: string;
   category: string;
   params: SynthParams;
+  sampleId?: string;
+  tags?: string[];
 }
 
 export interface Channel {
@@ -107,6 +109,18 @@ export function removeChannel(p: Project, id: string): Project {
 export function addCustomSound(p: Project, name: string, params: SynthParams): { project: Project; sound: SoundDef } {
   const sound: SoundDef = { id: `custom-${Date.now().toString(36)}-${p.customSounds.length}`, name: name.trim() || 'My sound', category: 'Mine', params };
   return { project: { ...p, customSounds: [...p.customSounds, sound] }, sound };
+}
+
+export function addSampleSound(p: Project, name: string, sampleId: string, tags: string[] = []): Project {
+  const sound: SoundDef = {
+    id: `sample-${Date.now().toString(36)}-${p.customSounds.length}`,
+    name: name.trim() || 'My sample',
+    category: 'Samples',
+    params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.1, cutoff: 12000 },
+    sampleId,
+    tags,
+  };
+  return { ...p, customSounds: [...p.customSounds, sound] };
 }
 
 export function audibleChannels(p: Project): Channel[] {

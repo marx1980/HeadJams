@@ -22,6 +22,23 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .panel { background: #1d1d2d; border: 1px solid #444; border-radius: 10px; padding: 12px; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
 .toast { position: fixed; top: 10px; right: 10px; background: #06d6a0; color: #000; padding: 8px 14px; border-radius: 8px; }
 .hint { opacity: 0.7; }
+.library-heading, .library-filters, .sound-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.library-heading { justify-content: space-between; }
+.library-heading h2, .sample-editor h3 { margin: 0; }
+.library-filters { align-items: end; }
+.sound-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 360px; overflow: auto; }
+.sound-list.pads { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
+.sound-card { display: flex; flex-direction: column; gap: 5px; background: #262638; border: 1px solid #444; border-radius: 8px; padding: 8px; }
+.sound-title { font-weight: 650; }
+.sound-meta { font-size: 0.75rem; opacity: 0.7; }
+.sound-actions { margin-top: auto; }
+.sound-actions button { min-height: 34px; }
+.sample-editor { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #444; padding-top: 10px; }
+.sample-editor label, .library-filters label { min-width: 150px; }
+.sample-editor input[type='file'], .sample-editor input:not([type='range']):not([type='checkbox']) { max-width: 100%; }
+.check-label { flex-direction: row; align-items: center; }
+.check-label input { min-height: auto; }
+.error { color: #ff8296; margin: 0; }
 .tutorial-overlay { position: fixed; left: 0; right: 0; bottom: 0; background: #2a2a55; border-top: 3px solid #ffd166; padding: 10px 16px; z-index: 10; }
 .tut-title { font-size: 0.75rem; opacity: 0.8; }
 .tutorial-overlay p { margin: 4px 0 8px; font-size: 1.05rem; }

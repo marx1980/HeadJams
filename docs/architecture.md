@@ -10,10 +10,10 @@ Web Audio API (AudioWorklet where needed). A look-ahead scheduler (`src/audio/sc
 - Transport: BPM, play/stop, metronome, quantization.
 - Project model (`src/model`): project -> channels -> patterns -> steps.
 - Sound library (`src/library`): sample registry with metadata; built-in synthesized starter pack.
-- Sample pipeline: decode, trim, normalize, cache.
+- Sample pipeline: decode imported/recorded audio, trim, normalize, cache.
 - Sequencer and loop engine.
 - Mixer: per-channel gain, pan, mute, solo.
-- Persistence: IndexedDB for projects and samples, plus JSON export.
+- Persistence: localStorage for project metadata and IndexedDB for sample audio.
 - UI (`src/ui`): channel strip, step grid, pad view, library browser; tutorials in `src/tutorial`.
 - Later: effects chain, arrangement timeline, optional cloud sync.
 
@@ -21,11 +21,11 @@ Web Audio API (AudioWorklet where needed). A look-ahead scheduler (`src/audio/sc
 A single serializable project store with undo history.
 
 ## Sound library generation
-- Record from mic (level meter, trim, normalize).
-- Import WAV/MP3/OGG via drag and drop or file picker.
+- Record from mic, trim, and normalize.
+- Import browser-decodable audio (including WAV/MP3/OGG) via file picker.
 - Synthesized sounds (kick, snare, hat, bass, lead) from oscillator/pitch/decay/filter parameters.
 - Organize: name, tags, favorites, "my library" vs "built-in".
-- Store in IndexedDB; export/import library packs (zip).
+- Store sample audio in IndexedDB; search and filter the library by text and tags.
 - Later: slicing samples into pads; resampling project output.
 
 ## Testing
