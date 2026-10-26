@@ -1,4 +1,5 @@
 import type { Project, SoundDef, SynthParams } from '../model/project';
+import { pitchToFrequency } from '../model/music';
 
 const s = (id: string, name: string, category: string, wave: SynthParams['wave'], freq: number, freqEnd: number, decay: number, cutoff: number): SoundDef => ({
   id, name, category, params: { wave, freq, freqEnd, decay, cutoff },
@@ -74,6 +75,42 @@ export function renderSound(p: SynthParams, sr = SAMPLE_RATE): Float32Array {
     lp += a * (x - lp);
     const fade = Math.min(1, (len - i) / 200);
     out[i] = lp * Math.exp((-5 * t) / decay) * 0.9 * fade;
+  }
+  return out;
+}
+
+export function renderPitchedNote(p: SynthParams, pitch: number, duration: number, velocity = 1, sr = SAMPLE_RATE): Float32Array {
+  const noteDuration = Math.max(0.01, duration);
+  const attack = 0.008;
+  const release = 0.03;
+  const len = Math.max(1, Math.ceil(sr * (noteDuration + release)));
+  const out = new Float32Array(len);
+  const freq = pitchToFrequency(Math.max(0, Math.min(127, Math.round(pitch))));
+  const cutoff = Math.min(Math.max(50, p.cutoff), sr / 2 - 1);
+  const filter = 1 - Math.exp((-2 * Math.PI * cutoff) / sr);
+  const level = Math.max(0, Math.min(1, velocity));
+  let phase = 0;
+  let low = 0;
+  for (let i = 0; i < len; i++) {
+    const time = i / sr;
+    phase += freq / sr;
+    phase -= Math.floor(phase);
+    let sample: number;
+    switch (p.wave) {
+      case 'sine': sample = Math.sin(2 * Math.PI * phase); break;
+      case 'square': sample = phase < 0.5 ? 1 : -1; break;
+      case 'saw': sample = 2 * phase - 1; break;
+      case 'triangle': sample = 4 * Math.abs(phase - 0.5) - 1; break;
+      default:
+        sample = Math.sin(2 * Math.PI * phase);
+    }
+    low += filter * (sample - low);
+    const envelope = time < attack
+      ? time / attack
+      : time <= noteDuration
+        ? 1
+        : Math.exp((-6 * (time - noteDuration)) / release);
+    out[i] = low * envelope * level * 0.35;
   }
   return out;
 }
