@@ -2,22 +2,32 @@ import { audibleChannels, totalSteps, type Project, type SoundDef } from '../mod
 import { findSound, renderSound } from '../library/sounds';
 import { panGains } from './render';
 import { Scheduler } from './scheduler';
+import type { SampleData } from '../library/sampleStorage';
 
 export class Engine {
   private ctx?: AudioContext;
   private buffers = new Map<string, AudioBuffer>();
+  private samples = new Map<string, SampleData>();
   private sched?: Scheduler;
   private timer?: number;
   playing = false;
 
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void) {}
 
-  private buffer(def: SoundDef): AudioBuffer {
+  setSamples(samples: Map<string, SampleData>) {
+    this.samples = samples;
+    this.buffers.clear();
+  }
+
+  private buffer(def: SoundDef): AudioBuffer | undefined {
     const key = `${def.id}:${JSON.stringify(def.params)}`;
     let b = this.buffers.get(key);
     if (!b) {
       const ctx = this.ctx!;
-      const data = renderSound(def.params, ctx.sampleRate);
+      const sample = def.sampleId ? this.samples.get(def.sampleId) : undefined;
+      if (def.sampleId && !sample) return undefined;
+      const data = sample?.samples ?? (def.params ? renderSound(def.params, ctx.sampleRate) : undefined);
+      if (!data) return undefined;
       b = ctx.createBuffer(1, data.length, ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
       this.buffers.set(key, b);
@@ -34,7 +44,9 @@ export class Engine {
   private play(def: SoundDef, time: number, volume: number, pan: number) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
-    src.buffer = this.buffer(def);
+    const buffer = this.buffer(def);
+    if (!buffer) return;
+    src.buffer = buffer;
     const [l, r] = panGains(volume, pan);
     const gain = ctx.createGain();
     gain.gain.value = Math.max(l, r);

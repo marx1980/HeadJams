@@ -1,7 +1,7 @@
 import type { Project, SoundDef, SynthParams } from '../model/project';
 
 const s = (id: string, name: string, category: string, wave: SynthParams['wave'], freq: number, freqEnd: number, decay: number, cutoff: number): SoundDef => ({
-  id, name, category, params: { wave, freq, freqEnd, decay, cutoff },
+  id, name, category, tags: [category.toLowerCase()], params: { wave, freq, freqEnd, decay, cutoff },
 });
 
 export const STARTER_SOUNDS: SoundDef[] = [

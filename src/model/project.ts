@@ -14,7 +14,9 @@ export interface SoundDef {
   id: string;
   name: string;
   category: string;
-  params: SynthParams;
+  params?: SynthParams;
+  sampleId?: string;
+  tags?: string[];
 }
 
 export interface Channel {
