@@ -7,7 +7,7 @@ describe('music theory helpers', () => {
   it('identifies pitches in a scale across octaves', () => {
     expect(isPitchInScale(60, 0, major)).toBe(true);
     expect(isPitchInScale(61, 0, major)).toBe(false);
-    expect(isPitchInScale(73, 0, major)).toBe(true);
+    expect(isPitchInScale(72, 0, major)).toBe(true);
   });
 
   it('snaps out-of-scale pitches to the nearest note, preferring the lower note on ties', () => {
