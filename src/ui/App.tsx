@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, removeChannel, setBpm, setLoopBars,
+  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, removeChannel, setBpm, setLoopBars,
   setNoteLength, toggleStep, updateChannel, type LoopBars, type NoteLength, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
 import { allSounds, findSound, SAMPLE_RATE, STARTER_SOUNDS } from '../library/sounds';
+import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { renderProject } from '../audio/render';
 import { encodeWav } from '../audio/wav';
 import { countNotes, TUTORIALS, type Tutorial } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
+import { SampleLibrary } from './SampleLibrary';
 import './styles.css';
 
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5', '#f15bb5', '#fb8500', '#8ecae6'];
@@ -26,11 +28,14 @@ export function App() {
   const [menu, setMenu] = useState(false);
   const [designer, setDesigner] = useState(false);
   const [message, setMessage] = useState('');
+  const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
 
   const projectRef = useRef(project);
   projectRef.current = project;
+  const sampleDataRef = useRef(sampleData);
+  sampleDataRef.current = sampleData;
   const engineRef = useRef<Engine | undefined>(undefined);
-  engineRef.current ??= new Engine(() => projectRef.current, setPlayStep);
+  engineRef.current ??= new Engine(() => projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id));
   const engine = engineRef.current;
 
   const emit = (e: string) => setEvents((s) => new Set(s).add(e));
@@ -43,6 +48,19 @@ export function App() {
   };
 
   useEffect(() => { saveProject(project); }, [project]);
+  useEffect(() => {
+    let active = true;
+    void Promise.all(project.customSounds.flatMap((sound) => sound.sampleId ? [getSample(sound.sampleId).catch(() => undefined)] : []))
+      .then((samples) => {
+        if (!active) return;
+        const loaded = new Map<string, SampleData>();
+        samples.forEach((sample) => { if (sample) loaded.set(sample.id, sample); });
+        setSampleData(loaded);
+      });
+    return () => { active = false; };
+    // Load persisted samples once; newly created samples are added in onSaveSample.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!localStorage.getItem(SEEN_KEY)) startTutorial(TUTORIALS[0]);
     return () => engine.stop();
@@ -58,7 +76,7 @@ export function App() {
   };
 
   const exportWav = () => {
-    const { left, right } = renderProject(project);
+    const { left, right } = renderProject(project, SAMPLE_RATE, sampleData);
     const blob = new Blob([encodeWav(left, right, SAMPLE_RATE)], { type: 'audio/wav' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -168,6 +186,30 @@ export function App() {
           onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}>＋ Add channel</button>
         <button className="secondary" onClick={() => setDesigner(!designer)}>🎛 Make a sound</button>
       </div>
+
+      <SampleLibrary
+        sounds={sounds}
+        channels={project.channels}
+        onPreview={(sound) => preview(sound)}
+        onUse={(soundId, channelId) => {
+          const sound = findSound(project, soundId);
+          if (!sound) return;
+          setProject(updateChannel(project, channelId, { soundId, name: sound.name }));
+          preview(sound);
+          emit('sound-change');
+        }}
+        onSaveSample={async (name, tags, sample) => {
+          await saveSample(sample);
+          const updated = new Map(sampleDataRef.current);
+          updated.set(sample.id, sample);
+          sampleDataRef.current = updated;
+          setSampleData(updated);
+          setProject((current) => addSampleSound(current, name, sample.id, tags));
+          emit('sample-saved');
+          flash('Sample saved to your library ✓');
+        }}
+        onRecordStart={() => emit('record-start')}
+      />
 
       {designer && (
         <SoundDesigner

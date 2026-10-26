@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STARTER_SOUNDS, findSound, renderSound } from '../library/sounds';
-import { createProject, toggleStep } from '../model/project';
+import { addSampleSound, createProject, toggleStep } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { renderProject } from './render';
 import { encodeWav } from './wav';
@@ -29,6 +29,14 @@ describe('render + wav', () => {
     expect(renderProject(createProject(), 8000).left.every((x) => x === 0)).toBe(true);
     expect(renderProject(toggleStep(createProject(), 'ch1', 0), 8000).left.some((x) => x !== 0)).toBe(true);
   });
+  it('renders stored sample audio in the project mix', () => {
+    const sample = { id: 'sample-1', samples: new Float32Array([0.25, -0.5, 0.75]), sampleRate: 8000 };
+    const project = addSampleSound(createProject(), 'Sample', sample.id);
+    project.channels[0].soundId = project.customSounds[0].id;
+    project.channels[0].steps[0] = true;
+    const rendered = renderProject(project, 8000, new Map([[sample.id, sample]]));
+    expect(rendered.left.slice(0, 3)).toEqual(new Float32Array([0.2, -0.4, 0.6]));
+  });
   it('writes a valid WAV header', () => {
     const buf = encodeWav(new Float32Array(10), new Float32Array(10), 44100);
     const v = new DataView(buf);
@@ -39,8 +47,8 @@ describe('render + wav', () => {
 });
 
 describe('tutorials', () => {
-  it('has five tutorials whose first step is not already done', () => {
-    expect(TUTORIALS).toHaveLength(5);
+  it('has six tutorials whose first step is not already done', () => {
+    expect(TUTORIALS).toHaveLength(6);
     const p = createProject();
     for (const t of TUTORIALS) expect(t.steps[0].done({ project: p, base: p, events: new Set() })).toBe(false);
   });
