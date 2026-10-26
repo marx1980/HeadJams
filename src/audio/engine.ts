@@ -1,8 +1,11 @@
-import { audibleChannels, totalSteps, type Project, type SoundDef } from '../model/project';
+import {
+  arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type Project, type SoundDef,
+} from '../model/project';
 import { findSound, renderSound } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
-import { Scheduler } from './scheduler';
+import { Scheduler, stepDuration } from './scheduler';
+import { pitchToFrequency } from '../model/music';
 
 export class Engine {
   private ctx?: AudioContext;
@@ -49,6 +52,44 @@ export class Engine {
     src.start(time);
   }
 
+  private playPitch(def: SoundDef, pitch: number, time: number, duration: number, volume: number, pan: number, velocity = 1) {
+    const ctx = this.ctx!;
+    const start = Math.max(time, ctx.currentTime);
+    const length = Math.max(0.01, duration);
+    const end = start + length;
+    const gain = ctx.createGain();
+    const panner = ctx.createStereoPanner();
+    const level = Math.max(0, volume * Math.min(1, Math.max(0, velocity)));
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(level, start + 0.008);
+    gain.gain.setValueAtTime(level, end);
+    gain.gain.linearRampToValueAtTime(0, end + 0.03);
+    panner.pan.setValueAtTime(pan, start);
+    gain.connect(panner).connect(ctx.destination);
+
+    if (def.sampleId) {
+      const buffer = this.buffer(def);
+      if (!buffer) return;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(pitchToFrequency(pitch) / Math.max(10, def.params.freq), start);
+      source.connect(gain);
+      source.start(start);
+      source.stop(end + 0.03);
+      return;
+    }
+
+    const oscillator = ctx.createOscillator();
+    oscillator.type = def.params.wave === 'saw' ? 'sawtooth' : def.params.wave === 'noise' ? 'triangle' : def.params.wave;
+    oscillator.frequency.setValueAtTime(pitchToFrequency(pitch), start);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(Math.min(def.params.cutoff, ctx.sampleRate / 2), start);
+    oscillator.connect(filter).connect(gain);
+    oscillator.start(start);
+    oscillator.stop(end + 0.03);
+  }
+
   async preview(def: SoundDef, volume = 0.8) {
     const ctx = await this.ensureCtx();
     this.play(def, ctx.currentTime, volume, 0);
@@ -61,14 +102,23 @@ export class Engine {
     this.sched = new Scheduler({
       now: () => ctx.currentTime,
       bpm: () => this.getProject().bpm,
-      totalSteps: () => totalSteps(this.getProject()),
+      totalSteps: () => arrangementLength(this.getProject()) || totalSteps(this.getProject()),
       stepsPerBar: () => this.getProject().noteLength,
       lookAhead: 0.15,
       onStep: (step, time) => {
         const p = this.getProject();
-        for (const c of audibleChannels(p)) {
-          const def = findSound(p, c.soundId);
-          if (def && c.steps[step]) this.play(def, time, c.volume, c.pan);
+        const stepLen = stepDuration(p.bpm, p.noteLength);
+        for (const source of channelsForPlaybackStep(p, step)) {
+          for (const c of audibleChannels({ ...p, channels: source.channels })) {
+            const def = findSound(p, c.soundId);
+            if (!def) continue;
+            if (c.steps[source.localStep]) this.play(def, time, c.volume, c.pan);
+            for (const note of c.notes ?? []) {
+              if (note.step === source.localStep) {
+                this.playPitch(def, note.pitch, time, stepLen * note.durationSteps, c.volume, c.pan, note.velocity);
+              }
+            }
+          }
         }
         window.setTimeout(() => this.playing && this.onStep(step), Math.max(0, (time - ctx.currentTime) * 1000));
       },

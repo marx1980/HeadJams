@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER_SOUNDS, findSound, renderSound } from '../library/sounds';
-import { addSampleSound, createProject, toggleStep } from '../model/project';
+import { STARTER_SOUNDS, findSound, renderPitchedNote, renderSound } from '../library/sounds';
+import { addArrangementClip, addNote, addPattern, addSampleSound, createProject, toggleStep } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { renderProject } from './render';
 import { encodeWav } from './wav';
@@ -36,6 +36,24 @@ describe('render + wav', () => {
     project.channels[0].steps[0] = true;
     const rendered = renderProject(project, 8000, new Map([[sample.id, sample]]));
     expect(rendered.left.slice(0, 3)).toEqual(new Float32Array([0.2, -0.4, 0.6]));
+  });
+  it('renders pitched notes with duration and overlapping voices', () => {
+    const note = renderPitchedNote(STARTER_SOUNDS.find((sound) => sound.id === 'lead-1')!.params, 69, 0.1, 0.8, 8000);
+    expect(note.length).toBeGreaterThan(800);
+    expect(note.some((sample) => sample !== 0)).toBe(true);
+
+    let project = addNote(createProject(), 'ch1', { id: 'a', step: 0, pitch: 60, durationSteps: 2 });
+    project = addNote(project, 'ch1', { id: 'b', step: 0, pitch: 64, durationSteps: 2 });
+    expect(renderProject(project, 8000).left.some((sample) => sample !== 0)).toBe(true);
+  });
+  it('renders clips at their arrangement positions and repeats pattern steps', () => {
+    let project = addPattern(toggleStep(createProject(), 'ch1', 0), 'Verse');
+    project = addArrangementClip(project, project.patterns[0].id, 4, 20);
+    const rendered = renderProject(project, 8000);
+    const stepSamples = Math.round((240 / project.bpm / project.noteLength) * 8000);
+    expect(rendered.left[0]).toBe(0);
+    expect(rendered.left[stepSamples * 4]).not.toBe(0);
+    expect(rendered.left[stepSamples * 20]).not.toBe(0);
   });
   it('writes a valid WAV header', () => {
     const buf = encodeWav(new Float32Array(10), new Float32Array(10), 44100);
