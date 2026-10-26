@@ -8,4 +8,4 @@ Phases 1–2 (beat maker, tutorials, and sound sampling) are complete. Import or
 - Install: `npm install`
 - Run: `npm run dev`
 - Test: `npm test`
-- Build: `npm run build`
+- Build: `npm run build` (writes index.html + assets/ to repo root for GitHub Pages at /MusicMaker/; commit the output. Source entry: app/index.html)
