@@ -133,7 +133,7 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
     notes: (c.notes ?? []).flatMap((note) => {
       const position = (note.step * newLen) / oldLen;
       return Number.isInteger(position)
-        ? [{ ...note, step: position, durationSteps: Math.max(1, (note.durationSteps * newLen) / oldLen) }]
+        ? [{ ...note, step: position, durationSteps: Math.max(1, Math.round((note.durationSteps * newLen) / oldLen)) }]
         : [];
     }),
   })), newLen);
@@ -171,10 +171,13 @@ export function removeChannel(p: Project, id: string): Project {
 }
 
 export function addNote(p: Project, channelId: string, note: NoteEvent): Project {
+  if (!note.id || !Number.isFinite(note.pitch) || !Number.isFinite(note.step)) return p;
   const pitch = Math.max(MIN_PITCH, Math.min(MAX_PITCH, Math.round(note.pitch)));
   const step = Math.max(0, Math.floor(note.step));
   const durationSteps = Number.isFinite(note.durationSteps) ? Math.max(1, note.durationSteps) : 1;
-  const velocity = note.velocity === undefined ? undefined : Math.max(0, Math.min(1, note.velocity));
+  const velocity = note.velocity === undefined || !Number.isFinite(note.velocity)
+    ? undefined
+    : Math.max(0, Math.min(1, note.velocity));
   return syncCurrentPattern(p, p.channels.map((channel) =>
     channel.id === channelId
       ? {

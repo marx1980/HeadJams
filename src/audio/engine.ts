@@ -59,7 +59,7 @@ export class Engine {
     const end = start + length;
     const gain = ctx.createGain();
     const panner = ctx.createStereoPanner();
-    const level = Math.max(0, volume * Math.min(1, Math.max(0, velocity)));
+    const level = Math.max(0, volume * (Number.isFinite(velocity) ? Math.min(1, Math.max(0, velocity)) : 1));
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(level, start + 0.008);
     gain.gain.setValueAtTime(level, end);
@@ -72,7 +72,8 @@ export class Engine {
       if (!buffer) return;
       const source = ctx.createBufferSource();
       source.buffer = buffer;
-      source.playbackRate.setValueAtTime(pitchToFrequency(pitch) / Math.max(10, def.params.freq), start);
+      const rate = pitchToFrequency(pitch) / Math.max(10, def.params.freq);
+      source.playbackRate.setValueAtTime(Math.min(8, Math.max(0.125, rate)), start);
       source.connect(gain);
       source.start(start);
       source.stop(end + 0.03);

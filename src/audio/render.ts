@@ -4,6 +4,7 @@ import {
 import { findSound, renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration } from './scheduler';
+import { pitchToFrequency } from '../model/music';
 
 export function panGains(volume: number, pan: number): [number, number] {
   return [volume * (pan > 0 ? 1 - pan : 1), volume * (pan < 0 ? 1 + pan : 1)];
@@ -23,6 +24,34 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
       right[start + k] += data[k] * gr;
     }
   };
+  const renderSampleNote = (sample: SampleData, baseFreq: number, pitch: number, duration: number, velocity = 1) => {
+    if (!sample.samples.length || sample.sampleRate <= 0) return new Float32Array();
+    const rate = Math.min(8, Math.max(0.125, pitchToFrequency(pitch) / Math.max(10, baseFreq)));
+    const end = Math.max(0.01, duration);
+    const attack = 0.008;
+    const release = 0.03;
+    const length = Math.min(
+      Math.ceil((end + release) * sr),
+      Math.ceil(sample.samples.length * sr / (sample.sampleRate * rate)),
+    );
+    const output = new Float32Array(length);
+    const level = Number.isFinite(velocity) ? Math.max(0, Math.min(1, velocity)) : 1;
+    for (let i = 0; i < length; i++) {
+      const time = i / sr;
+      const position = i * sample.sampleRate * rate / sr;
+      const left = Math.min(sample.samples.length - 1, Math.floor(position));
+      const right = Math.min(sample.samples.length - 1, left + 1);
+      const mix = position - left;
+      const value = sample.samples[left] * (1 - mix) + sample.samples[right] * mix;
+      const envelope = time < attack
+        ? time / attack
+        : time <= end
+          ? 1
+          : Math.exp((-6 * (time - end)) / release);
+      output[i] = value * envelope * level;
+    }
+    return output;
+  };
   for (let step = 0; step < songSteps; step++) {
     const start = step * stepLen;
     for (const source of channelsForPlaybackStep(p, step)) {
@@ -41,7 +70,10 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
         }
         for (const note of c.notes ?? []) {
           if (note.step === source.localStep) {
-            mix(renderPitchedNote(def.params, note.pitch, note.durationSteps * stepLen / sr, note.velocity, sr), start, gl, gr);
+            const duration = note.durationSteps * stepLen / sr;
+            const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
+            if (sample) mix(renderSampleNote(sample, def.params.freq, note.pitch, duration, note.velocity), start, gl, gr);
+            else if (!def.sampleId) mix(renderPitchedNote(def.params, note.pitch, duration, note.velocity, sr), start, gl, gr);
           }
         }
       }

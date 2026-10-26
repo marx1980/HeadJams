@@ -68,7 +68,7 @@ describe('project model', () => {
     expect(p.channels[0].steps[0]).toBe(true);
     p = toggleStep(p, 'ch1', 1);
     p = selectPattern(p, 'pattern-1');
-    expect(p.channels[0].steps[0]).toBe(false);
+    expect(p.channels[0].steps.slice(0, 2)).toEqual([true, false]);
     p = selectPattern(p, 'pattern-2');
     expect(p.channels[0].steps.slice(0, 2)).toEqual([true, true]);
     expect(p.patterns[0].channels[0].steps).not.toBe(p.patterns[1].channels[0].steps);
