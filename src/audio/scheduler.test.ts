@@ -4,6 +4,7 @@ import { Scheduler, stepDuration } from './scheduler';
 describe('Scheduler', () => {
   it('computes step duration', () => {
     expect(stepDuration(120)).toBeCloseTo(0.125);
+    expect(stepDuration(120, 4)).toBeCloseTo(0.5);
   });
   it('schedules steps within look-ahead and loops', () => {
     let t = 0;

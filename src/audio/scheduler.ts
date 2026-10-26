@@ -2,13 +2,15 @@ export interface SchedulerOptions {
   now: () => number;
   bpm: () => number;
   totalSteps: () => number;
+  /** Steps per bar (grid resolution); defaults to 16. */
+  stepsPerBar?: () => number;
   onStep: (step: number, time: number) => void;
   lookAhead?: number;
 }
 
-/** Seconds per 16th-note step at a given tempo. */
-export function stepDuration(bpm: number): number {
-  return 60 / bpm / 4;
+/** Seconds per grid step at a given tempo (4/4 time). */
+export function stepDuration(bpm: number, stepsPerBar = 16): number {
+  return 240 / bpm / stepsPerBar;
 }
 
 /** Look-ahead scheduler: call tick() frequently; schedules steps due within lookAhead. */
@@ -33,7 +35,7 @@ export class Scheduler {
     const horizon = this.o.now() + (this.o.lookAhead ?? 0.1);
     while (this.nextTime < horizon) {
       this.o.onStep(this.step, this.nextTime);
-      this.nextTime += stepDuration(this.o.bpm());
+      this.nextTime += stepDuration(this.o.bpm(), this.o.stepsPerBar?.() ?? 16);
       this.step = (this.step + 1) % this.o.totalSteps();
     }
   }
