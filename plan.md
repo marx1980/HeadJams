@@ -1,10 +1,8 @@
 # Build Plan
 This is the source of truth for what should be built next. Research: `docs/research.md`. Architecture: `docs/architecture.md`.
 
-## NEXT
-
 ### 2. Phase 2: Sound library and sampling
-Status: NEXT
+Status: DONE
 Mic recording, import, library browser (tags, search), trimming, pad view, record tutorial.
 
 ## QUEUED
@@ -27,6 +25,8 @@ PWA offline, Capacitor builds, accounts/cloud sync, MIDI, sample marketplace.
 ### 1. Phase 1: Simple, fully functional MVP — DONE
 Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, 5 interactive tutorials (auto-start on first run).
 Not yet verified: manual 2-minute usability test in a real browser.
+### 2. Phase 2: Sound library and sampling — DONE
+Microphone recording and audio import, trim/normalize controls, IndexedDB sample persistence, searchable/tag-filtered sound browser, pad view, and recording tutorial.
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.

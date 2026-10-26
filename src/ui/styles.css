@@ -26,4 +26,20 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .tut-title { font-size: 0.75rem; opacity: 0.8; }
 .tutorial-overlay p { margin: 4px 0 8px; font-size: 1.05rem; }
 .tut-highlight { outline: 3px solid #ffd166 !important; animation: pulse 1s infinite alternate; }
+.panel h2 { margin: 0; font-size: 1.1rem; }
+.library-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.library-list { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow: auto; }
+.library-item { display: flex; align-items: center; gap: 8px; }
+.library-item > :first-child { text-align: left; }
+.library-item span { flex: 1; opacity: 0.7; font-size: 0.85rem; }
+.pad-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.pad-trigger { min-height: 88px; background: #38385a; font-weight: 700; }
+.pad-trigger:active { background: #06d6a0; color: #000; }
+.file-label input { display: block; max-width: 100%; }
+.error { margin: 0; color: #ff8295; }
+@media (max-width: 600px) {
+  .library-item { align-items: stretch; flex-wrap: wrap; }
+  .library-item span { flex-basis: 100%; order: 1; }
+  .library-item > :last-child { margin-left: auto; }
+}
 @keyframes pulse { to { outline-offset: 3px; } }

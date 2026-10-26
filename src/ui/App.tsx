@@ -12,6 +12,9 @@ import { encodeWav } from '../audio/wav';
 import { countNotes, TUTORIALS, type Tutorial } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
+import { SampleRecorder } from './SampleRecorder';
+import { SoundLibrary } from './SoundLibrary';
+import { loadSamples, saveSample, type SampleData } from '../library/sampleStorage';
 import './styles.css';
 
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5', '#f15bb5', '#fb8500', '#8ecae6'];
@@ -25,6 +28,8 @@ export function App() {
   const [base, setBase] = useState<Project>(project);
   const [menu, setMenu] = useState(false);
   const [designer, setDesigner] = useState(false);
+  const [samples, setSamples] = useState<Map<string, SampleData>>(new Map());
+  const samplesRef = useRef(samples);
   const [message, setMessage] = useState('');
 
   const projectRef = useRef(project);
@@ -45,6 +50,11 @@ export function App() {
   useEffect(() => { saveProject(project); }, [project]);
   useEffect(() => {
     if (!localStorage.getItem(SEEN_KEY)) startTutorial(TUTORIALS[0]);
+    void loadSamples().then((loaded) => {
+      samplesRef.current = loaded;
+      setSamples(loaded);
+      engine.setSamples(loaded);
+    }).catch(() => {});
     return () => engine.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -58,7 +68,7 @@ export function App() {
   };
 
   const exportWav = () => {
-    const { left, right } = renderProject(project);
+    const { left, right } = renderProject(project, SAMPLE_RATE, samples);
     const blob = new Blob([encodeWav(left, right, SAMPLE_RATE)], { type: 'audio/wav' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -71,6 +81,22 @@ export function App() {
 
   const flash = (m: string) => { setMessage(m); setTimeout(() => setMessage(''), 2500); };
   const preview = (d: SoundDef | undefined, vol?: number) => { if (d) { void engine.preview(d, vol); emit('preview'); } };
+  const saveRecordedSample = async (name: string, sample: SampleData) => {
+    const id = `sample-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
+    await saveSample(id, sample);
+    const nextSamples = new Map(samplesRef.current).set(id, sample);
+    samplesRef.current = nextSamples;
+    setSamples(nextSamples);
+    engine.setSamples(nextSamples);
+    setProject((current) => ({
+      ...current,
+      customSounds: [...current.customSounds, {
+        id, sampleId: id, name, category: 'Samples', tags: ['samples'],
+      }],
+    }));
+    emit('sample-save');
+    flash('Sample saved to your library ✓');
+  };
 
   const loadTemplate = (id: string) => {
     const t = TEMPLATES.find((x) => x.id === id);
@@ -168,6 +194,13 @@ export function App() {
           onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}>＋ Add channel</button>
         <button className="secondary" onClick={() => setDesigner(!designer)}>🎛 Make a sound</button>
       </div>
+
+      <SampleRecorder onSave={saveRecordedSample} onEvent={emit} />
+      <SoundLibrary
+        sounds={sounds}
+        onPreview={(sound) => preview(sound)}
+        onAdd={(sound) => setProject(addChannel(project, sound.name, sound.id))}
+      />
 
       {designer && (
         <SoundDesigner

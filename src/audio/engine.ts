@@ -28,7 +28,7 @@ export class Engine {
       if (def.sampleId && !sample) return undefined;
       const data = sample?.samples ?? (def.params ? renderSound(def.params, ctx.sampleRate) : undefined);
       if (!data) return undefined;
-      b = ctx.createBuffer(1, data.length, ctx.sampleRate);
+      b = ctx.createBuffer(1, data.length, sample?.sampleRate ?? ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
       this.buffers.set(key, b);
     }
