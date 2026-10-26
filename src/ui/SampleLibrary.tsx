@@ -31,8 +31,8 @@ export function SampleLibrary({
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const streamRef = useRef<MediaStream>();
-  const recorderRef = useRef<MediaRecorder>();
+  const streamRef = useRef<MediaStream | undefined>(undefined);
+  const recorderRef = useRef<MediaRecorder | undefined>(undefined);
   const chunksRef = useRef<Blob[]>([]);
 
   const availableTags = useMemo(() => [...new Set(sounds.flatMap((sound) => sound.tags ?? []))].sort(), [sounds]);
@@ -51,21 +51,22 @@ export function SampleLibrary({
 
   const loadAudio = async (blob: Blob, fallbackName: string) => {
     setError('');
+    const context = new AudioContext();
     try {
-      const context = new AudioContext();
       const decoded = await context.decodeAudioData(await blob.arrayBuffer());
       const mono = new Float32Array(decoded.length);
       for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
         const data = decoded.getChannelData(channel);
         for (let i = 0; i < mono.length; i++) mono[i] += data[i] / decoded.numberOfChannels;
       }
-      await context.close();
       setDraft({ name: fallbackName.replace(/\.[^.]+$/, '') || 'My sample', samples: mono, sampleRate: decoded.sampleRate });
       setName(fallbackName.replace(/\.[^.]+$/, '') || 'My sample');
       setTrimStart(0);
       setTrimEnd(1);
     } catch {
       setError('This audio could not be decoded. Try a WAV, MP3, or OGG file.');
+    } finally {
+      await context.close().catch(() => undefined);
     }
   };
 
@@ -87,6 +88,8 @@ export function SampleLibrary({
       setRecording(true);
       onRecordStart();
     } catch {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = undefined;
       setError('Microphone access failed. Check browser permissions and try again.');
     }
   };

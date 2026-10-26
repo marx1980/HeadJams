@@ -4,6 +4,19 @@ export interface SampleData {
   sampleRate: number;
 }
 
+export function resampleSample(input: Float32Array, fromRate: number, toRate: number): Float32Array {
+  if (!input.length || fromRate <= 0 || fromRate === toRate) return input;
+  const output = new Float32Array(Math.max(1, Math.round(input.length * toRate / fromRate)));
+  for (let i = 0; i < output.length; i++) {
+    const position = i * fromRate / toRate;
+    const left = Math.min(input.length - 1, Math.floor(position));
+    const right = Math.min(input.length - 1, left + 1);
+    const mix = position - left;
+    output[i] = input[left] * (1 - mix) + input[right] * mix;
+  }
+  return output;
+}
+
 interface StoredSample {
   id: string;
   samples: Float32Array;

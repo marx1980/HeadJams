@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STARTER_SOUNDS, findSound, renderSound } from '../library/sounds';
-import { addSampleSound, createProject, toggleStep, updateChannel } from '../model/project';
+import { addSampleSound, createProject, toggleStep } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { renderProject } from './render';
 import { encodeWav } from './wav';

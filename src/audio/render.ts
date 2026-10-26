@@ -1,6 +1,6 @@
 import { audibleChannels, totalSteps, type Project } from '../model/project';
 import { findSound, renderSound, SAMPLE_RATE } from '../library/sounds';
-import type { SampleData } from '../library/sampleStorage';
+import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration } from './scheduler';
 
 export function panGains(volume: number, pan: number): [number, number] {
@@ -20,7 +20,7 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
     let data = cache.get(def.id);
     if (!data) {
       const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
-      data = sample ? resample(sample.samples, sample.sampleRate, sr) : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
+      data = sample ? resampleSample(sample.samples, sample.sampleRate, sr) : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
       cache.set(def.id, data);
     }
     const [gl, gr] = panGains(c.volume, c.pan);
@@ -30,19 +30,6 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
       for (let k = 0; k < data!.length && start + k < left.length; k++) {
         left[start + k] += data![k] * gl;
         right[start + k] += data![k] * gr;
-      }
-
-      function resample(input: Float32Array, fromRate: number, toRate: number): Float32Array {
-        if (!input.length || fromRate <= 0 || fromRate === toRate) return input;
-        const output = new Float32Array(Math.max(1, Math.round(input.length * toRate / fromRate)));
-        for (let i = 0; i < output.length; i++) {
-          const position = i * fromRate / toRate;
-          const left = Math.min(input.length - 1, Math.floor(position));
-          const right = Math.min(input.length - 1, left + 1);
-          const mix = position - left;
-          output[i] = input[left] * (1 - mix) + input[right] * mix;
-        }
-        return output;
       }
     });
   }
