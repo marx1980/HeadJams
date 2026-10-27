@@ -23,11 +23,12 @@ Four screens (Beat, Sound, Library, Song); see `ui-design.md`.
 ## QUEUED (merged with the Sound Library expansion)
 Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 sample editor, §17-24 recognition). All features of the expansion are retained; its three delivery sequences (§24, §25, §28) are replaced by this single list. Execution rule: one focused PR per sub-phase; read this plan and the code first; preserve existing projects and sounds; add migration/backward-compat tests; run tests and production build; report limitations and risks.
 
-### 5. Sound Library architecture — NOT STARTED (§1, §2, §13-15)
-- Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
-- `SoundSource` abstraction in the audio engine (synth, sample, multisample), on-demand loading with cache, separate preview bus that never modifies the project.
-- Hierarchical picker (mobile bottom sheet) replacing every sound `<select>` (e.g. `App.tsx` channel sound select, Sound screen); Favourites, Recent, search, preview; reuse Library tags/search.
-- Missing-sound state; bump project format version once, with migration tests.
+### 5. Sound Library architecture — IN PROGRESS (§1, §2, §13-15)
+- [x] Central instrument registry wrapping `SoundDef`; stable IDs retained; duplicate IDs and missing sample assets validated.
+- [x] Synth/sample source resolution, cached audio buffers, and a separate preview bus that bypasses project playback/effects.
+- [x] Hierarchical, mobile-friendly picker replacing the channel sound dropdown; Favourites, Recent, search, preview, and Library tag reuse.
+- [x] Explicit missing/unavailable-sound state; project format version 2 migration tests preserve legacy IDs and composition.
+- [ ] Add multisample sources and on-demand loading for external sound packs when licensed pack assets are available.
 ### 6. Instruments and drums — NOT STARTED (§4-11)
 - Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
 - Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.

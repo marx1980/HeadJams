@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Channel, SoundDef } from '../model/project';
+import type { Channel } from '../model/project';
+import type { InstrumentDefinition } from '../library/instrumentRegistry';
 import type { SampleData } from '../library/sampleStorage';
 
 interface DraftSample {
@@ -11,9 +12,9 @@ interface DraftSample {
 export function SampleLibrary({
   sounds, channels, onPreview, onUse, onSaveSample, onRecordStart,
 }: {
-  sounds: SoundDef[];
+  sounds: InstrumentDefinition[];
   channels: Channel[];
-  onPreview: (sound: SoundDef) => void;
+  onPreview: (sound: InstrumentDefinition) => void;
   onUse: (soundId: string, channelId: string) => void;
   onSaveSample: (name: string, tags: string[], sample: SampleData) => Promise<void>;
   onRecordStart: () => void;
@@ -36,7 +37,7 @@ export function SampleLibrary({
   const chunksRef = useRef<Blob[]>([]);
 
   const availableTags = useMemo(() => [...new Set(sounds.flatMap((sound) => sound.tags ?? []))].sort(), [sounds]);
-  const visibleSounds = useMemo(() => sounds.filter((sound) => {
+  const visibleSounds = useMemo(() => sounds.filter((sound) => sound.available).filter((sound) => {
     const text = `${sound.name} ${sound.category} ${(sound.tags ?? []).join(' ')}`.toLowerCase();
     return text.includes(query.toLowerCase()) && (!tag || sound.tags?.includes(tag));
   }), [sounds, query, tag]);

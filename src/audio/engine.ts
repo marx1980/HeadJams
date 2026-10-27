@@ -8,6 +8,8 @@ import { Scheduler, stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
 import { resolveSoundSource } from './soundSource';
 
+const MAX_CACHED_BUFFERS = 64;
+
 export class Engine {
   private ctx?: AudioContext;
   private buffers = new Map<string, AudioBuffer>();
@@ -35,6 +37,11 @@ export class Engine {
     if (source.kind === 'sample' && !sample) return undefined;
     const key = `${def.id}:${JSON.stringify(def.params)}:${sample?.id ?? ''}`;
     let b = this.buffers.get(key);
+    if (b) {
+      this.buffers.delete(key);
+      this.buffers.set(key, b);
+      return b;
+    }
     if (!b) {
       const ctx = this.ctx!;
       const data = source.kind === 'sample'
@@ -43,6 +50,10 @@ export class Engine {
       b = ctx.createBuffer(1, data.length, ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
       this.buffers.set(key, b);
+      if (this.buffers.size > MAX_CACHED_BUFFERS) {
+        const leastRecentlyUsed = this.buffers.keys().next().value;
+        if (leastRecentlyUsed) this.buffers.delete(leastRecentlyUsed);
+      }
     }
     return b;
   }
