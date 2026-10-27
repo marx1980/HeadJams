@@ -10,8 +10,6 @@ import { allSounds, findSound, SAMPLE_RATE, STARTER_SOUNDS } from '../library/so
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
-import { renderProject } from '../audio/render';
-import { encodeWav } from '../audio/wav';
 import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -57,6 +55,7 @@ export function App() {
   const [exportSampleRate, setExportSampleRate] = useState(SAMPLE_RATE);
   const [exportBitDepth, setExportBitDepth] = useState<16 | 24>(16);
   const [normalizeExport, setNormalizeExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const recognitionPlaybackRef = useRef(false);
   const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
 
@@ -132,19 +131,47 @@ export function App() {
     flash(`${kit.name} applied · patterns preserved ✓`);
   };
 
-  const exportWav = () => {
-    const { left, right } = renderProject(project, exportSampleRate, sampleData);
-    const blob = new Blob([encodeWav(left, right, exportSampleRate, {
-      bitDepth: exportBitDepth,
-      normalize: normalizeExport,
-    })], { type: 'audio/wav' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.name.replace(/[^\w-]+/g, '_') || 'loop'}.wav`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    emit('export');
+  const exportWav = async () => {
+    if (exporting) return;
+    setExporting(true);
+    flash('Preparing WAV export…');
+    try {
+      const samples = [...sampleData.values()].map((sample) => ({
+        id: sample.id,
+        samples: sample.samples.slice(),
+        sampleRate: sample.sampleRate,
+      }));
+      const wav = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const worker = new Worker(new URL('../audio/exportWorker.ts', import.meta.url), { type: 'module' });
+        worker.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+          worker.terminate();
+          resolve(event.data);
+        };
+        worker.onerror = (event) => {
+          worker.terminate();
+          reject(event.error ?? new Error(event.message));
+        };
+        worker.postMessage({
+          project,
+          samples,
+          sampleRate: exportSampleRate,
+          bitDepth: exportBitDepth,
+          normalize: normalizeExport,
+        }, samples.map((sample) => sample.samples.buffer));
+      });
+      const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name.replace(/[^\w-]+/g, '_') || 'loop'}.wav`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      emit('export');
+      flash('WAV exported ✓');
+    } catch {
+      flash('WAV export failed. Check project size and browser memory, then try again.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const flash = (m: string) => { setMessage(m); setTimeout(() => setMessage(''), 2500); };
@@ -214,7 +241,7 @@ export function App() {
                 <input type="checkbox" checked={normalizeExport} onChange={(event) => setNormalizeExport(event.target.checked)} />
                 Normalize to −1 dBFS
               </label>
-              <button id="export-btn" onClick={exportWav}>Export WAV</button>
+              <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
               <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
                 onChange={() => setUnlocked(true)} /> Show all tabs</label>
               <button className="secondary" onClick={() => setProjectMenu(false)}>Close</button>
