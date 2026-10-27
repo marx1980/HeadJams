@@ -165,13 +165,13 @@ export function replaceGeneratedArrangementChannel(
   project: Project,
   channelId: string,
   sourceChannelId: string,
+  kind: GeneratedArrangementKind,
   notes: readonly NoteEvent[],
 ): Project {
   const channel = project.channels.find((item) => item.id === channelId);
   const source = project.channels.find((item) => item.id === sourceChannelId);
   const valid = validNotes(project, notes);
-  if (!channel?.generatedMetadata
-    || (channel.generatedMetadata.kind !== 'harmony-generation' && channel.generatedMetadata.kind !== 'accompaniment-generation')
+  if (!channel?.generatedMetadata || channel.generatedMetadata.kind !== kind
     || !source || source.generatedMetadata || !valid.length) return project;
   return updateChannel(project, channelId, {
     notes: valid,

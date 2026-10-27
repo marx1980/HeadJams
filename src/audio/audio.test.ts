@@ -116,7 +116,7 @@ describe('render + wav', () => {
     expect(view.getInt16(44, true)).toBeGreaterThan(29000);
     expect(view.getInt16(44, true)).toBeLessThan(29500);
     expect(() => encodeWav(new Float32Array(1), new Float32Array(2), 44100)).toThrow();
-    expect(() => encodeWav(new Float32Array(1), new Float32Array(1), 44100, { bitDepth: 32 as 16 })).toThrow();
+    expect(() => encodeWav(new Float32Array(1), new Float32Array(1), 44100, { bitDepth: 32 as never })).toThrow();
   });
 });
 

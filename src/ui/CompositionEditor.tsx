@@ -339,7 +339,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   };
   const replaceArrangementTrack = (channelId: string) => {
     if (!sourceChannel || !arrangementPreview?.length) return;
-    onChange(replaceGeneratedArrangementChannel(project, channelId, sourceChannel.id, arrangementPreview));
+    onChange(replaceGeneratedArrangementChannel(project, channelId, sourceChannel.id, arrangementKind, arrangementPreview));
   };
   const appendArrangementClip = () => {
     const patternId = project.currentPatternId ?? project.patterns[0]?.id;

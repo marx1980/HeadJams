@@ -11,7 +11,9 @@ export function encodeWav(
   options: WavOptions = {},
 ): ArrayBuffer {
   if (left.length !== right.length) throw new RangeError('Stereo channels must have equal sample counts.');
-  if (!Number.isInteger(sampleRate) || sampleRate < 1) throw new RangeError('Sample rate must be a positive integer.');
+  if (!Number.isInteger(sampleRate) || sampleRate < 1 || sampleRate > 192000) {
+    throw new RangeError('Sample rate must be between 1 and 192000 Hz.');
+  }
   const bitDepth = options.bitDepth ?? 16;
   if (bitDepth !== 16 && bitDepth !== 24) throw new RangeError('WAV bit depth must be 16 or 24.');
   const n = left.length;

@@ -7,11 +7,13 @@ import {
 } from './project';
 import {
   addGeneratedArrangementChannel, addGeneratedBassChannel, addGeneratedChordChannel,
-  generateBassFromChords, generateBassFromMelody, generateHarmonyFromMelody,
+  generateBassFromChords, generateBassFromMelody,
   removeGeneratedChordChannel, removeGeneratedTrack, replaceGeneratedArrangementChannel,
   replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from './arrangement';
-import { ARRANGEMENT_STYLES, generateChordAccompaniment } from '../library/arrangementStyles';
+import {
+  ARRANGEMENT_STYLES, generateChordAccompaniment, generateHarmonyFromMelody,
+} from '../library/arrangementStyles';
 import { TEMPLATES } from './templates';
 import { suggestChordsFromNotes } from '../library/chordSuggestion';
 
@@ -284,9 +286,10 @@ describe('project model', () => {
     expect(p.channels[2].generatedMetadata?.kind).toBe('accompaniment-generation');
 
     const replacement = [{ id: 'replacement', step: 2, pitch: 67, durationSteps: 2 }];
-    p = replaceGeneratedArrangementChannel(p, accompanimentId, 'ch1', replacement);
+    p = replaceGeneratedArrangementChannel(p, accompanimentId, 'ch1', 'accompaniment-generation', replacement);
     expect(p.channels[2].notes).toEqual(replacement);
-    expect(replaceGeneratedArrangementChannel(p, harmonyId, 'ch1', replacement).channels[1].notes).not.toEqual(replacement);
+    expect(replaceGeneratedArrangementChannel(p, harmonyId, 'ch1', 'accompaniment-generation', replacement)).toBe(p);
+    expect(p.channels[1].id).toBe(harmonyId);
     expect(p.channels[0].notes).toMatchObject([sourceNote]);
   });
   it('templates are consistent', () => {
