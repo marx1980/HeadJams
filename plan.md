@@ -76,10 +76,10 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - Privacy: all shipped recognition runs on-device. A third-party pitch engine can be supplied through the adapter, but Basic Pitch is not bundled; pitch and percussion classifications are best-effort and should be manually reviewed.
 ### 11. Arrangement assistance — IN PROGRESS (§22)
 - [x] 11a: scale-aware chord suggestions from a selected melody, with confidence, editable alternatives, original-performance-only input, and separate generated tracks that can be added, replaced, or removed.
-- [ ] 11b: bass generation following suggested chords or melody.
-- [ ] 11c: accompaniment and harmony generation.
-- [ ] 11d: style-based arrangement templates.
-- [ ] 11e: higher-quality rendering/export enhancements where appropriate. Generated material kept separate from transcription.
+- [x] 11b: previewable bass generation following reviewed chord suggestions or melody notes; generated bass tracks can be added, replaced, removed, and edited separately from their source.
+- [x] 11c: scale-aware melody harmony and chord accompaniment are previewable; generated tracks can be edited, replaced, muted, and removed independently of their sources.
+- [x] 11d: Acoustic, Pop, Electronic, and Orchestral arrangement styles select accompaniment instruments and rhythmic patterns.
+- [x] 11e: offline WAV export supports 44.1/48/96 kHz, 16/24-bit PCM, and optional stereo peak normalization; all rendering remains local.
 ### 12. Hardening — NOT STARTED
 Accessibility, privacy, performance, export, deployment; expansion definition of done (§27).
 ### 13. Platform and community — NOT STARTED (last)

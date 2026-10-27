@@ -156,6 +156,9 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .timeline-clip button { min-height: 28px; padding: 0 8px; }
 .arrangement-assistant { margin-top: 16px; padding-top: 12px; border-top: 1px solid #444; }
 .arrangement-assistant h3 { margin: 0; }
+.bass-assistant { margin-top: 14px; padding-top: 10px; border-top: 1px solid #444; }
+.bass-assistant h4 { margin: 0; }
+.bass-note-preview { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-left: 22px; font-size: .85rem; }
 .arrangement-assistant-controls, .arrangement-assistant-actions, .generated-track-list > div {
   display: flex; flex-wrap: wrap; align-items: end; gap: 8px;
 }

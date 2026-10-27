@@ -54,6 +54,9 @@ export function App() {
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const [drumKitId, setDrumKitId] = useState('');
+  const [exportSampleRate, setExportSampleRate] = useState(SAMPLE_RATE);
+  const [exportBitDepth, setExportBitDepth] = useState<16 | 24>(16);
+  const [normalizeExport, setNormalizeExport] = useState(false);
   const recognitionPlaybackRef = useRef(false);
   const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
 
@@ -130,8 +133,11 @@ export function App() {
   };
 
   const exportWav = () => {
-    const { left, right } = renderProject(project, SAMPLE_RATE, sampleData);
-    const blob = new Blob([encodeWav(left, right, SAMPLE_RATE)], { type: 'audio/wav' });
+    const { left, right } = renderProject(project, exportSampleRate, sampleData);
+    const blob = new Blob([encodeWav(left, right, exportSampleRate, {
+      bitDepth: exportBitDepth,
+      normalize: normalizeExport,
+    })], { type: 'audio/wav' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -191,6 +197,23 @@ export function App() {
                 </select>
               </label>
               <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); }}>Save</button>
+              <label>WAV sample rate
+                <select aria-label="WAV sample rate" value={exportSampleRate}
+                  onChange={(event) => setExportSampleRate(Number(event.target.value))}>
+                  {[44100, 48000, 96000].map((rate) => <option key={rate} value={rate}>{(rate / 1000).toFixed(rate % 1000 ? 1 : 0)} kHz</option>)}
+                </select>
+              </label>
+              <label>WAV bit depth
+                <select aria-label="WAV bit depth" value={exportBitDepth}
+                  onChange={(event) => setExportBitDepth(Number(event.target.value) as 16 | 24)}>
+                  <option value={16}>16-bit PCM</option>
+                  <option value={24}>24-bit PCM</option>
+                </select>
+              </label>
+              <label className="check-label">
+                <input type="checkbox" checked={normalizeExport} onChange={(event) => setNormalizeExport(event.target.checked)} />
+                Normalize to −1 dBFS
+              </label>
               <button id="export-btn" onClick={exportWav}>Export WAV</button>
               <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
                 onChange={() => setUnlocked(true)} /> Show all tabs</label>
@@ -252,7 +275,13 @@ export function App() {
                   <input aria-label={`Track name ${c.name}`} value={c.name}
                     onChange={(e) => setProject(updateChannel(project, c.id, { name: e.target.value }))} />
                 </label>
-                {c.generatedMetadata && <span className="generated-track-badge">Generated · Chords</span>}
+                {c.generatedMetadata && (
+                  <span className="generated-track-badge">
+                    Generated · {c.generatedMetadata.kind === 'bass-generation' ? 'Bass'
+                      : c.generatedMetadata.kind === 'harmony-generation' ? 'Harmony'
+                        : c.generatedMetadata.kind === 'accompaniment-generation' ? 'Accompaniment' : 'Chords'}
+                  </span>
+                )}
                 <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
                   loadingSoundIds={loadingSoundIds}
                   onPreview={(sound) => preview(sound, c.volume)}
