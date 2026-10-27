@@ -341,7 +341,10 @@ export function App() {
       <SampleLibrary
         sounds={sounds}
         channels={project.channels}
+        sampleData={sampleData}
+        bpm={project.bpm}
         onPreview={(sound) => preview(sound)}
+        onPreviewSample={(sample) => { void engine.previewSample(sample); emit('preview'); }}
         onUse={(soundId, channelId) => {
           const sound = findSound(project, soundId);
           if (!sound) return;
@@ -358,6 +361,14 @@ export function App() {
           setProject((current) => addSampleSound(current, name, sample.id, tags));
           emit('sample-saved');
           flash('Sample saved to your library ✓');
+        }}
+        onUpdateSample={async (sample) => {
+          await saveSample(sample);
+          const updated = new Map(sampleDataRef.current);
+          updated.set(sample.id, sample);
+          sampleDataRef.current = updated;
+          setSampleData(updated);
+          flash('Sample edits saved ✓');
         }}
         onRecordStart={() => emit('record-start')}
       />
