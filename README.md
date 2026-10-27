@@ -9,3 +9,8 @@ Phases 0–4 (beat maker, tutorials, sampling, composition, sound shaping), Phas
 - Run: `npm run dev`
 - Test: `npm test`
 - Build: `npm run build` (writes the GitHub Pages site to `dist/`; source entry: `app/index.html`)
+- Build Capacitor web assets: `npm run build:capacitor`
+- Sync Capacitor native projects after building: `npm run cap:sync`
+- Open native projects: `npm run cap:open:android` or `npm run cap:open:ios`
+
+MIDI note input is available in browsers that implement the Web MIDI API and grant device permission; captured notes are quantized onto the selected track. MIDI output and drum maps are not included. Capacitor projects are under `android/` and `ios/`; native builds require Android Studio/SDK or Xcode, and iOS builds require macOS.

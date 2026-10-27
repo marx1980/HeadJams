@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
+  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
   type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
@@ -17,6 +17,7 @@ import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
+import { MidiRecorder } from './MidiRecorder';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import './styles.css';
 
@@ -265,6 +266,8 @@ export function App() {
 
       <div className={`workspace view-${view}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
+          <MidiRecorder project={project} onNote={(channelId, note) =>
+            setProject((current) => addNote(current, channelId, note))} />
           <div className="row beat-options">
             <label>Note length
               <select id="note-length" value={project.noteLength} onChange={(e) => setProject(setNoteLength(project, Number(e.target.value) as NoteLength))}>

@@ -88,8 +88,8 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Verified tests and production build. Offline PWA caching remains Phase 13.
 ### 13. Platform and community — IN PROGRESS (last)
 - [x] PWA offline app shell and procedural starter-sound bundle caching; user sample audio remains available offline in IndexedDB.
-- [ ] Capacitor builds.
-- [ ] MIDI (optionally drum map).
+- [x] Capacitor iOS/Android project setup and local web-asset build/sync commands.
+- [x] MIDI note input recording to a selected track with loop-grid quantization; MIDI output and drum maps remain deferred.
 - [ ] Accounts/cloud sync (including sample processing and recognition data).
 - [ ] Sample marketplace (reusing asset-licence records).
 
