@@ -5,7 +5,9 @@ import {
   scaleChannelNoteDurations, setBpm, setEffects, setLoopBars, setNoteLength, setScale, setSwingTemplate, shiftChannelNotes,
   removeChordEvent, setStepEventMetadata, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
+import { addGeneratedChordChannel, removeGeneratedChordChannel, replaceGeneratedChordChannel } from './arrangement';
 import { TEMPLATES } from './templates';
+import { suggestChordsFromNotes } from '../library/chordSuggestion';
 
 describe('project model', () => {
   it('toggles a step', () => {
@@ -159,6 +161,46 @@ describe('project model', () => {
   it('stores a valid swing template and defaults invalid values to straight', () => {
     expect(setSwingTemplate(createProject(), 'triplet').swingTemplate).toBe('triplet');
     expect(setSwingTemplate(createProject(), 'invalid' as never).swingTemplate).toBe('straight');
+  });
+  it('adds suggested chords as a separate generated track without changing the melody', () => {
+    const melody = { id: 'melody-1', step: 0, pitch: 60, durationSteps: 2, confidence: 0.9 };
+    let p = addPattern(addNote(createProject(), 'ch1', melody), 'Verse');
+    const suggestions = suggestChordsFromNotes([melody], p.scaleRoot, p.scaleId, p.noteLength, p.loopBars);
+    p = addGeneratedChordChannel(p, 'ch1', suggestions);
+
+    expect(p.channels).toHaveLength(2);
+    expect(p.channels[0].notes).toMatchObject([melody]);
+    expect(p.channels[1]).toMatchObject({
+      name: 'Suggested chords · Kick', soundId: 'keys-1',
+      generatedMetadata: { generatedBy: 'arrangement-assistant', kind: 'chord-suggestions', sourceChannelId: 'ch1' },
+    });
+    expect(p.channels[1].notes.length).toBeGreaterThan(0);
+    expect(p.patterns[0].channels[1].generatedMetadata).toEqual(p.channels[1].generatedMetadata);
+  });
+  it('replaces and removes suggested chord tracks without affecting their source', () => {
+    const melody = { id: 'melody-1', step: 0, pitch: 60, durationSteps: 2 };
+    let p = addNote(createProject(), 'ch1', melody);
+    const first = suggestChordsFromNotes([melody], p.scaleRoot, p.scaleId, p.noteLength, p.loopBars);
+    p = addGeneratedChordChannel(p, 'ch1', first);
+    const generatedId = p.channels[1].id;
+    const replacement = [{ ...first[0], root: 62, quality: 'minor' as const }];
+    p = replaceGeneratedChordChannel(p, generatedId, 'ch1', replacement);
+
+    expect(p.channels[0].notes).toMatchObject([melody]);
+    expect(p.channels[1].notes[0]).toMatchObject({ pitch: 62, confidence: replacement[0].confidence });
+    expect(p.channels[1].generatedMetadata?.sourceChannelId).toBe('ch1');
+    p = removeGeneratedChordChannel(p, generatedId);
+    expect(p.channels).toHaveLength(1);
+    expect(p.channels[0].notes).toMatchObject([melody]);
+  });
+  it('rejects generated chord operations for generated sources or non-generated replacements', () => {
+    const melody = { id: 'melody-1', step: 0, pitch: 60, durationSteps: 1 };
+    let p = addNote(createProject(), 'ch1', melody);
+    const suggestions = suggestChordsFromNotes([melody], 0, 'major', 16, 1);
+    p = addGeneratedChordChannel(p, 'ch1', suggestions);
+    expect(addGeneratedChordChannel(p, p.channels[1].id, suggestions)).toBe(p);
+    expect(replaceGeneratedChordChannel(p, 'ch1', 'ch1', suggestions)).toBe(p);
+    expect(removeGeneratedChordChannel(p, 'ch1')).toBe(p);
   });
   it('templates are consistent', () => {
     for (const t of TEMPLATES) {

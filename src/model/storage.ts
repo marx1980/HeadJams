@@ -7,8 +7,8 @@ import type {
   DetectedNoteEvent, PercussionEvent, RecognitionEvent, RecognitionTake,
 } from './recognition';
 
-const KEY = 'musicmaker.project.v3';
-const LEGACY_KEYS = ['musicmaker.project.v2', 'musicmaker.project.v1'];
+const KEY = 'musicmaker.project.v4';
+const LEGACY_KEYS = ['musicmaker.project.v3', 'musicmaker.project.v2', 'musicmaker.project.v1'];
 
 function normalizeNote(note: NoteEvent): NoteEvent {
   const confidence = Number.isFinite(note.confidence)
@@ -47,6 +47,20 @@ function normalizeStepEventMetadata(value: unknown, stepCount: number): Record<n
       ...(sourceTakeId === undefined ? {} : { sourceTakeId }),
     }]];
   }));
+}
+
+function normalizeGeneratedMetadata(value: unknown): Channel['generatedMetadata'] {
+  if (!value || typeof value !== 'object') return undefined;
+  const metadata = value as Partial<NonNullable<Channel['generatedMetadata']>>;
+  if (metadata.generatedBy !== 'arrangement-assistant' || metadata.kind !== 'chord-suggestions'
+    || typeof metadata.sourceChannelId !== 'string' || !metadata.sourceChannelId
+    || !Number.isFinite(metadata.confidence)) return undefined;
+  return {
+    generatedBy: metadata.generatedBy,
+    kind: metadata.kind,
+    sourceChannelId: metadata.sourceChannelId,
+    confidence: Math.max(0, Math.min(1, metadata.confidence!)),
+  };
 }
 
 function normalizeRecognitionEvents(value: unknown): RecognitionEvent[] {
@@ -142,6 +156,7 @@ function normalizeProject(raw: string): Project | undefined {
       ...channel,
       notes: Array.isArray(channel.notes) ? channel.notes.map(normalizeNote) : [],
       stepEventMetadata: normalizeStepEventMetadata(channel.stepEventMetadata, channel.steps?.length ?? 0),
+      generatedMetadata: normalizeGeneratedMetadata(channel.generatedMetadata),
       chordEvents: Array.isArray(channel.chordEvents)
         ? channel.chordEvents.filter((event) =>
           Boolean(event && typeof event.id === 'string' && Number.isFinite(event.step)

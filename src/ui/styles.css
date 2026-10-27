@@ -154,6 +154,19 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .timeline-bar { grid-row: 1; border-left: 1px solid #555; padding-left: 6px; font-size: .75rem; opacity: .7; }
 .timeline-clip { grid-row: 2; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 4px; background: #118ab2; border-radius: 6px; padding: 2px 6px; min-width: 0; }
 .timeline-clip button { min-height: 28px; padding: 0 8px; }
+.arrangement-assistant { margin-top: 16px; padding-top: 12px; border-top: 1px solid #444; }
+.arrangement-assistant h3 { margin: 0; }
+.arrangement-assistant-controls, .arrangement-assistant-actions, .generated-track-list > div {
+  display: flex; flex-wrap: wrap; align-items: end; gap: 8px;
+}
+.arrangement-assistant-controls label, .arrangement-assistant-actions label { min-width: 180px; }
+.chord-suggestions, .generated-track-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.chord-suggestion { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.chord-suggestion select { min-width: 110px; }
+.chord-suggestion span, .generated-track-list span { font-size: .85rem; opacity: .8; }
+.low-confidence-label { color: #ffd166; }
+.generated-track-badge { border: 1px solid #9b5de5; border-radius: 999px; padding: 5px 9px; color: #d7b8ff; font-size: .75rem; }
+.generated-track-list > div { justify-content: space-between; padding: 6px 8px; border-radius: 6px; background: #262638; }
 @media (max-width: 640px) {
   .composition-controls { align-items: stretch; }
   .pattern-controls { align-items: stretch; }
