@@ -10,7 +10,7 @@ export type View = 'beat' | 'sound' | 'library' | 'song';
 
 export type TutorialTab = View | 'global';
 export type TutorialLevel = 'beginner' | 'intermediate';
-export type TutorialCapability = 'microphone';
+export type TutorialCapability = 'microphone' | 'midi';
 
 export interface TutorialStep {
   text: string;
@@ -57,7 +57,7 @@ export interface Workflow {
 }
 
 export const GROUPS: Record<TutorialTab, string[]> = {
-  beat: ['Grid & timing', 'Channels & sounds', 'Kits & chords', 'Mix & tempo', 'Review & access'],
+  beat: ['Grid & timing', 'Channels & sounds', 'Kits & chords', 'Mix & tempo', 'Review & access', 'MIDI'],
   sound: ['Designer', 'Effects'],
   library: ['Recording', 'Importing', 'Sample Editor', 'Recognition', 'Library tools'],
   song: ['Patterns', 'Arrangement', 'Assist', 'Export'],
@@ -86,6 +86,7 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'export-options', label: 'Export options' }, { id: 'privacy-offline', label: 'Privacy and offline use' },
   { id: 'confidence-cues', label: 'Confidence and source-take cues' }, { id: 'keyboard-navigation', label: 'Keyboard navigation' },
   { id: 'library-tools', label: 'Pad view, search and tags' },
+  { id: 'midi-keyboard', label: 'MIDI keyboard input' },
 ];
 
 export const TUTORIALS: Tutorial[] = [
@@ -328,6 +329,16 @@ export const TUTORIALS: Tutorial[] = [
       { view: 'library', text: 'Switch to Pad view to audition sounds in a larger layout.', target: '#pad-view', done: (s) => s.events.has('pad-view') },
     ],
   },
+  {
+    id: 'midi-keyboard', title: 'Play and record with a MIDI keyboard', tab: 'beat', group: 'MIDI', level: 'beginner', estMinutes: 2,
+    summary: 'Connect a MIDI keyboard and record notes into a channel.', features: ['midi-keyboard'], doneMessage: 'Your MIDI performance is part of the selected pattern.',
+    requires: ['midi'],
+    steps: [
+      { view: 'beat', text: 'Connect your MIDI keyboard and allow the browser to access it.', target: '#midi-connect', fallback: 'This browser does not support Web MIDI. Try a supported desktop browser over HTTPS.', done: (s) => s.events.has('midi-connected') },
+      { view: 'beat', text: 'Choose a destination channel, start recording, and play a short phrase.', target: '#midi-record', done: (s) => s.events.has('midi-note-recorded') },
+      { view: 'beat', text: 'Stop recording, then press Play to hear your notes in the pattern.', target: '#play-btn', done: (s) => s.events.has('play') },
+    ],
+  },
 ];
 
 export function isTutorialAvailable(tutorial: Tutorial, capabilities: ReadonlySet<TutorialCapability>): boolean {
@@ -336,6 +347,7 @@ export function isTutorialAvailable(tutorial: Tutorial, capabilities: ReadonlySe
 
 export const WORKFLOWS: Workflow[] = [
   { id: 'make-song', title: 'Make a song from scratch', outcome: 'You will have a playable, exported song.', tutorialIds: ['first-beat', 'add-channel', 'composition', 'timeline', 'save-export'] },
+  { id: 'midi-keyboard', title: 'Play a part with a MIDI keyboard', outcome: 'Record a keyboard performance into a pattern.', tutorialIds: ['midi-keyboard'] },
   { id: 'own-sound', title: 'Record and use your own sound', outcome: 'Your own sample plays in a beat.', tutorialIds: ['record-sample', 'sample-editor', 'add-channel'] },
   { id: 'sing-melody', title: 'Sing or hum a melody into a track', outcome: 'Your voice becomes an editable track with chords and bass.', tutorialIds: ['record-sample', 'recognize', 'recognition-edit', 'arrangement-assist'] },
   { id: 'beatbox', title: 'Beatbox a drum loop', outcome: 'Your beatbox becomes a drum track.', tutorialIds: ['record-sample', 'recognize', 'recognition-edit'] },

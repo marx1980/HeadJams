@@ -26,10 +26,10 @@ function offlineWorkerPlugin(): Plugin {
 }
 
 // Source entry lives in app/. GitHub Pages publishes the production dist artifact.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: 'app',
-  base: '/MusicMaker/',
+  base: mode === 'capacitor' ? './' : '/MusicMaker/',
   plugins: [react(), offlineWorkerPlugin()],
   build: { outDir: '../dist', emptyOutDir: true, assetsDir: 'assets' },
   test: { root: '.' },
-});
+}));

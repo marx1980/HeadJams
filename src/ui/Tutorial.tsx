@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GROUPS, TUTORIALS, WORKFLOWS, findTutorial, isTutorialAvailable, type Tutorial as T, type TutorialCapability, type TutorialState, type TutorialStep, type TutorialTab } from '../tutorial/tutorials';
 import { workflowProgress } from '../tutorial/progress';
+import { supportsMidiInput } from '../platform/midi';
 
 export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   /** Current screen; the hub lists its tutorials first and "Show all tabs" lists everything. */
@@ -35,6 +36,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   if (typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function' && typeof MediaRecorder !== 'undefined') {
     capabilities.add('microphone');
   }
+  if (supportsMidiInput()) capabilities.add('midi');
   const availableTutorials = TUTORIALS.filter((tutorial) => isTutorialAvailable(tutorial, capabilities));
   const availableIds = new Set(availableTutorials.map((tutorial) => tutorial.id));
   const tutorialRow = (t: T) => (

@@ -29,10 +29,13 @@ describe('tutorial catalogue', () => {
   });
   it('gates microphone tutorials on browser capabilities', () => {
     const record = findTutorial('record-sample');
+    const midi = findTutorial('midi-keyboard');
     const importAudio = findTutorial('import-audio');
     expect(record && isTutorialAvailable(record, new Set<TutorialCapability>())).toBe(false);
     expect(importAudio && isTutorialAvailable(importAudio, new Set<TutorialCapability>())).toBe(true);
     expect(record && isTutorialAvailable(record, new Set<TutorialCapability>(['microphone']))).toBe(true);
+    expect(midi && isTutorialAvailable(midi, new Set<TutorialCapability>())).toBe(false);
+    expect(midi && isTutorialAvailable(midi, new Set<TutorialCapability>(['midi']))).toBe(true);
   });
   it('uses completion events for editing and keyboard tutorials', () => {
     const base = createProject();

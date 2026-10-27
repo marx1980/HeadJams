@@ -17,6 +17,7 @@ export class Engine {
   private previewBus?: GainNode;
   private previewSource?: AudioBufferSourceNode;
   private previewGain?: GainNode;
+  private liveNotes = new Map<string, { source: AudioScheduledSourceNode; gain: GainNode }>();
   private filter?: BiquadFilterNode;
   private eqLow?: BiquadFilterNode;
   private eqMid?: BiquadFilterNode;
@@ -243,6 +244,60 @@ export class Engine {
     source.start(ctx.currentTime);
   }
 
+  async startLiveNote(voiceId: string, def: SoundDef, pitch: number, velocity = 1, volume = 0.8, pan = 0) {
+    const ctx = await this.ensureCtx();
+    this.stopLiveNote(voiceId);
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    const panner = ctx.createStereoPanner();
+    const level = Math.max(0, Math.min(1, velocity * volume));
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(level, now + 0.01);
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    let source: AudioScheduledSourceNode;
+
+    if (def.sampleId) {
+      const buffer = this.buffer(def);
+      if (!buffer) return;
+      const sampleSource = ctx.createBufferSource();
+      sampleSource.buffer = buffer;
+      sampleSource.playbackRate.value = Math.min(8, Math.max(0.125, pitchToFrequency(pitch) / Math.max(10, def.params.freq)));
+      sampleSource.connect(gain);
+      source = sampleSource;
+    } else {
+      const oscillator = ctx.createOscillator();
+      oscillator.type = def.params.wave === 'saw' ? 'sawtooth' : def.params.wave === 'noise' ? 'triangle' : def.params.wave;
+      oscillator.frequency.value = pitchToFrequency(pitch);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = Math.min(def.params.cutoff, ctx.sampleRate / 2);
+      oscillator.connect(filter).connect(gain);
+      source = oscillator;
+    }
+
+    gain.connect(panner).connect(this.master!);
+    source.onended = () => {
+      if (this.liveNotes.get(voiceId)?.source === source) this.liveNotes.delete(voiceId);
+    };
+    this.liveNotes.set(voiceId, { source, gain });
+    source.start(now);
+  }
+
+  stopLiveNote(voiceId: string) {
+    const voice = this.liveNotes.get(voiceId);
+    if (!voice || !this.ctx) return;
+    this.liveNotes.delete(voiceId);
+    const now = this.ctx.currentTime;
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+    voice.gain.gain.linearRampToValueAtTime(0, now + 0.025);
+    try { voice.source.stop(now + 0.03); } catch { /* source already ended */ }
+  }
+
+  stopLiveNotes() {
+    for (const voiceId of this.liveNotes.keys()) this.stopLiveNote(voiceId);
+  }
+
   async start() {
     if (this.playing) return;
     const ctx = await this.ensureCtx();
@@ -298,6 +353,7 @@ export class Engine {
     this.playing = false;
     this.sched?.stop();
     window.clearInterval(this.timer);
+    this.stopLiveNotes();
     this.onStep(null);
   }
 }
