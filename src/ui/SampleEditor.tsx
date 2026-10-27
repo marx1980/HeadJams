@@ -339,7 +339,7 @@ export function SampleEditor({
           }} />
         </label>
         {!recording && !countingIn
-          ? <button className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
+          ? <button id="record-sample" className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
           : <button onClick={stopRecording}>{countingIn ? 'Cancel count-in' : '■ Stop recording'}</button>}
         <label>Count-in
           <select aria-label="Recording count-in" value={countInBars} disabled={recording || countingIn}
