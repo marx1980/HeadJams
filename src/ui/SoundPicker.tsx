@@ -16,10 +16,11 @@ function readIds(key: string): string[] {
 }
 
 export function SoundPicker({
-  sounds, soundId, onPreview, onSelect,
+  sounds, soundId, unavailableSoundIds = new Set(), onPreview, onSelect,
 }: {
   sounds: SoundDef[];
   soundId: string;
+  unavailableSoundIds?: ReadonlySet<string>;
   onPreview: (sound: SoundDef) => void;
   onSelect: (sound: SoundDef) => void;
 }) {
@@ -47,6 +48,7 @@ export function SoundPicker({
       ? matches.sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id))
       : matches;
   }, [sounds, group, favorites, recent, query]);
+  const selectedUnavailable = !selected || unavailableSoundIds.has(soundId);
 
   useEffect(() => {
     if (!open) return;
@@ -99,9 +101,11 @@ export function SoundPicker({
 
   return (
     <>
-      <button className={`sound-picker-trigger${selected ? '' : ' missing'}`} aria-haspopup="dialog"
-        aria-expanded={open} onClick={() => { setGroup(''); setQuery(''); setOpen(true); }}>
-        {title} ▾
+      <button className={`sound-picker-trigger${selectedUnavailable ? ' missing' : ''}`} aria-haspopup="dialog"
+        aria-expanded={open} aria-invalid={selectedUnavailable}
+        aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
+        onClick={() => { setGroup(''); setQuery(''); setOpen(true); }}>
+        {selectedUnavailable ? `⚠ ${title} · Replace` : `${title} ▾`}
       </button>
       {open && (
         <div className="sound-picker-backdrop" onMouseDown={(event) => {
@@ -112,6 +116,12 @@ export function SoundPicker({
               <h2>{group || 'Sound Library'}</h2>
               <button ref={closeButton} className="secondary" aria-label="Close sound picker" onClick={() => setOpen(false)}>✕</button>
             </div>
+            {selectedUnavailable && (
+              <p className="error" role="status">
+                {selected ? `${title} is unavailable because its sample is missing.` : `${title} is no longer in the library.`}
+                {' Choose another sound to replace it.'}
+              </p>
+            )}
             {group && <button className="secondary sound-picker-back" onClick={() => { setGroup(''); setQuery(''); }}>← Groups</button>}
             <label>Search sounds
               <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, category, or tag" />
@@ -128,18 +138,18 @@ export function SoundPicker({
             ) : (
               <div className="sound-picker-list">
                 {matchingSounds.map((sound) => (
-                  <div className={`sound-picker-item${sound.id === soundId ? ' current' : ''}`} key={sound.id}>
+                  <div className={`sound-picker-item${sound.id === soundId ? ' current' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}`} key={sound.id}>
                     <span>
                       <strong>{sound.name}</strong>
-                      <small>{soundLibraryGroup(sound)}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</small>
+                      <small>{unavailableSoundIds.has(sound.id) ? 'Sample unavailable · ' : ''}{soundLibraryGroup(sound)}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</small>
                     </span>
                     <div className="sound-picker-actions">
                       <button className="secondary" aria-label={`${favorites.includes(sound.id) ? 'Remove' : 'Add'} ${sound.name} ${favorites.includes(sound.id) ? 'from' : 'to'} favorites`}
                         aria-pressed={favorites.includes(sound.id)} onClick={() => toggleFavorite(sound.id)}>
                         {favorites.includes(sound.id) ? '★' : '☆'}
                       </button>
-                      <button className="secondary" onClick={() => onPreview(sound)}>▶ Preview</button>
-                      <button onClick={() => chooseSound(sound)}>{sound.id === soundId ? 'Selected' : 'Select'}</button>
+                      <button className="secondary" disabled={unavailableSoundIds.has(sound.id)} onClick={() => onPreview(sound)}>▶ Preview</button>
+                      <button disabled={unavailableSoundIds.has(sound.id)} onClick={() => chooseSound(sound)}>{sound.id === soundId ? 'Selected' : 'Select'}</button>
                     </div>
                   </div>
                 ))}

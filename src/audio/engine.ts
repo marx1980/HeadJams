@@ -1,8 +1,9 @@
 import {
   arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type Project, type SoundDef,
 } from '../model/project';
-import { findSound, renderSound } from '../library/sounds';
-import { resampleSample, type SampleData } from '../library/sampleStorage';
+import { findSound } from '../library/sounds';
+import { createSoundSource } from '../library/soundSource';
+import type { SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
@@ -31,16 +32,17 @@ export class Engine {
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
 
   private buffer(def: SoundDef): AudioBuffer | undefined {
-    const sample = def.sampleId ? this.getSample(def.sampleId) : undefined;
-    if (def.sampleId && !sample) return undefined;
-    const key = `${def.id}:${JSON.stringify(def.params)}:${sample?.id ?? ''}`;
-    let b = this.buffers.get(key);
+    const source = createSoundSource(def);
+    let b = this.buffers.get(source.cacheKey);
     if (!b) {
       const ctx = this.ctx!;
-      const data = sample ? resampleSample(sample.samples, sample.sampleRate, ctx.sampleRate) : renderSound(def.params, ctx.sampleRate);
+      const data = source.kind === 'sample'
+        ? source.load(ctx.sampleRate, this.getSample)
+        : source.load(ctx.sampleRate);
+      if (!data) return undefined;
       b = ctx.createBuffer(1, data.length, ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
-      this.buffers.set(key, b);
+      this.buffers.set(source.cacheKey, b);
     }
     return b;
   }
