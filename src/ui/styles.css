@@ -44,3 +44,26 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .tutorial-overlay p { margin: 4px 0 8px; font-size: 1.05rem; }
 .tut-highlight { outline: 3px solid #ffd166 !important; animation: pulse 1s infinite alternate; }
 @keyframes pulse { to { outline-offset: 3px; } }
+.composition h2 { margin: 0; }
+.composition-controls, .pattern-controls, .scale-controls, .piano-controls, .chord-controls, .arrangement-heading { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.composition-controls { justify-content: space-between; }
+.pattern-controls { align-items: center; }
+.scale-controls label, .piano-controls label, .chord-controls label { min-width: 100px; }
+.piano-controls, .chord-controls, .arrangement-controls { margin-top: 10px; }
+.piano-roll { max-height: 470px; overflow: auto; margin-top: 10px; border: 1px solid #444; border-radius: 8px; }
+.piano-row { display: grid; grid-template-columns: 44px repeat(var(--steps, 16), minmax(22px, 1fr)); min-width: 650px; gap: 2px; padding: 2px; }
+.pitch-label { position: sticky; left: 0; z-index: 1; background: #1d1d2d; font-size: .7rem; display: flex; align-items: center; }
+.piano-cell { min-height: 24px; padding: 0; border-radius: 3px; background: #29293d; }
+.piano-cell.scale-note { background: #35354c; }
+.piano-cell.note-on { background: #06d6a0; border-color: #06d6a0; }
+.chord-controls { align-items: end; }
+.arrangement-heading { justify-content: space-between; align-items: center; }
+.timeline { display: grid; grid-auto-rows: minmax(32px, auto); gap: 4px; margin-top: 8px; overflow-x: auto; }
+.timeline-bar { grid-row: 1; border-left: 1px solid #555; padding-left: 6px; font-size: .75rem; opacity: .7; }
+.timeline-clip { grid-row: 2; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 4px; background: #118ab2; border-radius: 6px; padding: 2px 6px; min-width: 0; }
+.timeline-clip button { min-height: 28px; padding: 0 8px; }
+@media (max-width: 640px) {
+  .composition-controls { align-items: stretch; }
+  .pattern-controls { align-items: stretch; }
+  .timeline { min-width: max-content; }
+}

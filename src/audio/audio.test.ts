@@ -65,8 +65,8 @@ describe('render + wav', () => {
 });
 
 describe('tutorials', () => {
-  it('has six tutorials whose first step is not already done', () => {
-    expect(TUTORIALS).toHaveLength(6);
+  it('has seven tutorials whose first step is not already done', () => {
+    expect(TUTORIALS).toHaveLength(7);
     const p = createProject();
     for (const t of TUTORIALS) expect(t.steps[0].done({ project: p, base: p, events: new Set() })).toBe(false);
   });

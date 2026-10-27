@@ -14,6 +14,7 @@ import { countNotes, TUTORIALS, type Tutorial } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
+import { CompositionEditor } from './CompositionEditor';
 import './styles.css';
 
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5', '#f15bb5', '#fb8500', '#8ecae6'];
@@ -186,6 +187,8 @@ export function App() {
           onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}>＋ Add channel</button>
         <button className="secondary" onClick={() => setDesigner(!designer)}>🎛 Make a sound</button>
       </div>
+
+      <CompositionEditor project={project} onChange={setProject} />
 
       <SampleLibrary
         sounds={sounds}
