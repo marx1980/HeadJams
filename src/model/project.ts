@@ -3,9 +3,9 @@ export type LoopBars = 1 | 2 | 4;
 export type Wave = 'sine' | 'square' | 'saw' | 'triangle' | 'noise';
 export const SWING_TEMPLATES = [
   { id: 'straight', label: 'Straight', amount: 0 },
-  { id: 'light', label: 'Light swing', amount: 0.08 },
-  { id: 'medium', label: 'Medium swing', amount: 0.16 },
-  { id: 'triplet', label: 'Triplet swing', amount: 1 / 6 },
+  { id: 'light', label: 'Light swing', amount: 0.1 },
+  { id: 'medium', label: 'Medium swing', amount: 0.2 },
+  { id: 'triplet', label: 'Triplet swing', amount: 1 / 3 },
 ] as const;
 export type SwingTemplate = (typeof SWING_TEMPLATES)[number]['id'];
 

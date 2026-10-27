@@ -20,7 +20,7 @@ export function stepDurationWithSwing(bpm: number, stepsPerBar: number, swingTem
   const duration = stepDuration(bpm, stepsPerBar);
   if (stepsPerBar <= 4) return duration;
   const amount = SWING_TEMPLATES.find((template) => template.id === swingTemplate)?.amount ?? 0;
-  return duration * (step % 2 === 0 ? 1 - amount : 1 + amount);
+  return duration * (step % 2 === 0 ? 1 + amount : 1 - amount);
 }
 
 /** Look-ahead scheduler: call tick() frequently; schedules steps due within lookAhead. */

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addArrangementClip, addChannel, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
   channelsForPlaybackStep, createChannel, createProject, removeArrangementClip, removeChannel, removeNote, removePattern, selectPattern,
-  setBpm, setEffects, setLoopBars, setNoteLength, setScale, toggleStep, totalSteps, MAX_CHANNELS,
+  scaleChannelNoteDurations, setBpm, setEffects, setLoopBars, setNoteLength, setScale, setSwingTemplate, shiftChannelNotes,
+  toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
 
@@ -92,6 +93,29 @@ describe('project model', () => {
   });
   it('stores a normalized scale root and scale id', () => {
     expect(setScale(createProject(), -1, 'minor')).toMatchObject({ scaleRoot: 11, scaleId: 'minor' });
+  });
+  it('transposes notes within the MIDI range and keeps the selected pattern synchronized', () => {
+    let p = addPattern(createProject(), 'Verse');
+    p = addNote(p, 'ch1', { id: 'low', step: 0, pitch: 0, durationSteps: 1 });
+    p = addNote(p, 'ch1', { id: 'high', step: 1, pitch: 127, durationSteps: 1 });
+    p = transposeChannelNotes(p, 'ch1', 12);
+    expect(p.channels[0].notes.map((note) => note.pitch)).toEqual([12, 127]);
+    expect(p.patterns[0].channels[0].notes).toEqual(p.channels[0].notes);
+    p = transposeChannelNotes(p, 'ch1', -24);
+    expect(p.channels[0].notes.map((note) => note.pitch)).toEqual([0, 103]);
+  });
+  it('shifts notes around the loop and scales durations to at least one step', () => {
+    let p = addNote(createProject(), 'ch1', { id: 'note', step: 0, pitch: 60, durationSteps: 3 });
+    p = shiftChannelNotes(p, 'ch1', -1);
+    expect(p.channels[0].notes[0].step).toBe(15);
+    p = scaleChannelNoteDurations(p, 'ch1', 0.5);
+    expect(p.channels[0].notes[0].durationSteps).toBe(2);
+    p = scaleChannelNoteDurations(p, 'ch1', 0.1);
+    expect(p.channels[0].notes[0].durationSteps).toBe(1);
+  });
+  it('stores a valid swing template and defaults invalid values to straight', () => {
+    expect(setSwingTemplate(createProject(), 'triplet').swingTemplate).toBe('triplet');
+    expect(setSwingTemplate(createProject(), 'invalid' as never).swingTemplate).toBe('straight');
   });
   it('templates are consistent', () => {
     for (const t of TEMPLATES) {
