@@ -4,7 +4,7 @@ This is the source of truth for what should be built next. Research: `docs/resea
 ## COMPLETED
 ### 0. Phase 0: Foundations — DONE
 ### 1. Phase 1: Simple, fully functional MVP — DONE
-Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, 5 interactive tutorials (auto-start on first run).
+Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 24, see Phase 14).
 ### 2. Phase 2: Sound library and sampling — DONE
 Microphone recording and audio-file import, sample trimming and normalization, searchable/tagged library, pad view, IndexedDB sample storage, sample playback and WAV export, recording tutorial.
 ### 3. Phase 3: Richer composition — DONE
@@ -92,6 +92,13 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [ ] MIDI (optionally drum map).
 - [ ] Accounts/cloud sync (including sample processing and recognition data).
 - [ ] Sample marketplace (reusing asset-licence records).
+
+### 14. Guided tutorials — IN PROGRESS
+- [x] 14a: tutorial data model (tab, group, level, summary, features), per-tab Help hub with Actions/Workflows modes, "Show all tabs", completion persistence (`musicmaker.tutorialDone`) and reset.
+- [x] 14b: overlay Back/Skip step/Show me/Exit, step counter, `aria-live` announcements, missing-target fallbacks, reduced-motion, mobile docking, first-visit nudges for non-Beat tabs.
+- [x] 14c-e: tutorials for tempo/swing, mix, templates, sound picker, drum kits, guitar chords, pitch/time, Sound Designer, effects, import, Sample Editor, recognition, patterns, timeline, arrangement assistance, export options, privacy/offline.
+- [x] 14f: six workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
+- [ ] Some steps (Sample Editor, recognition correction, import) are informational ("Next" is always enabled) until components emit events for them; MIDI tutorial waits for the MIDI phase.
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
