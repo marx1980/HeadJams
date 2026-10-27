@@ -55,13 +55,13 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - Guitar chord events store a chord root, quality, duration, and articulation separately from note events; playable six-string voicings are generated without silently substituting unsupported chords.
 - Added major, minor, diminished, augmented, suspended, dominant seventh, major seventh, and minor seventh chords, plus sustained, down/up strum, muted, and power-chord articulations.
 - Added synthesized acoustic, clean electric, crunch, and power chord presets; chord events play in real time and offline WAV export, and survive project storage and pattern editing.
-### 8. Sample Editor — NOT STARTED (§16)
-Distinct naming from Phase 4 note transpose/duration tools (these edit audio, those edit notes). Lives in the Library screen. Reuse existing EQ/filter/reverb/delay DSP via offline render.
-- 8a: sample metadata and IndexedDB migration (original, settings, cached processed, version); non-destructive chain; own undo/reset; noise reduction, gate, fades, gain; original vs processed compare.
-- 8b: pitch shift, fine tune, tune-to-note, speed, time stretch, reverse.
-- 8c: BPM detection, fit to beat/bar.
-- 8d: 3-band EQ, high-pass, compression presets.
-- 8e: creative effects (reverb, delay, distortion, chorus, lo-fi).
+### 8. Sample Editor — DONE (§16)
+Distinct from Phase 4 note transpose/duration tools. The Library editor retains original audio and processing settings in IndexedDB, previews original/processed samples without changing the project, and caches the processed playback audio.
+- [x] 8a: versioned sample metadata and migration; non-destructive trim, auto silence trim, normalization, gain, noise reduction, gate, de-click, fades, compare, undo/redo, and reset.
+- [x] 8b: pitch shift, fine tune, detected-pitch tune-to-note, linked speed, pitch-preserving stretch, and reverse.
+- [x] 8c: BPM and pitch detection, fit to beat/bar, and project-tempo-aware processing.
+- [x] 8d: three-band EQ, high-pass filter, and Off/Gentle/Strong compression.
+- [x] 8e: reverb, delay, distortion, chorus, and lo-fi effects.
 ### 9. Editor hardening and UX polish — NOT STARTED (§25 Phase 7)
 - Piano roll and Beat grid ready for recognised events (optional `confidence`, `pitchBend`, source take on the existing step-based events); search/favourites/recent polish; remaining instruments.
 ### 10. Recognition — NOT STARTED (§17-21, §23)

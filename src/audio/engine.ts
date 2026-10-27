@@ -3,7 +3,7 @@ import {
 } from '../model/project';
 import { findSound } from '../library/sounds';
 import { createSoundSource } from '../library/soundSource';
-import type { SampleData } from '../library/sampleStorage';
+import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { guitarChordPitches, pitchToFrequency } from '../model/music';
@@ -188,6 +188,29 @@ export class Engine {
     this.stopPreview();
     const buffer = this.buffer(def);
     if (!buffer) return;
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.8, ctx.currentTime);
+    source.connect(gain).connect(this.previewBus!);
+    source.onended = () => {
+      if (this.previewSource === source) {
+        this.previewSource = undefined;
+        this.previewGain = undefined;
+      }
+    };
+    this.previewSource = source;
+    this.previewGain = gain;
+    source.start(ctx.currentTime);
+  }
+
+  async previewSample(sample: SampleData, volume = 0.8) {
+    const ctx = await this.ensureCtx();
+    this.stopPreview();
+    if (!sample.samples.length || sample.sampleRate <= 0) return;
+    const data = resampleSample(sample.samples, sample.sampleRate, ctx.sampleRate);
+    const buffer = ctx.createBuffer(1, data.length, ctx.sampleRate);
+    buffer.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
     source.buffer = buffer;
