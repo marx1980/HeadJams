@@ -8,4 +8,4 @@ Phases 0–4 (beat maker, tutorials, sampling, composition, sound shaping), Phas
 - Install: `npm install`
 - Run: `npm run dev`
 - Test: `npm test`
-- Build: `npm run build` (writes index.html + assets/ to repo root for GitHub Pages at /MusicMaker/; commit the output. Source entry: app/index.html)
+- Build: `npm run build` (writes the GitHub Pages site to `dist/`; source entry: `app/index.html`)
