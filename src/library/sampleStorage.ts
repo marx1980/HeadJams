@@ -8,6 +8,8 @@ export interface SampleData {
   processingSettings?: SampleProcessingSettings;
   recordedAt?: number;
   detectedBpm?: number;
+  detectedPitch?: number;
+  targetPitch?: number;
   metadataVersion?: number;
 }
 
@@ -46,6 +48,8 @@ interface StoredSample {
   processingSettings?: SampleProcessingSettings;
   recordedAt?: number;
   detectedBpm?: number;
+  detectedPitch?: number;
+  targetPitch?: number;
   metadataVersion?: number;
 }
 

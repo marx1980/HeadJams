@@ -270,10 +270,13 @@ export function processSample(
   output = suppressNoise(output, settings.noiseReduction);
   output = applyGate(output, settings.gateThreshold);
 
-  const fadeIn = Math.min(output.length, Math.round(settings.fadeIn * sampleRate));
-  const fadeOut = Math.min(output.length, Math.round(settings.fadeOut * sampleRate));
-  for (let i = 0; i < fadeIn; i++) output[i] *= (i + 1) / Math.max(1, fadeIn);
-  for (let i = 0; i < fadeOut; i++) output[output.length - 1 - i] *= (i + 1) / Math.max(1, fadeOut);
+  const automaticEdgeFade = settings.trimStart > 0 || settings.trimEnd < 1 ? 0.003 : 0;
+  const fadeIn = Math.min(output.length, Math.round(Math.max(settings.fadeIn, automaticEdgeFade) * sampleRate));
+  const fadeOut = Math.min(output.length, Math.round(Math.max(settings.fadeOut, automaticEdgeFade) * sampleRate));
+  for (let i = 0; i < fadeIn; i++) output[i] *= fadeIn > 1 ? i / (fadeIn - 1) : 0;
+  for (let i = 0; i < fadeOut; i++) {
+    output[output.length - fadeOut + i] *= fadeOut > 1 ? (fadeOut - 1 - i) / (fadeOut - 1) : 0;
+  }
 
   if (settings.reverse) output.reverse();
   if (settings.speed !== 1) output = resampleRate(output, settings.speed);
@@ -336,17 +339,13 @@ export function processSample(
       output[i] = Math.round(output[i] / step) * step;
     }
   }
-  const gain = 10 ** (settings.gainDb / 20);
   let max = 0;
-  for (let i = 0; i < output.length; i++) {
-    output[i] *= gain;
-    max = Math.max(max, Math.abs(output[i]));
-  }
+  for (const value of output) max = Math.max(max, Math.abs(value));
   if (settings.normalize && max > 0) {
     const scale = 0.98 / max;
     for (let i = 0; i < output.length; i++) output[i] *= scale;
-  } else {
-    for (let i = 0; i < output.length; i++) output[i] = Math.max(-1, Math.min(1, output[i]));
   }
+  const gain = 10 ** (settings.gainDb / 20);
+  for (let i = 0; i < output.length; i++) output[i] = Math.max(-1, Math.min(1, output[i] * gain));
   return output;
 }

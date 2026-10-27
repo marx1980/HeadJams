@@ -83,7 +83,7 @@ export function SampleEditor({
       return peak;
     });
   }, [original]);
-  const clipped = Boolean(processed?.some((value) => Math.abs(value) >= 0.98));
+  const clipped = Boolean(processed?.some((value) => Math.abs(value) >= 0.999));
 
   useEffect(() => () => streamRef.current?.getTracks().forEach((track) => track.stop()), []);
 
@@ -202,6 +202,8 @@ export function SampleEditor({
       processingSettings: settings,
       recordedAt: activeSample?.recordedAt ?? Date.now(),
       detectedBpm,
+      detectedPitch,
+      targetPitch: targetNote,
       metadataVersion: 2,
     };
     try {
@@ -273,13 +275,13 @@ export function SampleEditor({
           <button className="secondary" onClick={reset}>Reset to original</button>
           <button onClick={() => void save()} disabled={busy}>{busy ? 'Saving…' : 'Save sample'}</button>
         </div>
-        <details className="sample-tool-family" open>
+        <details className="sample-tool-family">
           <summary>Clean</summary>
           <div className="sample-tool-grid">
-            <Setting label="Trim start" value={settings.trimStart} min={0} max={settings.trimEnd - 0.001} step={0.005}
-              onChange={(value) => changeSetting('trimStart', value)} />
-            <Setting label="Trim end" value={settings.trimEnd} min={settings.trimStart + 0.001} max={1} step={0.005}
-              onChange={(value) => changeSetting('trimEnd', value)} />
+            <Setting label="Trim start (%)" value={settings.trimStart * 100} min={0} max={(settings.trimEnd - 0.001) * 100} step={0.1}
+              onChange={(value) => changeSetting('trimStart', value / 100)} />
+            <Setting label="Trim end (%)" value={settings.trimEnd * 100} min={(settings.trimStart + 0.001) * 100} max={100} step={0.1}
+              onChange={(value) => changeSetting('trimEnd', value / 100)} />
             <button className="secondary" onClick={() => {
               const [trimStart, trimEnd] = detectSampleTrim(original);
               changeSettings({ trimStart, trimEnd });

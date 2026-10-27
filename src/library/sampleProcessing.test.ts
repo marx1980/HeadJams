@@ -33,6 +33,22 @@ describe('sample processing', () => {
 
     const fit = processSample(source, 8000, { normalize: false, fitBeats: 2 }, 120);
     expect(fit.length).toBe(8000);
+    const targetFit = processSample(source, 8000, { normalize: false, fitBeats: 2, targetBpm: 60 }, 120);
+    expect(targetFit.length).toBe(16000);
+  });
+
+  it('applies manual gain after normalization and fades trimmed edges', () => {
+    const source = tone(1000, 1000);
+    const gained = processSample(source, 1000, { normalize: false, gainDb: 6 });
+    const normalised = processSample(source, 1000, { gainDb: 6 });
+    expect(Math.max(...gained.map(Math.abs))).toBeGreaterThan(Math.max(...source.map(Math.abs)));
+    expect(Math.max(...normalised.map(Math.abs))).toBe(1);
+
+    const trimmed = processSample(Float32Array.from([0, 0, 0.8, 0.8, 0.8, 0]), 1000, {
+      trimStart: 1 / 6, trimEnd: 5 / 6, normalize: false,
+    });
+    expect(trimmed[0]).toBe(0);
+    expect(trimmed.at(-1)).toBe(0);
   });
 
   it('bounds invalid settings and produces finite output for combined effects', () => {
