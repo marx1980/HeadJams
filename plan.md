@@ -24,11 +24,12 @@ Four screens (Beat, Sound, Library, Song); see `ui-design.md`.
 Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 sample editor, §17-24 recognition). All features of the expansion are retained; its three delivery sequences (§24, §25, §28) are replaced by this single list. Execution rule: one focused PR per sub-phase; read this plan and the code first; preserve existing projects and sounds; add migration/backward-compat tests; run tests and production build; report limitations and risks.
 
 ### 5. Sound Library architecture — IN PROGRESS (§1, §2, §13-15)
-- Instrument registry foundation: central starter catalog and built-in/custom entries preserve existing sound IDs; duplicate IDs and supplied sample-asset sets can be validated.
-- Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
-- `SoundSource` abstraction in the audio engine (synth, sample, multisample), on-demand loading with cache, separate preview bus that never modifies the project.
-- Hierarchical picker (mobile bottom sheet) replacing every sound `<select>` (e.g. `App.tsx` channel sound select, Sound screen); Favourites, Recent, search, preview; reuse Library tags/search.
-- Missing-sound state; bump project format version once, with migration tests.
+- [x] Instrument registry foundation: central starter catalog and built-in/custom entries preserve existing sound IDs; duplicate IDs and supplied sample-asset sets can be validated.
+- [x] Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
+- [x] Lazy `SoundSource` abstraction for synth and single-sample assets; on-demand loading with cache, separate preview bus that never modifies the project.
+- [x] Hierarchical picker replacing channel sound selection; Favourites, Recent, search, preview, mobile bottom sheet, and Library reuse.
+- [x] Missing-sound state and project format v2 migration tests; old sound/sample references are preserved.
+- [ ] Multisample source selection and playback; deferred until `SoundDef` can represent multisample zones and licensed assets are available.
 ### 6. Instruments and drums — NOT STARTED (§4-11)
 - Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
 - Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.

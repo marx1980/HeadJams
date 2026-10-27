@@ -18,6 +18,9 @@ describe('instrument registry', () => {
     expect(registry.at(-1)).toMatchObject({
       id: project.customSounds[0].id, origin: 'custom', source: 'sample', group: 'Samples',
     });
+    expect(registry.find((entry) => entry.id === 'lead-1')?.group).toBe('Synths');
+    expect(registry.find((entry) => entry.id === 'lead-5')?.group).toBe('FX & Other');
+    expect(registry.find((entry) => entry.id === 'fx-1')?.group).toBe('FX & Other');
     expect(registry.map((entry) => entry.sound)).toEqual([...STARTER_SOUNDS, ...project.customSounds]);
   });
 

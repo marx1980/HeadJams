@@ -49,6 +49,7 @@ export function App() {
   const [pianoChannels, setPianoChannels] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState('');
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
+  const [samplesLoaded, setSamplesLoaded] = useState(false);
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -79,6 +80,7 @@ export function App() {
         const loaded = new Map<string, SampleData>();
         samples.forEach((sample) => { if (sample) loaded.set(sample.id, sample); });
         setSampleData(loaded);
+        setSamplesLoaded(true);
       });
     return () => { active = false; };
     // Load persisted samples once; newly created samples are added in onSaveSample.
@@ -91,6 +93,11 @@ export function App() {
   }, []);
 
   const sounds = useMemo(() => allSounds(project), [project]);
+  const unavailableSoundIds = useMemo(() => new Set(
+    samplesLoaded
+      ? sounds.filter((sound) => sound.sampleId && !sampleData.has(sound.sampleId)).map((sound) => sound.id)
+      : [],
+  ), [sounds, sampleData, samplesLoaded]);
 
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
@@ -211,7 +218,8 @@ export function App() {
           return (
             <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
-                <SoundPicker sounds={sounds} soundId={c.soundId} onPreview={(sound) => preview(sound, c.volume)}
+                <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
+                  onPreview={(sound) => preview(sound, c.volume)}
                   onSelect={(sound) => {
                     setProject(updateChannel(project, c.id, { soundId: sound.id, name: sound.name }));
                     preview(sound, c.volume);

@@ -1,8 +1,9 @@
 import {
   arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type Project, type SoundDef,
 } from '../model/project';
-import { findSound, renderSound } from '../library/sounds';
-import { resampleSample, type SampleData } from '../library/sampleStorage';
+import { findSound } from '../library/sounds';
+import { createSoundSource } from '../library/soundSource';
+import type { SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
@@ -13,6 +14,9 @@ export class Engine {
   private sched?: Scheduler;
   private timer?: number;
   private master?: GainNode;
+  private previewBus?: GainNode;
+  private previewSource?: AudioBufferSourceNode;
+  private previewGain?: GainNode;
   private filter?: BiquadFilterNode;
   private eqLow?: BiquadFilterNode;
   private eqMid?: BiquadFilterNode;
@@ -28,16 +32,17 @@ export class Engine {
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
 
   private buffer(def: SoundDef): AudioBuffer | undefined {
-    const sample = def.sampleId ? this.getSample(def.sampleId) : undefined;
-    if (def.sampleId && !sample) return undefined;
-    const key = `${def.id}:${JSON.stringify(def.params)}:${sample?.id ?? ''}`;
-    let b = this.buffers.get(key);
+    const source = createSoundSource(def);
+    let b = this.buffers.get(source.cacheKey);
     if (!b) {
       const ctx = this.ctx!;
-      const data = sample ? resampleSample(sample.samples, sample.sampleRate, ctx.sampleRate) : renderSound(def.params, ctx.sampleRate);
+      const data = source.kind === 'sample'
+        ? source.load(ctx.sampleRate, this.getSample)
+        : source.load(ctx.sampleRate);
+      if (!data) return undefined;
       b = ctx.createBuffer(1, data.length, ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
-      this.buffers.set(key, b);
+      this.buffers.set(source.cacheKey, b);
     }
     return b;
   }
@@ -54,6 +59,8 @@ export class Engine {
 
   private setupEffects(ctx: AudioContext) {
     this.master = ctx.createGain();
+    this.previewBus = ctx.createGain();
+    this.previewBus.connect(ctx.destination);
     this.filter = ctx.createBiquadFilter();
     this.filter.type = 'lowpass';
     this.eqLow = ctx.createBiquadFilter();
@@ -126,6 +133,17 @@ export class Engine {
     src.start(time);
   }
 
+  private stopPreview() {
+    if (!this.ctx || !this.previewSource || !this.previewGain) return;
+    const now = this.ctx.currentTime;
+    this.previewGain.gain.cancelScheduledValues(now);
+    this.previewGain.gain.setValueAtTime(this.previewGain.gain.value, now);
+    this.previewGain.gain.linearRampToValueAtTime(0, now + 0.01);
+    try { this.previewSource.stop(now + 0.012); } catch { /* source already ended */ }
+    this.previewSource = undefined;
+    this.previewGain = undefined;
+  }
+
   private playPitch(def: SoundDef, pitch: number, time: number, duration: number, volume: number, pan: number, velocity = 1) {
     const ctx = this.ctx!;
     const start = Math.max(time, ctx.currentTime);
@@ -167,7 +185,23 @@ export class Engine {
 
   async preview(def: SoundDef, volume = 0.8) {
     const ctx = await this.ensureCtx();
-    this.play(def, ctx.currentTime, volume, 0);
+    this.stopPreview();
+    const buffer = this.buffer(def);
+    if (!buffer) return;
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.8, ctx.currentTime);
+    source.connect(gain).connect(this.previewBus!);
+    source.onended = () => {
+      if (this.previewSource === source) {
+        this.previewSource = undefined;
+        this.previewGain = undefined;
+      }
+    };
+    this.previewSource = source;
+    this.previewGain = gain;
+    source.start(ctx.currentTime);
   }
 
   async start() {

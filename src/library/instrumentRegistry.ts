@@ -13,6 +13,12 @@ export interface InstrumentRegistryIssue {
   id: string;
 }
 
+export function soundLibraryGroup(sound: SoundDef): string {
+  if (sound.category === 'Lead') return 'Synths';
+  if (sound.category === 'FX') return 'FX & Other';
+  return sound.category;
+}
+
 const s = (id: string, name: string, category: string, wave: SynthParams['wave'], freq: number, freqEnd: number, decay: number, cutoff: number): SoundDef => ({
   id, name, category, params: { wave, freq, freqEnd, decay, cutoff },
 });
@@ -57,7 +63,7 @@ export function createInstrumentRegistry(customSounds: readonly SoundDef[]): Ins
   ].map((entry) => ({
     ...entry,
     source: entry.sound.sampleId ? 'sample' : 'synth',
-    group: entry.sound.category,
+    group: soundLibraryGroup(entry.sound),
   }));
 }
 
