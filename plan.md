@@ -86,8 +86,12 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] WAV tests cover 44.1/48/96 kHz, stereo PCM, 16/24-bit output, normalization, and invalid input.
 - [x] Documented browser-local storage, privacy limits, and GitHub Pages release checks; added CI test/build validation.
 - [x] Verified tests and production build. Offline PWA caching remains Phase 13.
-### 13. Platform and community — NOT STARTED (last)
-PWA offline (including sound-pack and sample caching), Capacitor builds, MIDI (optionally drum map), accounts/cloud sync (incl. sample processing and recognition data), sample marketplace (reusing asset-licence records).
+### 13. Platform and community — IN PROGRESS (last)
+- [x] PWA offline app shell and procedural starter-sound bundle caching; user sample audio remains available offline in IndexedDB.
+- [ ] Capacitor builds.
+- [ ] MIDI (optionally drum map).
+- [ ] Accounts/cloud sync (including sample processing and recognition data).
+- [ ] Sample marketplace (reusing asset-licence records).
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
