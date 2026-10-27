@@ -4,10 +4,23 @@ import { createInstrumentRegistry, STARTER_SOUNDS, validateInstrumentRegistry } 
 
 describe('instrument registry', () => {
   it('keeps starter sound IDs unique and stable', () => {
-    expect(STARTER_SOUNDS).toHaveLength(30);
+    expect(STARTER_SOUNDS).toHaveLength(39);
     expect(new Set(STARTER_SOUNDS.map((sound) => sound.id)).size).toBe(STARTER_SOUNDS.length);
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('kick-1');
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('fx-1');
+  });
+
+  it('adds synthesized drum and percussion sounds to their existing groups', () => {
+    const registry = createInstrumentRegistry([]);
+
+    expect(registry.find((entry) => entry.id === 'cymbal-1')).toMatchObject({
+      origin: 'built-in', source: 'synth', group: 'Drums',
+    });
+    expect(registry.find((entry) => entry.id === 'perc-7')).toMatchObject({
+      origin: 'built-in', source: 'synth', group: 'Percussion',
+    });
+    expect(registry.map((entry) => entry.id)).toContain('kick-1');
+    expect(registry.map((entry) => entry.id)).toContain('fx-1');
   });
 
   it('includes built-in and custom sounds with source and group metadata', () => {

@@ -30,7 +30,8 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [x] Hierarchical picker replacing channel sound selection; Favourites, Recent, search, preview, mobile bottom sheet, and Library reuse.
 - [x] Missing-sound state and project format v2 migration tests; old sound/sample references are preserved.
 - [ ] Multisample source selection and playback; deferred until `SoundDef` can represent multisample zones and licensed assets are available.
-### 6. Instruments and drums — NOT STARTED (§4-11)
+### 6. Instruments and drums — IN PROGRESS (§4-11)
+- [x] Added a first synthesized drum and percussion expansion while retaining the existing catalog IDs and project format.
 - Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
 - Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.
 - Re-categorise the existing 30 synth sounds into the new groups without changing IDs.
