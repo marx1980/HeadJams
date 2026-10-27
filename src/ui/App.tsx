@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, removeChannel, setBpm, setLoopBars,
-  setNoteLength, toggleStep, updateChannel, type LoopBars, type NoteLength, type Project, type SoundDef, type SynthParams,
+  setEffects, setNoteLength, toggleStep, updateChannel, type LoopBars, type NoteLength, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
@@ -189,6 +189,38 @@ export function App() {
       </div>
 
       <CompositionEditor project={project} onChange={setProject} />
+
+      <section className="panel effects-panel" aria-label="Sound shaping">
+        <h2>Sound shaping</h2>
+        <div className="effect-controls">
+          <label>Reverb
+            <input aria-label="Reverb" type="range" min={0} max={1} step={0.05} value={project.effects.reverb}
+              onChange={(e) => setProject(setEffects(project, { reverb: Number(e.target.value) }))} />
+            <output>{Math.round(project.effects.reverb * 100)}%</output>
+          </label>
+          <label>Delay
+            <input aria-label="Delay" type="range" min={0} max={1} step={0.05} value={project.effects.delay}
+              onChange={(e) => setProject(setEffects(project, { delay: Number(e.target.value) }))} />
+            <output>{Math.round(project.effects.delay * 100)}%</output>
+          </label>
+          <label>Filter cutoff
+            <input aria-label="Filter cutoff" type="range" min={200} max={20000} step={100} value={project.effects.filterCutoff}
+              onChange={(e) => setProject(setEffects(project, { filterCutoff: Number(e.target.value) }))} />
+            <output>{project.effects.filterCutoff} Hz</output>
+          </label>
+          {([
+            ['Low EQ', 'eqLow'],
+            ['Mid EQ', 'eqMid'],
+            ['High EQ', 'eqHigh'],
+          ] as const).map(([label, key]) => (
+            <label key={key}>{label}
+              <input aria-label={label} type="range" min={-12} max={12} step={1} value={project.effects[key]}
+                onChange={(e) => setProject(setEffects(project, { [key]: Number(e.target.value) }))} />
+              <output>{project.effects[key]} dB</output>
+            </label>
+          ))}
+        </div>
+      </section>
 
       <SampleLibrary
         sounds={sounds}

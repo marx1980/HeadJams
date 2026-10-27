@@ -45,6 +45,9 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .tut-highlight { outline: 3px solid #ffd166 !important; animation: pulse 1s infinite alternate; }
 @keyframes pulse { to { outline-offset: 3px; } }
 .composition h2 { margin: 0; }
+.effects-panel h2 { margin: 0; }
+.effect-controls { display: flex; flex-wrap: wrap; gap: 12px; }
+.effect-controls label { min-width: 130px; }
 .composition-controls, .pattern-controls, .scale-controls, .piano-controls, .chord-controls, .arrangement-heading { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
 .composition-controls { justify-content: space-between; }
 .pattern-controls { align-items: center; }
