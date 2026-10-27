@@ -83,3 +83,6 @@ Still to do: manual usability pass on desktop and phone, then resume Phase 5 (PW
 - Sound designer opens inline in the Sound tab rather than as a full-screen sub-page.
 - Library add-sample flow is unchanged (not yet a stepper); Library "Use" does not yet offer "Go to Beat".
 - Pitch/time tools are a collapsible section rather than a bottom sheet.
+
+## Tutorials
+A "? Help for this screen" button under the tabs opens the tutorial hub for the current screen ("Show all tabs" lists everything; the header "? Tutorials" opens it unfiltered). The hub has two modes: Actions (collapsible feature groups) and Workflows (goal-based paths with progress and Continue). The overlay offers Back, Next, Show me, Skip step and Exit.

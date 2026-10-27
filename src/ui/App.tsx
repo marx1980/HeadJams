@@ -14,6 +14,7 @@ import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionT
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
+import { loadDone, saveDone } from '../tutorial/progress';
 import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
@@ -38,7 +39,9 @@ export function App() {
   const [events, setEvents] = useState<ReadonlySet<string>>(new Set());
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [base, setBase] = useState<Project>(project);
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState<'all' | 'tab' | null>(null);
+  const [doneTutorials, setDoneTutorials] = useState<ReadonlySet<string>>(loadDone);
+  const [nudge, setNudge] = useState<View | null>(null);
   const [designer, setDesigner] = useState(false);
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem(VIEW_KEY);
@@ -72,7 +75,7 @@ export function App() {
     setBase(projectRef.current);
     setEvents(new Set());
     setTutorial(t);
-    setMenu(false);
+    setMenu(null);
     localStorage.setItem(SEEN_KEY, '1');
   };
 
@@ -128,6 +131,7 @@ export function App() {
       return;
     }
     setProject(result.project);
+    emit('kit-applied');
     flash(`${kit.name} applied · patterns preserved ✓`);
   };
 
@@ -183,9 +187,17 @@ export function App() {
     if (countNotes(project) > 0 && !window.confirm('Replace your current beat with this template?')) return;
     engine.stop();
     setProject({ ...t.make(), customSounds: project.customSounds });
+    emit('template');
   };
 
-  const goTab = (v: View) => { if (v !== 'beat' && v !== 'library') setUnlocked(true); setView(v); };
+  const goTab = (v: View) => {
+    if (v !== 'beat' && v !== 'library') setUnlocked(true);
+    if (v !== 'beat' && !tutorial && !localStorage.getItem(`musicmaker.nudge.${v}`)) {
+      localStorage.setItem(`musicmaker.nudge.${v}`, '1');
+      setNudge(v);
+    }
+    setView(v);
+  };
   const onTutorialStep = (step: TutorialStep) => {
     if (step.view) goTab(step.view);
     if (step.menu) setProjectMenu(true);
@@ -248,11 +260,15 @@ export function App() {
             </div>
           )}
         </div>
-        <button className="secondary" onClick={() => setMenu(true)}>? Tutorials</button>
+        <button className="secondary" onClick={() => setMenu('all')}>? Tutorials</button>
       </header>
       {message && <div className="toast" role="status">{message}</div>}
 
-      {menu && <TutorialMenu onPick={startTutorial} onClose={() => setMenu(false)} />}
+      {menu && (
+        <TutorialMenu tab={menu === 'tab' ? view : undefined} done={doneTutorials} onPick={startTutorial}
+          onResetProgress={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); }}
+          onClose={() => setMenu(null)} />
+      )}
 
       <nav className="tabs" role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
         {visibleTabs.map((t) => (
@@ -262,6 +278,11 @@ export function App() {
           </button>
         ))}
       </nav>
+      <div className="row"><button className="secondary help-btn" onClick={() => setMenu('tab')}>? Help for this screen</button></div>
+      {nudge === view && !tutorial && (
+        <div className="toast nudge" role="status">New here? <button onClick={() => { setNudge(null); setMenu('tab'); }}>Try a tutorial</button>
+          <button className="secondary" onClick={() => setNudge(null)}>Dismiss</button></div>
+      )}
 
       <div className={`workspace view-${view}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
@@ -289,7 +310,7 @@ export function App() {
                 {DRUM_KITS.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
               </select>
             </label>
-            <button className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
+            <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
           </div>
           <section className="channels">
         {project.channels.map((c, ci) => {
@@ -388,7 +409,7 @@ export function App() {
         </div>
           </section>
           <div className="row">
-            <button className="secondary" onClick={() => setDesigner(!designer)}>🎛 Make a sound</button>
+            <button id="make-sound" className="secondary" onClick={() => { if (!designer) emit('designer-open'); setDesigner(!designer); }}>🎛 Make a sound</button>
           </div>
       {designer && (
         <SoundDesigner
@@ -485,7 +506,8 @@ export function App() {
         </div>
       </div>
 
-      {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep} />}
+      {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep}
+        onComplete={(t) => setDoneTutorials((d) => { const n = new Set(d).add(t.id); saveDone(n); return n; })} />}
     </main>
   );
 }

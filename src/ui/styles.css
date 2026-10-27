@@ -207,3 +207,14 @@ button.on { background: var(--color, #ffd166); color: #000; }
   .pane-beat { display: block; }
   .workspace.view-beat .pane:not(.pane-beat) { display: none; }
 }
+
+.tutorial-menu { max-height: 80vh; overflow: auto; }
+.tut-list { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 6px; }
+.tut-item { width: 100%; text-align: left; display: block; }
+.tut-summary { display: block; font-size: 0.85rem; opacity: 0.85; }
+.tut-workflow { display: grid; gap: 4px; padding: 6px; border: 1px solid #444477; border-radius: 8px; }
+.tut-fallback { color: #ffd166; font-size: 0.9rem; }
+.tut-show { outline: 4px solid #06d6a0 !important; }
+.help-btn { margin-left: auto; }
+@media (max-width: 600px) { .tutorial-overlay { padding-bottom: calc(10px + env(safe-area-inset-bottom)); } }
+@media (prefers-reduced-motion: reduce) { .tut-highlight { animation: none; } }

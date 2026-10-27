@@ -121,10 +121,10 @@ describe('render + wav', () => {
 });
 
 describe('tutorials', () => {
-  it('has seven tutorials whose first step is not already done', () => {
-    expect(TUTORIALS).toHaveLength(7);
+  it('has tutorials whose first action step is not already done', () => {
+    expect(TUTORIALS.length).toBeGreaterThanOrEqual(7);
     const p = createProject();
-    for (const t of TUTORIALS) expect(t.steps[0].done({ project: p, base: p, events: new Set() })).toBe(false);
+    for (const t of TUTORIALS.filter((x) => !x.steps[0].info)) expect(t.steps[0].done({ project: p, base: p, events: new Set() })).toBe(false);
   });
   it('first-beat step 1 completes when a note is placed', () => {
     const p = createProject();
