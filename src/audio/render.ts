@@ -3,7 +3,7 @@ import {
 } from '../model/project';
 import { findSound, renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
-import { stepDuration } from './scheduler';
+import { stepDuration, stepDurationWithSwing } from './scheduler';
 import { pitchToFrequency } from '../model/music';
 
 interface BiquadCoefficients {
@@ -128,7 +128,13 @@ export function panGains(volume: number, pan: number): [number, number] {
 export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap<string, SampleData> = new Map()): { left: Float32Array; right: Float32Array } {
   const stepLen = Math.round(stepDuration(p.bpm, p.noteLength) * sr);
   const songSteps = arrangementLength(p) || totalSteps(p);
-  const loopLen = stepLen * songSteps;
+  const stepStarts: number[] = [];
+  let elapsed = 0;
+  for (let step = 0; step < songSteps; step++) {
+    stepStarts.push(Math.round(elapsed * sr));
+    elapsed += stepDurationWithSwing(p.bpm, p.noteLength, p.swingTemplate, step);
+  }
+  const loopLen = Math.round(elapsed * sr);
   const tail = sr * (1 + (p.effects.delay > 0 ? 1.5 : 0) + (p.effects.reverb > 0 ? 0.5 : 0));
   const left = new Float32Array(loopLen + tail);
   const right = new Float32Array(loopLen + tail);
@@ -168,7 +174,7 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
     return output;
   };
   for (let step = 0; step < songSteps; step++) {
-    const start = step * stepLen;
+    const start = stepStarts[step];
     for (const source of channelsForPlaybackStep(p, step)) {
       for (const c of audibleChannels({ ...p, channels: source.channels })) {
         const def = findSound(p, c.soundId);

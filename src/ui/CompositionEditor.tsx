@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
   addArrangementClip, addNote, addPattern, arrangementLength, removeArrangementClip, removeNote,
-  removePattern, renamePattern, selectPattern, totalSteps, type Project,
+  removePattern, renamePattern, scaleChannelNoteDurations, selectPattern, shiftChannelNotes, totalSteps,
+  transposeChannelNotes, type Project,
 } from '../model/project';
 import { chordPitches, isPitchInScale, SCALES, scalePitches, snapPitchToScale } from '../model/music';
 
@@ -107,6 +108,23 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
           </select>
         </label>
       </div>
+      {channel && (
+        <div className="pitch-time-controls" aria-label="Pitch and time tools">
+          <strong>Pitch and time tools</strong>
+          <button className="secondary" aria-label="Transpose notes down one semitone"
+            onClick={() => onChange(transposeChannelNotes(project, channel.id, -1))}>−1 semitone</button>
+          <button className="secondary" aria-label="Transpose notes up one semitone"
+            onClick={() => onChange(transposeChannelNotes(project, channel.id, 1))}>＋1 semitone</button>
+          <button className="secondary" aria-label="Shift notes one step earlier"
+            onClick={() => onChange(shiftChannelNotes(project, channel.id, -1))}>← Shift 1 step</button>
+          <button className="secondary" aria-label="Shift notes one step later"
+            onClick={() => onChange(shiftChannelNotes(project, channel.id, 1))}>Shift 1 step →</button>
+          <button className="secondary" aria-label="Halve note durations"
+            onClick={() => onChange(scaleChannelNoteDurations(project, channel.id, 0.5))}>½ duration</button>
+          <button className="secondary" aria-label="Double note durations"
+            onClick={() => onChange(scaleChannelNoteDurations(project, channel.id, 2))}>2× duration</button>
+        </div>
+      )}
       {channel ? (
         <div className="piano-roll" role="grid" aria-label={`${channel.name} piano roll`}>
           {pitches.map((pitch) => (

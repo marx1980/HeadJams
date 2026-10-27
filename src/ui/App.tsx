@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, removeChannel, setBpm, setLoopBars,
-  setEffects, setNoteLength, toggleStep, updateChannel, type LoopBars, type NoteLength, type Project, type SoundDef, type SynthParams,
+  setEffects, setNoteLength, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
+  type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
@@ -119,6 +120,12 @@ export function App() {
         <label>Loop
           <select id="loop-bars" value={project.loopBars} onChange={(e) => setProject(setLoopBars(project, Number(e.target.value) as LoopBars))}>
             {LOOP_BARS.map((n) => <option key={n} value={n}>{n} bar{n > 1 ? 's' : ''}</option>)}
+          </select>
+        </label>
+        <label>Swing
+          <select aria-label="Swing template" value={project.swingTemplate}
+            onChange={(e) => setProject(setSwingTemplate(project, e.target.value as Project['swingTemplate']))}>
+            {SWING_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}
           </select>
         </label>
         <label>Template

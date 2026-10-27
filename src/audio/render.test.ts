@@ -21,4 +21,14 @@ describe('offline effects', () => {
     expect(effected.left.length).toBeGreaterThan(dry.left.length);
     expect(effected.right.length).toBe(effected.left.length);
   });
+  it('preserves loop length and shifts an offbeat hit later when swing is enabled', () => {
+    const project = createProject();
+    project.channels[0].steps[1] = true;
+    const straight = renderProject(project, 8000);
+    const swung = renderProject({ ...project, swingTemplate: 'triplet' }, 8000);
+    const straightStart = straight.left.findIndex((sample) => sample !== 0);
+    const swungStart = swung.left.findIndex((sample) => sample !== 0);
+    expect(swungStart).toBeGreaterThan(straightStart);
+    expect(swung.left.length).toBe(straight.left.length);
+  });
 });

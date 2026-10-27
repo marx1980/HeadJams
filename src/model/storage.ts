@@ -1,4 +1,4 @@
-import { createProject, normalizeEffects, type Channel, type Pattern, type Project } from './project';
+import { createProject, normalizeEffects, normalizeSwingTemplate, type Channel, type Pattern, type Project } from './project';
 
 const KEY = 'musicmaker.project.v1';
 
@@ -35,6 +35,7 @@ export function loadProject(): Project {
           patterns,
           arrangement: Array.isArray(p.arrangement) ? p.arrangement : [],
           effects: normalizeEffects(p.effects),
+          swingTemplate: normalizeSwingTemplate(p.swingTemplate),
         };
       }
     }
