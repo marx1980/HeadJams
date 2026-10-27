@@ -37,7 +37,7 @@ describe('project storage migration', () => {
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
 
     const loaded = loadProject();
-    expect(loaded.formatVersion).toBe(2);
+    expect(loaded.formatVersion).toBe(3);
     expect(loaded.channels[0].soundId).toBe('legacy-custom-id');
     expect(loaded.customSounds[0].sampleId).toBe('legacy-sample-id');
   });
@@ -48,12 +48,12 @@ describe('project storage migration', () => {
     const current = createProject();
     current.name = 'Current';
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
-    values.set('musicmaker.project.v2', JSON.stringify(current));
+    values.set('musicmaker.project.v3', JSON.stringify(current));
 
     expect(loadProject().name).toBe('Current');
     saveProject(current);
-    const saved = JSON.parse(values.get('musicmaker.project.v2')!) as { formatVersion: number };
-    expect(saved.formatVersion).toBe(2);
+    const saved = JSON.parse(values.get('musicmaker.project.v3')!) as { formatVersion: number };
+    expect(saved.formatVersion).toBe(3);
   });
 
   it('round-trips optional kit roles without changing the project format version', () => {
@@ -63,7 +63,7 @@ describe('project storage migration', () => {
     saveProject(project);
 
     const loaded = loadProject();
-    expect(loaded.formatVersion).toBe(2);
+    expect(loaded.formatVersion).toBe(3);
     expect(loaded.channels[0]).toMatchObject({ kitId: 'studio-kit', role: 'kick' });
   });
 
@@ -78,7 +78,7 @@ describe('project storage migration', () => {
 
     const older = createProject();
     delete (older.channels[0] as { chordEvents?: unknown }).chordEvents;
-    values.set('musicmaker.project.v2', JSON.stringify(older));
+    values.set('musicmaker.project.v3', JSON.stringify(older));
     expect(loadProject().channels[0].chordEvents).toEqual([]);
   });
 
@@ -98,16 +98,53 @@ describe('project storage migration', () => {
     });
 
     const older = createProject();
-    values.set('musicmaker.project.v2', JSON.stringify(older));
+    values.set('musicmaker.project.v3', JSON.stringify(older));
     expect(loadProject().channels[0].stepEventMetadata).toEqual({});
   });
 
   it('falls back to the legacy project when the v2 entry is corrupt', () => {
     const legacy = createProject();
     legacy.name = 'Recoverable';
-    values.set('musicmaker.project.v2', '{broken');
+    values.set('musicmaker.project.v3', '{broken');
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
 
     expect(loadProject().name).toBe('Recoverable');
+  });
+
+  it('migrates v2 projects and persists recognition provenance in v3', () => {
+    const legacy = createProject();
+    delete (legacy as Partial<typeof legacy>).recognitionTakes;
+    values.set('musicmaker.project.v2', JSON.stringify(legacy));
+    const migrated = loadProject();
+    expect(migrated.formatVersion).toBe(3);
+    expect(migrated.recognitionTakes).toEqual([]);
+
+    migrated.recognitionTakes = [{
+      id: 'take-1',
+      sourceSampleId: 'sample-1',
+      mode: 'melody',
+      modelId: 'local-yin-pitch-tracker',
+      modelVersion: '1',
+      createdAt: 123,
+      tempoBpm: 120,
+      pitchCorrection: 0,
+      scaleAwarePitch: false,
+      scaleRoot: 0,
+      scaleId: 'major',
+      transposeSemitones: 0,
+      tempoAlternatives: [60],
+      quantisation: { enabled: true, strength: 0.75, subdivision: 'sixteenth' },
+      originalEvents: [{
+        id: 'note-1', pitch: 69, startSeconds: 0.13, durationSeconds: 0.5,
+        velocity: 0.8, confidence: 0.6,
+      }],
+      quantisedEvents: [{
+        id: 'note-1', pitch: 69, startSeconds: 0.125, durationSeconds: 0.5,
+        velocity: 0.8, confidence: 0.6,
+      }],
+      channelIds: ['ch2'],
+    }];
+    saveProject(migrated);
+    expect(loadProject().recognitionTakes).toEqual(migrated.recognitionTakes);
   });
 });

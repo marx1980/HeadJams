@@ -37,10 +37,34 @@ describe('render + wav', () => {
     const rendered = renderProject(project, 8000, new Map([[sample.id, sample]]));
     expect(rendered.left.slice(0, 3)).toEqual(new Float32Array([0.2, -0.4, 0.6]));
   });
+  it('plays the original sample on its own channel when requested', () => {
+    const sample = {
+      id: 'sample-original',
+      samples: new Float32Array([0.1, 0.2, 0.3]),
+      originalSamples: new Float32Array([0.5, -0.5, 0.25]),
+      sampleRate: 8000,
+    };
+    const project = createProject();
+    project.customSounds.push({
+      id: 'original-sound',
+      name: 'Original',
+      category: 'Samples',
+      params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.1, cutoff: 12000 },
+      sampleId: sample.id,
+      sampleVersion: 'original',
+    });
+    project.channels[0].soundId = 'original-sound';
+    project.channels[0].steps[0] = true;
+    const rendered = renderProject(project, 8000, new Map([[sample.id, sample]]));
+    expect(rendered.left.slice(0, 3)).toEqual(new Float32Array([0.4, -0.4, 0.2]));
+  });
   it('renders pitched notes with duration and overlapping voices', () => {
     const note = renderPitchedNote(STARTER_SOUNDS.find((sound) => sound.id === 'lead-1')!.params, 69, 0.1, 0.8, 8000);
     expect(note.length).toBeGreaterThan(800);
     expect(note.some((sample) => sample !== 0)).toBe(true);
+    const bent = renderPitchedNote(STARTER_SOUNDS.find((sound) => sound.id === 'lead-1')!.params,
+      69, 0.1, 0.8, 8000, [{ time: 0.04, value: 12 }]);
+    expect(bent).not.toEqual(note);
 
     let project = addNote(createProject(), 'ch1', { id: 'a', step: 0, pitch: 60, durationSteps: 2 });
     project = addNote(project, 'ch1', { id: 'b', step: 0, pitch: 64, durationSteps: 2 });

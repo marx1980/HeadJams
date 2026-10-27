@@ -32,15 +32,17 @@ function Setting({
 }
 
 export function SampleEditor({
-  sounds, samples, bpm, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart,
+  sounds, samples, bpm, loopBars, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart, onRecordStop,
 }: {
   sounds: SoundDef[];
   samples: ReadonlyMap<string, SampleData>;
   bpm: number;
+  loopBars: number;
   onSaveSample: (name: string, tags: string[], sample: SampleData) => Promise<void>;
   onUpdateSample: (sample: SampleData) => Promise<void>;
   onPreviewSample: (sample: SampleData) => void;
-  onRecordStart: () => void;
+  onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
+  onRecordStop: () => void;
 }) {
   const [activeSampleId, setActiveSampleId] = useState('');
   const [draft, setDraft] = useState<DraftSample>();
@@ -51,12 +53,24 @@ export function SampleEditor({
   const [redoStack, setRedoStack] = useState<SampleProcessingSettings[]>([]);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [countingIn, setCountingIn] = useState(false);
+  const [countInBeat, setCountInBeat] = useState(0);
+  const [countInBars, setCountInBars] = useState(1);
+  const [recordBars, setRecordBars] = useState(loopBars);
+  const [metronome, setMetronome] = useState(true);
+  const [recordPosition, setRecordPosition] = useState('');
   const [error, setError] = useState('');
   const [targetNote, setTargetNote] = useState(69);
   const [detectedBpm, setDetectedBpm] = useState<number>();
   const streamRef = useRef<MediaStream | undefined>(undefined);
   const recorderRef = useRef<MediaRecorder | undefined>(undefined);
   const chunksRef = useRef<Blob[]>([]);
+  const clickContextRef = useRef<AudioContext | undefined>(undefined);
+  const clickTimerRef = useRef<number | undefined>(undefined);
+  const stopTimerRef = useRef<number | undefined>(undefined);
+  const positionTimerRef = useRef<number | undefined>(undefined);
+  const recordingStartedAtRef = useRef(0);
+  const recordingSessionRef = useRef(0);
 
   const activeSound = sounds.find((sound) => sound.sampleId === activeSampleId);
   const activeSample = samples.get(activeSampleId);
@@ -85,7 +99,45 @@ export function SampleEditor({
   }, [original]);
   const clipped = Boolean(processed?.some((value) => Math.abs(value) >= 0.999));
 
-  useEffect(() => () => streamRef.current?.getTracks().forEach((track) => track.stop()), []);
+  const clearRecordingTimers = () => {
+    window.clearInterval(clickTimerRef.current);
+    window.clearInterval(positionTimerRef.current);
+    window.clearTimeout(stopTimerRef.current);
+    clickTimerRef.current = undefined;
+    positionTimerRef.current = undefined;
+    stopTimerRef.current = undefined;
+  };
+  const stopClick = () => {
+    clearRecordingTimers();
+    void clickContextRef.current?.close();
+    clickContextRef.current = undefined;
+    recordingSessionRef.current++;
+    setCountingIn(false);
+    setCountInBeat(0);
+    setRecording(false);
+    onRecordStop();
+  };
+  const playClick = (accent: boolean) => {
+    const context = clickContextRef.current;
+    if (!context || context.state === 'closed') return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = accent ? 1000 : 700;
+    gain.gain.setValueAtTime(0.13, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.035);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.04);
+  };
+
+  useEffect(() => setRecordBars(loopBars), [loopBars]);
+
+  useEffect(() => () => {
+    clearRecordingTimers();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    void clickContextRef.current?.close();
+    onRecordStop();
+  }, []);
 
   const openNew = (next: DraftSample) => {
     setActiveSampleId('');
@@ -163,6 +215,9 @@ export function SampleEditor({
   const startRecording = async () => {
     setError('');
     try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error('Audio recording is not supported in this browser.');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
@@ -173,20 +228,60 @@ export function SampleEditor({
         void loadAudio(new Blob(chunksRef.current, { type: recorder.mimeType }), 'My recording');
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = undefined;
+        stopClick();
       };
+      const session = ++recordingSessionRef.current;
+      if (metronome || countInBars > 0) clickContextRef.current = new AudioContext();
+      const beatMs = 60000 / Math.max(40, bpm);
+      if (countInBars > 0) {
+        setCountingIn(true);
+        for (let beat = 0; beat < countInBars * 4; beat++) {
+          setCountInBeat(beat + 1);
+          if (metronome) playClick(beat % 4 === 0);
+          await new Promise<void>((resolve) => { window.setTimeout(resolve, beatMs); });
+          if (session !== recordingSessionRef.current || !streamRef.current) return;
+        }
+        setCountingIn(false);
+        setCountInBeat(0);
+      }
+      await onRecordStart(recordBars * 4 * beatMs, recordBars);
       recorder.start();
       setRecording(true);
-      onRecordStart();
-    } catch {
+      recordingStartedAtRef.current = Date.now();
+      setRecordPosition('Bar 1 · Beat 1');
+      if (metronome) {
+        let beat = 1;
+        playClick(true);
+        clickTimerRef.current = window.setInterval(() => {
+          playClick(beat % 4 === 0);
+          beat++;
+        }, beatMs);
+      }
+      positionTimerRef.current = window.setInterval(() => {
+        const beat = Math.floor((Date.now() - recordingStartedAtRef.current) / beatMs);
+        setRecordPosition(`Bar ${Math.floor(beat / 4) + 1} · Beat ${(beat % 4) + 1}`);
+      }, 100);
+      stopTimerRef.current = window.setTimeout(() => {
+        if (recorder.state === 'recording') recorder.stop();
+      }, recordBars * 4 * beatMs);
+    } catch (reason) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = undefined;
-      setError('Microphone access failed. Check browser permissions and try again.');
+      stopClick();
+      setError(reason instanceof Error && !/permission/i.test(reason.message)
+        ? reason.message
+        : 'Microphone access failed. Check browser permissions and try again.');
     }
   };
 
   const stopRecording = () => {
-    recorderRef.current?.stop();
-    setRecording(false);
+    if (countingIn) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = undefined;
+      stopClick();
+      return;
+    }
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
   };
 
   const save = async () => {
@@ -239,9 +334,29 @@ export function SampleEditor({
             event.target.value = '';
           }} />
         </label>
-        {!recording
+        {!recording && !countingIn
           ? <button className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
-          : <button onClick={stopRecording}>■ Stop recording</button>}
+          : <button onClick={stopRecording}>{countingIn ? 'Cancel count-in' : '■ Stop recording'}</button>}
+        <label>Count-in
+          <select aria-label="Recording count-in" value={countInBars} disabled={recording || countingIn}
+            onChange={(event) => setCountInBars(Number(event.target.value))}>
+            {[0, 1, 2].map((bars) => <option key={bars} value={bars}>{bars} bar{bars === 1 ? '' : 's'}</option>)}
+          </select>
+        </label>
+        <label>Record length
+          <select aria-label="Recording loop length" value={recordBars} disabled={recording || countingIn}
+            onChange={(event) => setRecordBars(Number(event.target.value))}>
+            {[1, 2, 4].map((bars) => <option key={bars} value={bars}>{bars} bar{bars === 1 ? '' : 's'}</option>)}
+          </select>
+        </label>
+        <label className="check-label">
+          <input type="checkbox" checked={metronome} disabled={recording || countingIn}
+            onChange={(event) => setMetronome(event.target.checked)} />
+          Metronome
+        </label>
+        {(recording || countingIn) && <span className="recording-position">
+          {countingIn ? `Count-in · Beat ${countInBeat} of ${countInBars * 4}` : recordPosition}
+        </span>}
         {activeSampleId && <button className="secondary" onClick={() => { setActiveSampleId(''); setDraft(undefined); }}>Close editor</button>}
       </div>
       {draft && <>

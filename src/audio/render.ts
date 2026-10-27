@@ -145,7 +145,10 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
       right[start + k] += data[k] * gr;
     }
   };
-  const renderSampleNote = (sample: SampleData, baseFreq: number, pitch: number, duration: number, velocity = 1) => {
+  const renderSampleNote = (
+    sample: SampleData, baseFreq: number, pitch: number, duration: number, velocity = 1,
+    pitchBend: Project['channels'][number]['notes'][number]['pitchBend'] = [],
+  ) => {
     if (!sample.samples.length || sample.sampleRate <= 0) return new Float32Array();
     const rate = Math.min(8, Math.max(0.125, pitchToFrequency(pitch) / Math.max(10, baseFreq)));
     const end = Math.max(0.01, duration);
@@ -157,13 +160,27 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
     );
     const output = new Float32Array(length);
     const level = Number.isFinite(velocity) ? Math.max(0, Math.min(1, velocity)) : 1;
+    const bends = (pitchBend ?? []).filter((point) => Number.isFinite(point.time) && point.time >= 0
+      && Number.isFinite(point.value)).map((point) => ({ ...point, value: Math.max(-48, Math.min(48, point.value)) }))
+      .sort((a, b) => a.time - b.time);
+    let bendIndex = 0;
+    let currentBend = { time: 0, value: 0 };
+    let position = 0;
     for (let i = 0; i < length; i++) {
       const time = i / sr;
-      const position = i * sample.sampleRate * rate / sr;
-      const left = Math.min(sample.samples.length - 1, Math.floor(position));
-      const right = Math.min(sample.samples.length - 1, left + 1);
-      const mix = position - left;
-      const value = sample.samples[left] * (1 - mix) + sample.samples[right] * mix;
+      while (bendIndex < bends.length && bends[bendIndex].time <= time) {
+        currentBend = bends[bendIndex++];
+      }
+      const nextBend = bends[bendIndex];
+      const bendMix = nextBend && nextBend.time > currentBend.time
+        ? Math.min(1, (time - currentBend.time) / (nextBend.time - currentBend.time))
+        : 0;
+      const semitones = currentBend.value + ((nextBend?.value ?? currentBend.value) - currentBend.value) * bendMix;
+      const sampleIndex = Math.min(sample.samples.length - 1, Math.floor(position));
+      const rightIndex = Math.min(sample.samples.length - 1, sampleIndex + 1);
+      const mix = position - sampleIndex;
+      const value = sample.samples[sampleIndex] * (1 - mix) + sample.samples[rightIndex] * mix;
+      position += sample.sampleRate * rate * 2 ** (semitones / 12) / sr;
       const envelope = time < attack
         ? time / attack
         : time <= end
@@ -184,7 +201,10 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
           let data = cache.get(def.id);
           if (!data) {
             const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
-            data = sample ? resampleSample(sample.samples, sample.sampleRate, sr) : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
+            const audio = def.sampleVersion === 'original' ? sample?.originalSamples ?? sample?.samples : sample?.samples;
+            data = sample && audio
+              ? resampleSample(audio, sample.sampleRate, sr)
+              : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
             cache.set(def.id, data);
           }
           mix(data, start, gl, gr);
@@ -193,8 +213,13 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
           if (note.step === source.localStep) {
             const duration = note.durationSteps * stepLen / sr;
             const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
-            if (sample) mix(renderSampleNote(sample, def.params.freq, note.pitch, duration, note.velocity), start, gl, gr);
-            else if (!def.sampleId) mix(renderPitchedNote(def.params, note.pitch, duration, note.velocity, sr), start, gl, gr);
+            if (sample) {
+              const audio = def.sampleVersion === 'original'
+                ? { ...sample, samples: sample.originalSamples ?? sample.samples }
+                : sample;
+              mix(renderSampleNote(audio, def.params.freq, note.pitch, duration, note.velocity, note.pitchBend), start, gl, gr);
+            }
+            else if (!def.sampleId) mix(renderPitchedNote(def.params, note.pitch, duration, note.velocity, sr, note.pitchBend), start, gl, gr);
           }
         }
         if (def.playbackMode === 'chord') {

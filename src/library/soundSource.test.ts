@@ -34,4 +34,15 @@ describe('sound sources', () => {
     expect(data).toBe(samples);
     expect(source.cacheKey).toContain('sample-1');
   });
+
+  it('can play original unprocessed audio while the sound uses processed samples by default', () => {
+    const sampleSound = { ...sound, sampleId: 'sample-1', sampleVersion: 'original' as const };
+    const source = createSoundSource(sampleSound);
+    if (source.kind !== 'sample') throw new Error('Expected a sample source.');
+    const processed = new Float32Array([0.25, 0.5]);
+    const original = new Float32Array([-0.25, -0.5]);
+    expect(source.load(8000, () => ({
+      id: 'sample-1', samples: processed, originalSamples: original, sampleRate: 8000,
+    }))).toEqual(original);
+  });
 });

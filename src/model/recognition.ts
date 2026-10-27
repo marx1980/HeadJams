@@ -18,6 +18,7 @@ export interface DetectedPitchBend {
 export interface DetectedNoteEvent {
   id: string;
   pitch: number;
+  rawPitch?: number;
   startSeconds: number;
   durationSeconds: number;
   velocity: number;
@@ -50,12 +51,19 @@ export interface RecognitionTake {
   modelId: string;
   modelVersion: string;
   createdAt: number;
+  tempoBpm: number;
   detectedBpm?: number;
   tempoAlternatives: number[];
   quantisation: RecognitionQuantisation;
+  pitchCorrection: number;
+  scaleAwarePitch: boolean;
+  scaleRoot: number;
+  scaleId: string;
+  transposeSemitones: number;
   originalEvents: RecognitionEvent[];
   quantisedEvents: RecognitionEvent[];
   channelIds: string[];
+  originalChannelId?: string;
 }
 
 export interface RecognitionResult {

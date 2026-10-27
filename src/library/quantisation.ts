@@ -9,8 +9,7 @@ const SUBDIVISIONS: Record<QuantisationSubdivision, number> = {
 };
 
 function gridStepSeconds(bpm: number, noteLength: number, subdivision: QuantisationSubdivision): number {
-  const stepsPerBeat = noteLength / 4;
-  return 60 / bpm * stepsPerBeat / SUBDIVISIONS[subdivision];
+  return 60 / bpm / SUBDIVISIONS[subdivision];
 }
 
 export function quantiseTime(

@@ -26,7 +26,7 @@ export function detectTempo(
   if (bpm !== undefined) bpm = Math.max(40, Math.min(200, bpm));
   const alternatives = bpm === undefined
     ? []
-    : [...new Set([bpm / 2, bpm * 2].filter((candidate) => candidate >= 40 && candidate <= 240).map(Math.round))]
+    : [...new Set([bpm / 2, bpm * 2].filter((candidate) => candidate >= 40 && candidate <= 200).map(Math.round))]
       .filter((candidate) => candidate !== bpm);
   return { bpm, alternatives };
 }

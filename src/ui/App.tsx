@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, removeChannel, setBpm, setLoopBars,
+  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
   type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
@@ -12,6 +12,8 @@ import { getSample, saveSample, type SampleData } from '../library/sampleStorage
 import { Engine } from '../audio/engine';
 import { renderProject } from '../audio/render';
 import { encodeWav } from '../audio/wav';
+import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
+import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
@@ -52,6 +54,8 @@ export function App() {
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const [drumKitId, setDrumKitId] = useState('');
+  const recognitionPlaybackRef = useRef(false);
+  const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -244,6 +248,10 @@ export function App() {
           return (
             <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
+                <label>Track name
+                  <input aria-label={`Track name ${c.name}`} value={c.name}
+                    onChange={(e) => setProject(updateChannel(project, c.id, { name: e.target.value }))} />
+                </label>
                 <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
                   loadingSoundIds={loadingSoundIds}
                   onPreview={(sound) => preview(sound, c.volume)}
@@ -257,9 +265,17 @@ export function App() {
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
                 <input type="range" aria-label={`Volume ${c.name}`} min={0} max={1} step={0.05} value={c.volume}
                   onChange={(e) => setProject(updateChannel(project, c.id, { volume: Number(e.target.value) }))} />
+                <input type="range" aria-label={`Pan ${c.name}`} min={-1} max={1} step={0.1} value={c.pan}
+                  onChange={(e) => setProject(updateChannel(project, c.id, { pan: Number(e.target.value) }))} />
+                <button className="secondary" aria-label={`Duplicate ${c.name}`} disabled={project.channels.length >= MAX_CHANNELS}
+                  onClick={() => setProject(duplicateChannel(project, c.id))}>⧉</button>
                 <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
                   onClick={() => togglePiano(c.id)}>{pianoChannels.has(c.id) ? '▦ Grid' : '🎹 Piano roll'}</button>
-                <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => setProject(removeChannel(project, c.id))}>✕</button>
+                <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => {
+                  const take = project.recognitionTakes.find((item) =>
+                    item.channelIds.includes(c.id) || item.originalChannelId === c.id);
+                  setProject(take ? removeRecognitionTake(project, take.id) : removeChannel(project, c.id));
+                }}>✕</button>
               </div>
               {pianoChannels.has(c.id)
                 ? <PianoRoll project={project} onChange={setProject} channelId={c.id} />
@@ -333,6 +349,7 @@ export function App() {
         channels={project.channels}
         sampleData={sampleData}
         bpm={project.bpm}
+        project={project}
         onPreview={(sound) => preview(sound)}
         onPreviewSample={(sample) => { void engine.previewSample(sample); emit('preview'); }}
         onUse={(soundId, channelId) => {
@@ -360,7 +377,48 @@ export function App() {
           setSampleData(updated);
           flash('Sample edits saved ✓');
         }}
-        onRecordStart={() => emit('record-start')}
+        onRecordStart={async (durationMs, bars) => {
+          emit('record-start');
+          const loopProject = setLoopBars(projectRef.current, bars as LoopBars);
+          projectRef.current = loopProject;
+          setProject(loopProject);
+          if (!engine.playing) {
+            await engine.start();
+            recognitionPlaybackRef.current = true;
+            recognitionPlaybackTimerRef.current = window.setTimeout(() => {
+              if (recognitionPlaybackRef.current) engine.stop();
+              recognitionPlaybackRef.current = false;
+              recognitionPlaybackTimerRef.current = undefined;
+            }, durationMs);
+          }
+        }}
+        onRecordStop={() => {
+          window.clearTimeout(recognitionPlaybackTimerRef.current);
+          recognitionPlaybackTimerRef.current = undefined;
+          if (recognitionPlaybackRef.current) engine.stop();
+          recognitionPlaybackRef.current = false;
+        }}
+        onRecognize={(take) => {
+          const updated = applyRecognitionTake(project, take);
+          if (!updated) {
+            flash('There is not enough channel space for this recognition result. Remove a channel and try again.');
+            return false;
+          }
+          setProject(updated);
+          flash(`${take.mode === 'beat' ? 'Percussion' : take.mode === 'bass' ? 'Bass' : 'Melody'} track added ✓`);
+          return true;
+        }}
+        onRecognitionBpmChange={(bpm, take) => {
+          const updated = setBpm(project, bpm);
+          if (!take) {
+            setProject(updated);
+            return;
+          }
+          const updatedTake = rebaseRecognitionTakeForTempo(take, bpm, updated.noteLength);
+          const result = applyRecognitionTake(updated, updatedTake, bpm);
+          if (result) setProject(result);
+          else flash('There is not enough channel space to update this recognition track.');
+        }}
       />
 
         </div>

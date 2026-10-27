@@ -1,4 +1,4 @@
-import type { Project, SoundDef, SynthParams } from '../model/project';
+import type { PitchBendPoint, Project, SoundDef, SynthParams } from '../model/project';
 import { pitchToFrequency } from '../model/music';
 import { createInstrumentRegistry, STARTER_SOUNDS } from './instrumentRegistry';
 
@@ -45,7 +45,14 @@ export function renderSound(p: SynthParams, sr = SAMPLE_RATE): Float32Array {
   return out;
 }
 
-export function renderPitchedNote(p: SynthParams, pitch: number, duration: number, velocity = 1, sr = SAMPLE_RATE): Float32Array {
+export function renderPitchedNote(
+  p: SynthParams,
+  pitch: number,
+  duration: number,
+  velocity = 1,
+  sr = SAMPLE_RATE,
+  pitchBend: PitchBendPoint[] = [],
+): Float32Array {
   const noteDuration = Math.max(0.01, duration);
   const attack = 0.008;
   const release = 0.03;
@@ -55,11 +62,20 @@ export function renderPitchedNote(p: SynthParams, pitch: number, duration: numbe
   const cutoff = Math.min(Math.max(50, p.cutoff), sr / 2 - 1);
   const filter = 1 - Math.exp((-2 * Math.PI * cutoff) / sr);
   const level = Math.max(0, Math.min(1, velocity));
+  const bends = pitchBend.filter((point) => Number.isFinite(point.time) && point.time >= 0
+    && Number.isFinite(point.value)).map((point) => ({ ...point, value: Math.max(-48, Math.min(48, point.value)) }))
+    .sort((a, b) => a.time - b.time);
   let phase = 0;
   let low = 0;
+  let bendIndex = 0;
+  let bendValue = 0;
   for (let i = 0; i < len; i++) {
     const time = i / sr;
-    phase += freq / sr;
+    while (bendIndex < bends.length && bends[bendIndex].time <= time) {
+      bendValue = bends[bendIndex].value;
+      bendIndex++;
+    }
+    phase += freq * 2 ** (bendValue / 12) / sr;
     phase -= Math.floor(phase);
     let sample: number;
     switch (p.wave) {

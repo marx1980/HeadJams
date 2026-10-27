@@ -15,7 +15,8 @@ Web Audio API (AudioWorklet where needed). A look-ahead scheduler (`src/audio/sc
 - Mixer: per-channel gain, pan, mute, solo.
 - Persistence: localStorage for project metadata and IndexedDB for sample audio.
 - UI (`src/ui`): channel strip, step grid, pad view, library browser; tutorials in `src/tutorial`.
-- Planned (see `plan.md`): instrument registry with stable IDs and `SoundSource` (synth/sample/multisample, lazy loading, preview bus); non-destructive sample editor; recognition adapter (audio -> events).
+- Recognition (`src/library`): on-device pitch/onset analysis behind a replaceable adapter; stable seconds-based events are corrected and mapped into editable project tracks.
+- Completed: stable instrument registry and lazy synth/sample `SoundSource`, non-destructive sample editor, and confidence/source-take metadata.
 - Later: effects chain, arrangement timeline, optional cloud sync.
 
 ## State
@@ -30,4 +31,4 @@ A single serializable project store with undo history.
 - Later: slicing samples into pads; resampling project output.
 
 ## Testing
-Vitest for scheduler and model; Playwright for UI flows later.
+Vitest covers scheduler, model, audio rendering, sample processing, and local recognition; browser usability flows are checked against the production build.

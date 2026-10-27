@@ -16,7 +16,7 @@ function normalizeNote(note: NoteEvent): NoteEvent {
     : undefined;
   const pitchBend = Array.isArray(note.pitchBend)
     ? note.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
-      .map((point) => ({ time: point.time, value: point.value }))
+      .map((point) => ({ time: point.time, value: Math.max(-48, Math.min(48, point.value)) }))
     : undefined;
   const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0
     ? note.sourceTakeId
@@ -76,6 +76,7 @@ function normalizeRecognitionEvents(value: unknown): RecognitionEvent[] {
     return [{
       id: event.id,
       pitch: Math.max(0, Math.min(127, Math.round(event.pitch!))),
+      ...(Number.isFinite(event.rawPitch) ? { rawPitch: Math.max(0, Math.min(127, event.rawPitch!)) } : {}),
       startSeconds: event.startSeconds!,
       durationSeconds: event.durationSeconds!,
       velocity: Math.max(0, Math.min(1, event.velocity!)),
@@ -92,7 +93,8 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
     const take = raw as Partial<RecognitionTake>;
     if (typeof take.id !== 'string' || typeof take.sourceSampleId !== 'string'
       || !['melody', 'bass', 'beat'].includes(take.mode ?? '')
-      || typeof take.modelId !== 'string' || typeof take.modelVersion !== 'string') return [];
+      || typeof take.modelId !== 'string' || typeof take.modelVersion !== 'string'
+      || !Number.isFinite(take.tempoBpm) || take.tempoBpm! < 40 || take.tempoBpm! > 240) return [];
     const quantisation = take.quantisation;
     if (!quantisation || typeof quantisation.enabled !== 'boolean'
       || !Number.isFinite(quantisation.strength)
@@ -104,6 +106,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       modelId: take.modelId,
       modelVersion: take.modelVersion,
       createdAt: Number.isFinite(take.createdAt) ? take.createdAt! : 0,
+      tempoBpm: take.tempoBpm!,
       ...(Number.isFinite(take.detectedBpm) ? { detectedBpm: take.detectedBpm } : {}),
       tempoAlternatives: Array.isArray(take.tempoAlternatives)
         ? take.tempoAlternatives.filter((bpm) => Number.isFinite(bpm) && bpm >= 40 && bpm <= 240)
@@ -113,9 +116,15 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
         strength: Math.max(0, Math.min(1, quantisation.strength)),
         subdivision: quantisation.subdivision,
       },
+      pitchCorrection: Number.isFinite(take.pitchCorrection) ? Math.max(0, Math.min(1, take.pitchCorrection!)) : 0,
+      scaleAwarePitch: take.scaleAwarePitch === true,
+      scaleRoot: Number.isInteger(take.scaleRoot) ? ((take.scaleRoot! % 12) + 12) % 12 : 0,
+      scaleId: typeof take.scaleId === 'string' ? take.scaleId : 'major',
+      transposeSemitones: Number.isFinite(take.transposeSemitones) ? Math.max(-48, Math.min(48, take.transposeSemitones!)) : 0,
       originalEvents: normalizeRecognitionEvents(take.originalEvents),
       quantisedEvents: normalizeRecognitionEvents(take.quantisedEvents),
       channelIds: Array.isArray(take.channelIds) ? take.channelIds.filter((id) => typeof id === 'string') : [],
+      ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
     }];
   });
 }

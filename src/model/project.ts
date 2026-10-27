@@ -30,6 +30,7 @@ export interface SoundDef {
   category: string;
   params: SynthParams;
   sampleId?: string;
+  sampleVersion?: 'processed' | 'original';
   tags?: string[];
   subcategory?: string;
   type?: SoundType;
@@ -293,6 +294,17 @@ export function addChannel(p: Project, name: string, soundId: string): Project {
   return syncCurrentPattern(p, [...p.channels, createChannel(`ch${n}`, name, soundId, totalSteps(p))]);
 }
 
+export function duplicateChannel(p: Project, id: string): Project {
+  if (p.channels.length >= MAX_CHANNELS) return p;
+  const channel = p.channels.find((item) => item.id === id);
+  if (!channel) return p;
+  const next = addChannel(p, `${channel.name} copy`, channel.soundId);
+  const duplicate = next.channels.at(-1);
+  if (!duplicate) return p;
+  const { id: _sourceId, ...copy } = copyChannels([channel])[0];
+  return updateChannel(next, duplicate.id, { ...copy, name: `${channel.name} copy` });
+}
+
 export function removeChannel(p: Project, id: string): Project {
   return syncCurrentPattern(p, p.channels.filter((c) => c.id !== id));
 }
@@ -310,7 +322,7 @@ export function addNote(p: Project, channelId: string, note: NoteEvent): Project
     : Math.max(0, Math.min(1, note.confidence));
   const pitchBend = Array.isArray(note.pitchBend)
     ? note.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
-      .map((point) => ({ time: point.time, value: point.value }))
+      .map((point) => ({ time: point.time, value: Math.max(-48, Math.min(48, point.value)) }))
     : undefined;
   const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0 ? note.sourceTakeId : undefined;
   return syncCurrentPattern(p, p.channels.map((channel) =>
