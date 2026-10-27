@@ -4,7 +4,7 @@ import { createInstrumentRegistry, STARTER_SOUNDS, validateInstrumentRegistry } 
 
 describe('instrument registry', () => {
   it('keeps starter sound IDs unique and stable', () => {
-    expect(STARTER_SOUNDS).toHaveLength(48);
+    expect(STARTER_SOUNDS).toHaveLength(58);
     expect(new Set(STARTER_SOUNDS.map((sound) => sound.id)).size).toBe(STARTER_SOUNDS.length);
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('kick-1');
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('fx-1');
@@ -38,6 +38,21 @@ describe('instrument registry', () => {
     expect(registry.map((entry) => entry.sound.name)).toContain('Organ Synth');
     expect(registry.map((entry) => entry.sound.name)).toContain('Strings Pad');
     expect(registry.map((entry) => entry.sound.name)).toContain('Flute Synth');
+  });
+
+  it('includes ten additional Bass, Synths, Drums, and Percussion sounds', () => {
+    const registry = createInstrumentRegistry([]);
+    const additions: Array<[string, string]> = [
+      ['bass-6', 'Bass'], ['bass-7', 'Bass'], ['bass-8', 'Bass'],
+      ['lead-6', 'Synths'], ['lead-7', 'Synths'], ['lead-8', 'Synths'], ['lead-9', 'Synths'],
+      ['kick-6', 'Drums'], ['snare-5', 'Drums'], ['perc-8', 'Percussion'],
+    ];
+
+    for (const [id, group] of additions) {
+      expect(registry.find((entry) => entry.id === id)).toMatchObject({
+        origin: 'built-in', source: 'synth', group,
+      });
+    }
   });
 
   it('includes built-in and custom sounds with source and group metadata', () => {

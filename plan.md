@@ -35,6 +35,16 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [x] Added synthesized starter presets in the Keys group.
 - [x] Added synthesized starter presets in the Strings group.
 - [x] Added synthesized starter presets in the Brass & Winds group.
+- [x] Added Bass Finger.
+- [x] Added Bass Pick.
+- [x] Added Bass Slap.
+- [x] Added Analog Lead.
+- [x] Added Digital Lead.
+- [x] Added Warm Pad.
+- [x] Added Soft Pluck.
+- [x] Added Kick 808.
+- [x] Added Snare Rimshot.
+- [x] Added Maraca percussion.
 - Guitar notes, more bass and synth presets, additional drums and percussion, and licence/attribution records.
 - Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.
 - Re-categorise the existing 30 synth sounds into the new groups without changing IDs.
