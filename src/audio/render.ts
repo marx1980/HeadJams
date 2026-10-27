@@ -91,10 +91,11 @@ function peakCoefficients(frequency: number, gainDb: number, sampleRate: number)
 }
 
 function processEffects(input: Float32Array, effects: Project['effects'], sampleRate: number): Float32Array {
-  let output = applyBiquad(input, lowpassCoefficients(effects.filterCutoff, sampleRate));
-  output = applyBiquad(output, shelfCoefficients(250, effects.eqLow, sampleRate, false));
-  output = applyBiquad(output, peakCoefficients(1000, effects.eqMid, sampleRate));
-  output = applyBiquad(output, shelfCoefficients(Math.min(6000, sampleRate * 0.4), effects.eqHigh, sampleRate, true));
+  let output = input;
+  if (effects.filterCutoff < 20000) output = applyBiquad(output, lowpassCoefficients(effects.filterCutoff, sampleRate));
+  if (effects.eqLow !== 0) output = applyBiquad(output, shelfCoefficients(250, effects.eqLow, sampleRate, false));
+  if (effects.eqMid !== 0) output = applyBiquad(output, peakCoefficients(1000, effects.eqMid, sampleRate));
+  if (effects.eqHigh !== 0) output = applyBiquad(output, shelfCoefficients(Math.min(6000, sampleRate * 0.4), effects.eqHigh, sampleRate, true));
 
   if (effects.delay > 0) {
     const delaySamples = Math.max(1, Math.round(sampleRate * 0.25));

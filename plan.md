@@ -12,8 +12,9 @@ Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangemen
 Not yet verified: manual 2-minute usability test in a real browser.
 
 ## QUEUED
-### 4. Phase 4: Sound shaping — NOT STARTED
-Effects chain (reverb, delay, filter, EQ), pitch/time tools, swing templates.
+### 4. Phase 4: Sound shaping — IN PROGRESS
+- Effects chain (reverb, delay, filter, EQ) — DONE.
+- Pitch/time tools and swing templates — NOT STARTED.
 ### 5. Phase 5: Platform and community — NOT STARTED
 PWA offline, Capacitor builds, accounts/cloud sync, MIDI, sample marketplace.
 

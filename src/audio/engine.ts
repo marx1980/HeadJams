@@ -100,6 +100,7 @@ export class Engine {
       || !this.delay || !this.delayFeedback || !this.delayWet || !this.reverbDry || !this.reverbWet) return;
     const effects = this.getProject().effects;
     const now = this.ctx.currentTime;
+    this.filter.type = effects.filterCutoff >= 20000 ? 'allpass' : 'lowpass';
     this.filter.frequency.setTargetAtTime(effects.filterCutoff, now, 0.02);
     this.eqLow.gain.setTargetAtTime(effects.eqLow, now, 0.02);
     this.eqMid.gain.setTargetAtTime(effects.eqMid, now, 0.02);
