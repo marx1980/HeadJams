@@ -15,6 +15,8 @@ Not yet verified: manual 2-minute usability test in a real browser.
 ### 4. Phase 4: Sound shaping — DONE
 - Effects chain (reverb, delay, filter, EQ) — DONE.
 - Pitch/time tools (transpose, shift, duration scaling) and swing templates — DONE.
+### 4b. UI reorganization — DONE
+Four screens (Beat, Sound, Library, Song) with top bar and project menu; see `ui-design.md`.
 ### 5. Phase 5: Platform and community — NOT STARTED
 PWA offline, Capacitor builds, accounts/cloud sync, MIDI, sample marketplace.
 
