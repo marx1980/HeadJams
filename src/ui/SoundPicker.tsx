@@ -5,22 +5,40 @@ import { soundLibraryGroup } from '../library/instrumentRegistry';
 const FAVORITES_KEY = 'musicmaker.favoriteSounds';
 const RECENT_KEY = 'musicmaker.recentSounds';
 const LISTS_CHANGE_EVENT = 'musicmaker:sound-lists-change';
+const FAMILIES: Record<string, { icon: string; className: string }> = {
+  Drums: { icon: '🥁', className: 'drums' },
+  Percussion: { icon: '🪘', className: 'percussion' },
+  Keys: { icon: '🎹', className: 'keys' },
+  Strings: { icon: '🎻', className: 'strings' },
+  Guitars: { icon: '🎸', className: 'guitars' },
+  Bass: { icon: '🎸', className: 'bass' },
+  'Brass & Winds': { icon: '🎺', className: 'brass' },
+  Synths: { icon: '🎛️', className: 'synths' },
+  'FX & Other': { icon: '✨', className: 'fx' },
+  Samples: { icon: '🎙️', className: 'samples' },
+  Mine: { icon: '🎚️', className: 'custom' },
+};
+
+function familyInfo(name: string) {
+  return FAMILIES[name] ?? { icon: '🎵', className: 'other' };
+}
 
 function readIds(key: string): string[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
-    return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+    return Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === 'string'))] : [];
   } catch {
     return [];
   }
 }
 
 export function SoundPicker({
-  sounds, soundId, unavailableSoundIds = new Set(), onPreview, onSelect,
+  sounds, soundId, unavailableSoundIds = new Set(), loadingSoundIds = new Set(), onPreview, onSelect,
 }: {
   sounds: SoundDef[];
   soundId: string;
   unavailableSoundIds?: ReadonlySet<string>;
+  loadingSoundIds?: ReadonlySet<string>;
   onPreview: (sound: SoundDef) => void;
   onSelect: (sound: SoundDef) => void;
 }) {
@@ -29,7 +47,7 @@ export function SoundPicker({
   const [subgroup, setSubgroup] = useState('');
   const [query, setQuery] = useState('');
   const [favorites, setFavorites] = useState<string[]>(readIds(FAVORITES_KEY));
-  const [recent, setRecent] = useState<string[]>(readIds(RECENT_KEY));
+  const [recent, setRecent] = useState<string[]>(readIds(RECENT_KEY).slice(0, 10));
   const closeButton = useRef<HTMLButtonElement>(null);
   const selected = sounds.find((sound) => sound.id === soundId);
   const groups = useMemo(() => [...new Set(sounds.map(soundLibraryGroup))].sort(), [sounds]);
@@ -81,6 +99,15 @@ export function SoundPicker({
     return () => window.removeEventListener(LISTS_CHANGE_EVENT, syncLists);
   }, []);
 
+  useEffect(() => {
+    const syncStorage = (event: StorageEvent) => {
+      if (event.key === FAVORITES_KEY) setFavorites(readIds(FAVORITES_KEY));
+      if (event.key === RECENT_KEY) setRecent(readIds(RECENT_KEY).slice(0, 10));
+    };
+    window.addEventListener('storage', syncStorage);
+    return () => window.removeEventListener('storage', syncStorage);
+  }, []);
+
   const notifyListsChanged = (nextFavorites: string[], nextRecent: string[]) => {
     window.dispatchEvent(new CustomEvent(LISTS_CHANGE_EVENT, {
       detail: { favorites: nextFavorites, recent: nextRecent },
@@ -103,7 +130,38 @@ export function SoundPicker({
     setOpen(false);
   };
 
+  const onDialogKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    const dialog = event.currentTarget;
+    if (event.key === 'Tab') {
+      const controls = [...dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((element) => element.getClientRects().length > 0);
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !(event.target instanceof HTMLButtonElement)) return;
+    const buttons = [...dialog.querySelectorAll<HTMLButtonElement>('button:not([disabled])')]
+      .filter((button) => button.getClientRects().length > 0);
+    const index = buttons.indexOf(event.target);
+    if (index < 0 || !buttons.length) return;
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? buttons.length - 1
+        : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+    event.preventDefault();
+    buttons[next].focus();
+  };
+
   const title = selected?.name ?? `Missing sound (${soundId})`;
+  const selectedFamily = selected ? familyInfo(soundLibraryGroup(selected)) : undefined;
 
   return (
     <>
@@ -111,17 +169,21 @@ export function SoundPicker({
         aria-expanded={open} aria-invalid={selectedUnavailable}
         aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
         onClick={() => { setGroup(''); setSubgroup(''); setQuery(''); setOpen(true); }}>
-        {selectedUnavailable ? `⚠ ${title} · Replace` : `${title} ▾`}
+        {selectedUnavailable ? '⚠ ' : selectedFamily ? <span className={`family-icon family-${selectedFamily.className}`} aria-hidden="true">{selectedFamily.icon}</span> : null}
+        {selectedUnavailable ? `${title} · Replace` : `${title} ▾`}
       </button>
       {open && (
         <div className="sound-picker-backdrop" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setOpen(false);
         }}>
-          <section className="sound-picker panel" role="dialog" aria-modal="true" aria-label="Choose a sound">
+          <section className="sound-picker panel" role="dialog" aria-modal="true" aria-label="Choose a sound" onKeyDown={onDialogKeyDown}>
             <div className="sound-picker-heading">
               <h2>{[group, subgroup].filter(Boolean).join(' · ') || 'Sound Library'}</h2>
               <button ref={closeButton} className="secondary" aria-label="Close sound picker" onClick={() => setOpen(false)}>✕</button>
             </div>
+            {loadingSoundIds.size > 0 && (
+              <p className="picker-status" role="status">Loading sample audio… Sounds will be available as soon as they finish loading.</p>
+            )}
             {selectedUnavailable && (
               <p className="error" role="status">
                 {selected ? `${title} is unavailable because its sample is missing.` : `${title} is no longer in the library.`}
@@ -139,10 +201,15 @@ export function SoundPicker({
             {!group && !query.trim() ? (
               <div className="sound-picker-groups">
                 {['Favorites', 'Recent'].map((name) => (
-                  <button key={name} onClick={() => { setGroup(name); setSubgroup(''); }}>{name}</button>
+                  <button key={name} onClick={() => { setGroup(name); setSubgroup(''); }}>
+                    <span className="family-icon" aria-hidden="true">{name === 'Favorites' ? '★' : '◷'}</span>{name}
+                  </button>
                 ))}
                 {groups.map((name) => (
-                  <button key={name} onClick={() => { setGroup(name); setSubgroup(''); }}>{name}</button>
+                  <button key={name} className={`family-${familyInfo(name).className}`}
+                    onClick={() => { setGroup(name); setSubgroup(''); }}>
+                    <span className="family-icon" aria-hidden="true">{familyInfo(name).icon}</span>{name}
+                  </button>
                 ))}
               </div>
             ) : group && !subgroup && subgroups.length > 0 && !query.trim() ? (
@@ -154,11 +221,11 @@ export function SoundPicker({
             ) : (
               <div className="sound-picker-list">
                 {matchingSounds.map((sound) => (
-                  <div className={`sound-picker-item${sound.id === soundId ? ' current' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}`} key={sound.id}>
+                  <div className={`sound-picker-item family-${familyInfo(soundLibraryGroup(sound)).className}${sound.id === soundId ? ' current' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}${loadingSoundIds.has(sound.id) ? ' loading' : ''}`} key={sound.id}>
                     <span>
-                      <strong>{sound.name}</strong>
+                      <strong><span className="family-icon" aria-hidden="true">{familyInfo(soundLibraryGroup(sound)).icon}</span> {sound.name}</strong>
                       <small>
-                        {unavailableSoundIds.has(sound.id) ? 'Sample unavailable · ' : ''}
+                        {loadingSoundIds.has(sound.id) ? 'Loading sample… · ' : unavailableSoundIds.has(sound.id) ? 'Sample unavailable · ' : ''}
                         {[soundLibraryGroup(sound), sound.subcategory, ...(sound.tags ?? [])].filter(Boolean).join(' · ')}
                         {sound.assetAttribution ? ` · ${sound.assetAttribution}` : ''}
                       </small>
@@ -168,12 +235,18 @@ export function SoundPicker({
                         aria-pressed={favorites.includes(sound.id)} onClick={() => toggleFavorite(sound.id)}>
                         {favorites.includes(sound.id) ? '★' : '☆'}
                       </button>
-                      <button className="secondary" disabled={unavailableSoundIds.has(sound.id)} onClick={() => onPreview(sound)}>▶ Preview</button>
-                      <button disabled={unavailableSoundIds.has(sound.id)} onClick={() => chooseSound(sound)}>{sound.id === soundId ? 'Selected' : 'Select'}</button>
+                      <button className="secondary" disabled={unavailableSoundIds.has(sound.id) || loadingSoundIds.has(sound.id)} onClick={() => onPreview(sound)}>▶ Preview</button>
+                      <button disabled={unavailableSoundIds.has(sound.id) || loadingSoundIds.has(sound.id)} onClick={() => chooseSound(sound)}>{sound.id === soundId ? 'Selected' : 'Select'}</button>
                     </div>
                   </div>
                 ))}
-                {!matchingSounds.length && <p className="hint">No sounds match this group and search.</p>}
+                {!matchingSounds.length && (
+                  <p className="picker-empty" role="status">
+                    {group === 'Favorites' && !query.trim() ? '☆ No favorites yet. Add sounds with the star button.' :
+                      group === 'Recent' && !query.trim() ? '◷ No recent sounds yet. Selected sounds will appear here.' :
+                        '⌕ No sounds match this search. Try another name, category, or tag.'}
+                  </p>
+                )}
               </div>
             )}
           </section>

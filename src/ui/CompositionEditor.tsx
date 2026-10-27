@@ -18,6 +18,7 @@ const PITCH_COUNT = 36;
 export function PianoRoll({ project, onChange, channelId }: { project: Project; onChange: (project: Project) => void; channelId: string }) {
   const [snap, setSnap] = useState(true);
   const [duration, setDuration] = useState(1);
+  const [focusedCell, setFocusedCell] = useState({ step: 0, pitch: LOW_PITCH + PITCH_COUNT - 1 });
   const [chordQuality, setChordQuality] = useState<(typeof CHORDS)[number]>('major');
   const [chordRoot, setChordRoot] = useState(60);
   const [chordStep, setChordStep] = useState(0);
@@ -29,6 +30,7 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
   const guitarChordMode = channel ? findSound(project, channel.soundId)?.playbackMode === 'chord' : false;
   const scale = SCALES.find((item) => item.id === project.scaleId) ?? SCALES[0];
   const steps = totalSteps(project);
+  const activeFocusedStep = Math.min(focusedCell.step, steps - 1);
   const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
   const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
   const activeGuitarStep = Math.min(guitarStep, steps - 1);
@@ -68,6 +70,23 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
       });
     }, project);
     onChange(updated);
+  };
+  const movePianoFocus = (event: React.KeyboardEvent<HTMLButtonElement>, step: number, pitch: number) => {
+    const offsets: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, 1],
+      ArrowDown: [0, -1],
+    };
+    const offset = offsets[event.key];
+    if (!offset) return;
+    event.preventDefault();
+    const nextStep = Math.max(0, Math.min(steps - 1, step + offset[0]));
+    const nextPitch = Math.max(LOW_PITCH, Math.min(LOW_PITCH + PITCH_COUNT - 1, pitch + offset[1]));
+    setFocusedCell({ step: nextStep, pitch: nextPitch });
+    event.currentTarget.closest('.piano-roll')
+      ?.querySelector<HTMLButtonElement>(`[data-step="${nextStep}"][data-pitch="${nextPitch}"]`)
+      ?.focus();
   };
   return (
     <div className="piano-editor">
@@ -116,12 +135,26 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
               {Array.from({ length: steps }, (_, step) => {
                 const activeNote = channel.notes?.find((note) => note.step === step && note.pitch === pitch);
                 const inScale = isPitchInScale(pitch, project.scaleRoot, scale);
+                const confidence = activeNote?.confidence;
+                const noteDetails = [
+                  confidence === undefined ? '' : `${confidence < 0.7 ? 'low confidence ' : 'confidence '}${Math.round(confidence * 100)}%`,
+                  activeNote?.pitchBend?.length ? `${activeNote.pitchBend.length} pitch bend point${activeNote.pitchBend.length === 1 ? '' : 's'}` : '',
+                  activeNote?.sourceTakeId ? `source take ${activeNote.sourceTakeId}` : '',
+                ].filter(Boolean).join(', ');
                 return (
-                  <button key={step} role="gridcell" aria-label={`${NOTE_NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}, step ${step + 1}`}
-                    aria-pressed={Boolean(activeNote)} title={activeNote ? 'Remove note' : 'Add note'}
-                    className={`piano-cell${inScale ? ' scale-note' : ''}${activeNote ? ' note-on' : ''}`}
+                  <button key={step} role="gridcell"
+                    aria-label={`${NOTE_NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}, step ${step + 1}${noteDetails ? `, ${noteDetails}` : ''}`}
+                    data-step={step} data-pitch={pitch}
+                    tabIndex={activeFocusedStep === step && focusedCell.pitch === pitch ? 0 : -1}
+                    aria-pressed={Boolean(activeNote)}
+                    title={activeNote ? `Remove note${noteDetails ? ` · ${noteDetails}` : ''}` : 'Add note'}
+                    className={`piano-cell${inScale ? ' scale-note' : ''}${activeNote ? ' note-on' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}${activeNote?.pitchBend?.length ? ' has-pitch-bend' : ''}`}
                     id={pitch === pitches[0] && step === 0 ? 'piano-roll-cell' : undefined}
-                    onClick={() => addPianoNote(step, pitch)} />
+                    onClick={() => addPianoNote(step, pitch)}
+                    onKeyDown={(event) => movePianoFocus(event, step, pitch)}>
+                    {confidence !== undefined && confidence < 0.7 ? <span className="confidence-indicator" aria-hidden="true">!</span> : null}
+                    {activeNote?.pitchBend?.length ? <span className="pitch-bend-indicator" aria-hidden="true">↝</span> : null}
+                  </button>
                 );
               })}
             </div>

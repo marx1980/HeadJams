@@ -82,6 +82,26 @@ describe('project storage migration', () => {
     expect(loadProject().channels[0].chordEvents).toEqual([]);
   });
 
+  it('round-trips recognized note and step metadata while older projects default cleanly', () => {
+    const project = createProject();
+    project.channels[0].notes = [{
+      id: 'note-1', step: 2, pitch: 64, durationSteps: 2, confidence: 0.45,
+      pitchBend: [{ time: 0.1, value: 0.2 }], sourceTakeId: 'take-1',
+    }];
+    project.channels[0].steps[3] = true;
+    project.channels[0].stepEventMetadata = { 3: { confidence: 0.35, sourceTakeId: 'take-1' } };
+    saveProject(project);
+
+    expect(loadProject().channels[0]).toMatchObject({
+      notes: project.channels[0].notes,
+      stepEventMetadata: project.channels[0].stepEventMetadata,
+    });
+
+    const older = createProject();
+    values.set('musicmaker.project.v2', JSON.stringify(older));
+    expect(loadProject().channels[0].stepEventMetadata).toEqual({});
+  });
+
   it('falls back to the legacy project when the v2 entry is corrupt', () => {
     const legacy = createProject();
     legacy.name = 'Recoverable';

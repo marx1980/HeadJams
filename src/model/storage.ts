@@ -1,11 +1,50 @@
 import {
   createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
-  type Channel, type Pattern, type Project,
+  type Channel, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 
 const KEY = 'musicmaker.project.v2';
 const LEGACY_KEY = 'musicmaker.project.v1';
+
+function normalizeNote(note: NoteEvent): NoteEvent {
+  const confidence = Number.isFinite(note.confidence)
+    ? Math.max(0, Math.min(1, note.confidence!))
+    : undefined;
+  const pitchBend = Array.isArray(note.pitchBend)
+    ? note.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
+      .map((point) => ({ time: point.time, value: point.value }))
+    : undefined;
+  const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0
+    ? note.sourceTakeId
+    : undefined;
+  return {
+    ...note,
+    confidence,
+    ...(pitchBend === undefined ? { pitchBend: undefined } : { pitchBend }),
+    sourceTakeId,
+  };
+}
+
+function normalizeStepEventMetadata(value: unknown, stepCount: number): Record<number, StepEventMetadata> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([step, rawMetadata]) => {
+    const index = Number(step);
+    if (!Number.isInteger(index) || index < 0 || index >= stepCount || !rawMetadata || typeof rawMetadata !== 'object') return [];
+    const metadata = rawMetadata as StepEventMetadata;
+    const confidence = Number.isFinite(metadata.confidence)
+      ? Math.max(0, Math.min(1, metadata.confidence!))
+      : undefined;
+    const sourceTakeId = typeof metadata.sourceTakeId === 'string' && metadata.sourceTakeId.length > 0
+      ? metadata.sourceTakeId
+      : undefined;
+    if (confidence === undefined && sourceTakeId === undefined) return [];
+    return [[index, {
+      ...(confidence === undefined ? {} : { confidence }),
+      ...(sourceTakeId === undefined ? {} : { sourceTakeId }),
+    }]];
+  }));
+}
 
 export function saveProject(p: Project): void {
   try { localStorage.setItem(KEY, JSON.stringify({ ...p, formatVersion: CURRENT_PROJECT_FORMAT_VERSION })); } catch { /* storage full or unavailable */ }
@@ -18,7 +57,8 @@ function normalizeProject(raw: string): Project | undefined {
     if (Number.isInteger(p.formatVersion) && p.formatVersion > CURRENT_PROJECT_FORMAT_VERSION) return undefined;
     const normalizeChannel = (channel: Channel): Channel => ({
       ...channel,
-      notes: Array.isArray(channel.notes) ? channel.notes : [],
+      notes: Array.isArray(channel.notes) ? channel.notes.map(normalizeNote) : [],
+      stepEventMetadata: normalizeStepEventMetadata(channel.stepEventMetadata, channel.steps?.length ?? 0),
       chordEvents: Array.isArray(channel.chordEvents)
         ? channel.chordEvents.filter((event) =>
           Boolean(event && typeof event.id === 'string' && Number.isFinite(event.step)

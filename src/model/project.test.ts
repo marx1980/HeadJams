@@ -3,7 +3,7 @@ import {
   addArrangementClip, addChannel, addChordEvent, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
   channelsForPlaybackStep, createChannel, createProject, removeArrangementClip, removeChannel, removeNote, removePattern, selectPattern,
   scaleChannelNoteDurations, setBpm, setEffects, setLoopBars, setNoteLength, setScale, setSwingTemplate, shiftChannelNotes,
-  removeChordEvent, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
+  removeChordEvent, setStepEventMetadata, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
 
@@ -68,6 +68,33 @@ describe('project model', () => {
     p = removeNote(p, 'ch1', 'note-1');
     expect(p.patterns[0].channels[0].notes).toEqual([]);
     expect(p.currentPatternId).toBe(patternId);
+  });
+  it('preserves recognition metadata across notes, pattern copies, and step resizing', () => {
+    let p = addPattern(createProject(), 'Recognised');
+    p = addNote(p, 'ch1', {
+      id: 'note-recognised', step: 2, pitch: 60, durationSteps: 2, confidence: 0.4,
+      pitchBend: [{ time: 0, value: 0 }, { time: 0.2, value: 0.5 }], sourceTakeId: 'take-1',
+    });
+    p = toggleStep(p, 'ch1', 2);
+    p = setStepEventMetadata(p, 'ch1', 2, { confidence: 0.3, sourceTakeId: 'take-1' });
+
+    expect(p.channels[0].notes[0]).toMatchObject({
+      confidence: 0.4, pitchBend: [{ time: 0, value: 0 }, { time: 0.2, value: 0.5 }], sourceTakeId: 'take-1',
+    });
+    expect(p.patterns[0].channels[0].stepEventMetadata?.[2]).toEqual({ confidence: 0.3, sourceTakeId: 'take-1' });
+    expect(setNoteLength(p, 8).channels[0].stepEventMetadata?.[1]).toEqual({ confidence: 0.3, sourceTakeId: 'take-1' });
+    expect(setLoopBars(p, 1).channels[0].stepEventMetadata?.[2]).toEqual({ confidence: 0.3, sourceTakeId: 'take-1' });
+  });
+  it('bounds recognition confidence, rejects invalid bend points, and ignores invalid step metadata positions', () => {
+    let p = addNote(createProject(), 'ch1', {
+      id: 'note-recognised', step: 0, pitch: 60, durationSteps: 1, confidence: 1.5,
+      pitchBend: [{ time: -1, value: 2 }, { time: 0.1, value: 0.2 }],
+    });
+    p = setStepEventMetadata(p, 'ch1', 0, { confidence: -1 });
+    expect(p.channels[0].notes[0].confidence).toBe(1);
+    expect(p.channels[0].notes[0].pitchBend).toEqual([{ time: 0.1, value: 0.2 }]);
+    expect(p.channels[0].stepEventMetadata).toEqual({ 0: { confidence: 0 } });
+    expect(setStepEventMetadata(p, 'ch1', 16, { confidence: 0.5 })).toBe(p);
   });
   it('stores guitar chord symbols as events and keeps them synchronized through editing tools', () => {
     let p = addPattern(createProject(), 'Verse');
