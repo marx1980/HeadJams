@@ -103,6 +103,8 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
   const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
   const [missing, setMissing] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onExitRef = useRef(onExit);
+  onExitRef.current = onExit;
   const step = tutorial.steps[index];
   const done = step.done(state) || skipped.has(index);
   const last = index === tutorial.steps.length - 1;
@@ -115,7 +117,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
     const focusables = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
     (focusables()[0] ?? dialog)?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { onExit(); return; }
+      if (event.key === 'Escape') { onExitRef.current(); return; }
       if (event.key !== 'Tab' || !dialog) return;
       const items = focusables();
       if (!items.length) { event.preventDefault(); dialog.focus(); return; }
@@ -128,7 +130,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
       document.removeEventListener('keydown', onKey);
       if (previousFocus?.isConnected) previousFocus.focus();
     };
-  }, [onExit, finished]);
+  }, [finished]);
 
   useEffect(() => {
     if (!step.target) return;
