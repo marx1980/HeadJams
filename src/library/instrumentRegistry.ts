@@ -65,6 +65,13 @@ const s = (id: string, name: string, category: string, wave: SynthParams['wave']
   assetLicense: 'Original procedural synthesis; no third-party audio asset',
 });
 
+const guitarChord = (id: string, name: string, wave: SynthParams['wave'], freq: number, decay: number, cutoff: number): SoundDef => ({
+  ...s(id, name, 'Guitars', wave, freq, freq, decay, cutoff),
+  subcategory: 'Chords',
+  type: 'chord',
+  playbackMode: 'chord',
+});
+
 export const STARTER_SOUNDS: SoundDef[] = [
   s('kick-1', 'Kick Deep', 'Drums', 'sine', 150, 45, 0.35, 8000),
   s('kick-2', 'Kick Punch', 'Drums', 'sine', 200, 55, 0.25, 12000),
@@ -108,6 +115,10 @@ export const STARTER_SOUNDS: SoundDef[] = [
   s('guitar-electric-1', 'Clean Electric Guitar · Synth', 'Guitars', 'triangle', 440, 440, 0.4, 5000),
   s('guitar-electric-2', 'Muted Electric Guitar · Synth', 'Guitars', 'square', 330, 330, 0.12, 2800),
   s('guitar-electric-3', 'Guitar Harmonics · Synth', 'Guitars', 'sine', 880, 880, 0.5, 9000),
+  guitarChord('guitar-chord-acoustic', 'Acoustic Chord · Synth', 'triangle', 220, 0.45, 5000),
+  guitarChord('guitar-chord-clean', 'Clean Electric Chord · Synth', 'triangle', 247, 0.4, 5500),
+  guitarChord('guitar-chord-crunch', 'Crunch Chord · Synth', 'saw', 196, 0.35, 3600),
+  guitarChord('guitar-chord-power', 'Distorted Power Chord · Synth', 'square', 146, 0.3, 3000),
   s('bass-6', 'Bass Finger', 'Bass', 'triangle', 73, 73, 0.32, 2200),
   s('bass-7', 'Bass Pick', 'Bass', 'square', 82, 82, 0.24, 1800),
   s('bass-8', 'Bass Slap', 'Bass', 'saw', 98, 98, 0.16, 3200),

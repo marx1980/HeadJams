@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
-  addArrangementClip, addNote, addPattern, arrangementLength, removeArrangementClip, removeNote,
+  addArrangementClip, addChordEvent, addNote, addPattern, arrangementLength, removeArrangementClip, removeChordEvent, removeNote,
   removePattern, renamePattern, scaleChannelNoteDurations, selectPattern, shiftChannelNotes, totalSteps,
   transposeChannelNotes, type Project,
 } from '../model/project';
-import { chordPitches, isPitchInScale, SCALES, scalePitches, snapPitchToScale } from '../model/music';
+import {
+  CHORD_ARTICULATIONS, CHORD_QUALITIES, chordPitches, formatChordSymbol, isPitchInScale, SCALES,
+  scalePitches, snapPitchToScale, type ChordArticulation, type ChordQuality,
+} from '../model/music';
+import { findSound } from '../library/sounds';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
@@ -17,11 +21,27 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
   const [chordQuality, setChordQuality] = useState<(typeof CHORDS)[number]>('major');
   const [chordRoot, setChordRoot] = useState(60);
   const [chordStep, setChordStep] = useState(0);
+  const [guitarRoot, setGuitarRoot] = useState(60);
+  const [guitarQuality, setGuitarQuality] = useState<ChordQuality>('major');
+  const [guitarArticulation, setGuitarArticulation] = useState<ChordArticulation>('down-strum');
+  const [guitarStep, setGuitarStep] = useState(0);
   const channel = project.channels.find((item) => item.id === channelId);
+  const guitarChordMode = channel ? findSound(project, channel.soundId)?.playbackMode === 'chord' : false;
   const scale = SCALES.find((item) => item.id === project.scaleId) ?? SCALES[0];
   const steps = totalSteps(project);
   const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
   const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
+  const addGuitarChord = () => {
+    if (!channel) return;
+    onChange(addChordEvent(project, channel.id, {
+      id: `chord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+      step: guitarStep,
+      root: guitarRoot,
+      quality: guitarQuality,
+      articulation: guitarArticulation,
+      durationSteps: duration,
+    }));
+  };
   const pitches = Array.from({ length: PITCH_COUNT }, (_, index) => LOW_PITCH + PITCH_COUNT - 1 - index);
 
   const addPianoNote = (step: number, pitch: number) => {
@@ -108,7 +128,46 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
         </div>
       ) : <p className="hint">Add a channel to edit notes.</p>}
 
-      {channel && (
+      {channel && guitarChordMode && (
+        <div className="chord-controls" aria-label="Guitar chord editor">
+          <strong>Guitar chords</strong>
+          <label>Chord root
+            <select aria-label="Guitar chord root" value={guitarRoot} onChange={(event) => setGuitarRoot(Number(event.target.value))}>
+              {Array.from({ length: 25 }, (_, index) => 48 + index).map((pitch) => (
+                <option key={pitch} value={pitch}>{NOTE_NAMES[pitch % 12]}{Math.floor(pitch / 12) - 1}</option>
+              ))}
+            </select>
+          </label>
+          <label>Chord
+            <select aria-label="Guitar chord quality" value={guitarQuality} onChange={(event) => setGuitarQuality(event.target.value as ChordQuality)}>
+              {CHORD_QUALITIES.map((quality) => <option key={quality.id} value={quality.id}>{quality.label}</option>)}
+            </select>
+          </label>
+          <label>Articulation
+            <select aria-label="Guitar chord articulation" value={guitarArticulation}
+              onChange={(event) => setGuitarArticulation(event.target.value as ChordArticulation)}>
+              {CHORD_ARTICULATIONS.map((articulation) => <option key={articulation.id} value={articulation.id}>{articulation.label}</option>)}
+            </select>
+          </label>
+          <label>Step
+            <select aria-label="Guitar chord step" value={guitarStep} onChange={(event) => setGuitarStep(Number(event.target.value))}>
+              {Array.from({ length: steps }, (_, step) => <option key={step} value={step}>{step + 1}</option>)}
+            </select>
+          </label>
+          <button onClick={addGuitarChord}>＋ Add guitar chord</button>
+          <div className="chord-event-list" aria-label="Guitar chord events">
+            {(channel.chordEvents ?? []).map((event) => (
+              <button key={event.id} className="secondary"
+                aria-label={`Remove ${formatChordSymbol(event.root, event.quality, event.articulation)} ${event.articulation} at step ${event.step + 1}`}
+                onClick={() => onChange(removeChordEvent(project, channel.id, event.id))}>
+                {formatChordSymbol(event.root, event.quality, event.articulation)} · {event.articulation} · step {event.step + 1} ×
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {channel && !guitarChordMode && (
         <div className="chord-controls">
           <strong>Chord assist</strong>
           <label>Root note
