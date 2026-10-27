@@ -98,7 +98,7 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] 14f: seven workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
 - [x] Added actionable sample editing, recognition correction, and library search/pad-view events; added keyboard-navigation, confidence-cue, and library-use tutorials.
 - [x] Added microphone/MIDI capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
-- [ ] Browser-level selector coverage and mobile/desktop flow verification remain follow-up validation.
+- [x] Rendered-DOM selector coverage includes conditional MIDI connect/record states. Verified the first-beat tutorial and target highlight on desktop and the tutorial menu, target docking, and simulated MIDI-permission-denied guidance on mobile; physical MIDI hardware was unavailable.
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.

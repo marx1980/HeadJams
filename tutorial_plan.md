@@ -39,12 +39,13 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 - [x] New: tempo & swing, mixing, templates, sound picker, drum kits, guitar chords, pitch/time tools, Sound Designer, effects, import audio, Sample Editor, recognition, recognition correction, patterns/launcher, timeline, arrangement assistance, export options, privacy/offline, confidence cues, keyboard navigation, library tools, MIDI keyboard (28 total).
 - [x] Added low-confidence/take-cue and keyboard-navigation tutorials, plus pad-view and tagged-library search steps.
 - [x] MIDI keyboard tutorial and workflow are implemented with capability gating.
-- [ ] Some arrangement-assist and explanatory steps remain informational; browser verification of highlight selectors remains follow-up.
+- [x] Some arrangement-assist and explanatory steps remain informational. Rendered selector coverage passes; desktop and mobile browser checks verified tutorial highlights and overlay behavior. MIDI permission denial was simulated; physical MIDI hardware was unavailable.
 
 ### 6. Coverage check — PARTLY DONE
 - [x] `src/tutorial/tutorials.test.ts`: unique ids, known groups, original ids kept, every listed feature covered, workflow ids resolve, first-step predicate, progress persistence.
 - [x] Added capability-gating and completion-predicate tests for interactive tutorial events.
-- [ ] Missing: test that every `target` selector exists in the rendered UI (needs a DOM test environment), plus broader unit coverage for remaining `done()` predicates.
+- [x] Rendered-DOM test validates every tutorial target selector across conditional UI states (`src/tutorial/tutorialTargets.test.tsx`).
+- [ ] Broader unit coverage for remaining `done()` predicates.
 
 ### 7. Docs — DONE
 - [x] `plan.md` (Phase 14), `README.md`, `ui-design.md` updated.
@@ -52,5 +53,5 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 ### 8. Delivery — done in a single change instead of six PRs (a–f).
 
 ## Remaining work (summary)
-1. Add rendered-DOM selector coverage and expand `done()` predicate tests.
-2. Verify tutorial flows in desktop and mobile browsers, including MIDI device permissions and permission-denied guidance.
+1. Expand `done()` predicate tests.
+2. Desktop and mobile browser verification is complete, including target highlights and simulated MIDI permission-denied guidance. Physical MIDI input and real browser permission prompts still require a device/browser environment.
