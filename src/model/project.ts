@@ -1,4 +1,5 @@
 import type { ChordArticulation, ChordQuality } from './music';
+import type { RecognitionTake } from './recognition';
 
 export type NoteLength = 4 | 8 | 16;
 export type LoopBars = 1 | 2 | 4;
@@ -124,6 +125,7 @@ export interface Project {
   arrangement: ArrangementClip[];
   effects: ProjectEffects;
   swingTemplate: SwingTemplate;
+  recognitionTakes: RecognitionTake[];
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
@@ -139,7 +141,7 @@ export const DEFAULT_EFFECTS: ProjectEffects = {
   eqMid: 0,
   eqHigh: 0,
 };
-export const CURRENT_PROJECT_FORMAT_VERSION = 2;
+export const CURRENT_PROJECT_FORMAT_VERSION = 3;
 
 export const totalSteps = (p: Pick<Project, 'noteLength' | 'loopBars'>): number => p.noteLength * p.loopBars;
 
@@ -168,6 +170,7 @@ export function createProject(name = 'Untitled'): Project {
     scaleRoot: 0, scaleId: 'major', patterns: [], arrangement: [],
     effects: { ...DEFAULT_EFFECTS },
     swingTemplate: 'straight',
+    recognitionTakes: [],
   };
 }
 
