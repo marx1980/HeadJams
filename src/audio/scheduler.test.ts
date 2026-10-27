@@ -31,7 +31,7 @@ describe('Scheduler', () => {
     const times: number[] = [];
     const scheduler = new Scheduler({
       now: () => t, bpm: () => 120, totalSteps: () => 4, stepsPerBar: () => 8,
-      swingTemplate: () => 'triplet', onStep: (_step, time) => times.push(time), lookAhead: 0.3,
+      swingTemplate: () => 'triplet', onStep: (_step, time) => times.push(time), lookAhead: 0.4,
     });
     scheduler.start();
     scheduler.tick();
