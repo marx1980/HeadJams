@@ -66,7 +66,7 @@ export function App() {
   const recognitionPlaybackRef = useRef(false);
   const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
   const midiRecordingRef = useRef(false);
-  const midiRecordingStartedAtRef = useRef<number>();
+  const midiRecordingStartedAtRef = useRef<number | undefined>(undefined);
   const midiTargetChannelRef = useRef(midiTargetChannelId);
   const midiActiveNotesRef = useRef(new Map<string, RecordedMidiNote>());
 

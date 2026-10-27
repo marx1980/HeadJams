@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MusicMaker</string>
+    <string name="title_activity_main">MusicMaker</string>
+    <string name="package_name">com.marx1980.musicmaker</string>
+    <string name="custom_url_scheme">com.marx1980.musicmaker</string>
+</resources>

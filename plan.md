@@ -4,7 +4,7 @@ This is the source of truth for what should be built next. Research: `docs/resea
 ## COMPLETED
 ### 0. Phase 0: Foundations — DONE
 ### 1. Phase 1: Simple, fully functional MVP — DONE
-Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 27, see Phase 14).
+Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 28, see Phase 14).
 ### 2. Phase 2: Sound library and sampling — DONE
 Microphone recording and audio-file import, sample trimming and normalization, searchable/tagged library, pad view, IndexedDB sample storage, sample playback and WAV export, recording tutorial.
 ### 3. Phase 3: Richer composition — DONE
@@ -87,16 +87,17 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Verified tests and production build. Offline PWA caching remains Phase 13.
 ### 13. Platform and community — IN PROGRESS (last)
 - [x] PWA offline app shell and procedural starter-sound bundle caching; user sample audio remains available offline in IndexedDB.
-- [ ] Capacitor builds.
-- [ ] MIDI (optionally drum map).
+- [x] Capacitor Android/iOS projects, native sync workflow, and relative-asset mobile build.
+- [x] MIDI keyboard input: device selection, live monitoring, quantized note recording into the selected pattern, browser Web MIDI, and native iOS/Android bridge.
+- Drum-map MIDI slots remain an optional later upgrade.
 
 ### 14. Guided tutorials — DONE
 - [x] 14a: tutorial data model (tab, group, level, summary, features), per-tab Help hub with Actions/Workflows modes, "Show all tabs", completion persistence (`musicmaker.tutorialDone`) and reset.
 - [x] 14b: overlay Back/Skip step/Show me/Exit, step counter, `aria-live` announcements, missing-target fallbacks, reduced-motion, mobile docking, first-visit nudges for non-Beat tabs.
 - [x] 14c-e: tutorials for tempo/swing, mix, templates, sound picker, drum kits, guitar chords, pitch/time, Sound Designer, effects, import, Sample Editor, recognition, patterns, timeline, arrangement assistance, export options, privacy/offline, confidence cues, keyboard navigation, and library search/pads.
-- [x] 14f: six workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
+- [x] 14f: seven workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
 - [x] Added actionable sample editing, recognition correction, and library search/pad-view events; added keyboard-navigation, confidence-cue, and library-use tutorials.
-- [x] Added microphone capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
+- [x] Added microphone/MIDI capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
 - [ ] Browser-level selector coverage and mobile/desktop flow verification remain follow-up validation.
 
 ## Decisions / Important Context

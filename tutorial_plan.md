@@ -13,7 +13,8 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 - [x] `TutorialStep` options `info` (always-skippable informational step) and `fallback` (message when target missing).
 - [x] New events: `kit-applied`, `template`, `designer-open`.
 - [x] Tutorial capability requirements now gate microphone tutorials when browser recording APIs are unavailable; action events track sample edits, imports, recognition corrections, and library actions.
-- [ ] Not done: a generic step-level `optional`/`selector fallback` option; MIDI event and tutorial are still blocked on MIDI input support.
+- [x] MIDI capability gating and `midi-connected` / recorded-note events now support the MIDI keyboard tutorial.
+- [ ] Not done: a generic step-level `optional`/`selector fallback` option.
 
 ### 2. Per-tab Help button and hub — DONE
 - [x] "? Help for this screen" button under the tabs opens `TutorialMenu` for the current tab; header "? Tutorials" opens it for all tabs.
@@ -22,9 +23,8 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 - [x] "Show all tabs" toggle.
 - [ ] Future polish: place the shared Help button inside each tab's own header.
 
-### 3. Workflows — MOSTLY DONE
-- [x] Make a song from scratch; Record and use your own sound; Sing or hum a melody; Beatbox a drum loop; Design your own instrument; Share your work.
-- [ ] Missing: "Play a part with a MIDI keyboard" (MIDI is not implemented yet; Phase 13).
+### 3. Workflows — DONE
+- [x] Make a song from scratch; Record and use your own sound; Sing or hum a melody; Beatbox a drum loop; Design your own instrument; Share your work; Play a part with a MIDI keyboard.
 
 ### 4. User-friendliness — MOSTLY DONE
 - [x] Back, Next, Skip step, Show me, Exit; step counter; completion message.
@@ -36,9 +36,10 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 
 ### 5. Content — MOSTLY DONE
 - [x] Original 7 kept with unchanged ids, regrouped.
-- [x] New: tempo & swing, mixing, templates, sound picker, drum kits, guitar chords, pitch/time tools, Sound Designer, effects, import audio, Sample Editor, recognition, recognition correction, patterns/launcher, timeline, arrangement assistance, export options, privacy/offline (24 total).
+- [x] New: tempo & swing, mixing, templates, sound picker, drum kits, guitar chords, pitch/time tools, Sound Designer, effects, import audio, Sample Editor, recognition, recognition correction, patterns/launcher, timeline, arrangement assistance, export options, privacy/offline, confidence cues, keyboard navigation, library tools, MIDI keyboard (28 total).
 - [x] Added low-confidence/take-cue and keyboard-navigation tutorials, plus pad-view and tagged-library search steps.
-- [ ] MIDI recording tutorial awaits MIDI input support. Some arrangement-assist and explanatory steps remain informational; browser verification of highlight selectors remains follow-up.
+- [x] MIDI keyboard tutorial and workflow are implemented with capability gating.
+- [ ] Some arrangement-assist and explanatory steps remain informational; browser verification of highlight selectors remains follow-up.
 
 ### 6. Coverage check — PARTLY DONE
 - [x] `src/tutorial/tutorials.test.ts`: unique ids, known groups, original ids kept, every listed feature covered, workflow ids resolve, first-step predicate, progress persistence.
@@ -51,6 +52,5 @@ One global "? Tutorials" button opened a flat list of 7 tutorials (`src/tutorial
 ### 8. Delivery — done in a single change instead of six PRs (a–f).
 
 ## Remaining work (summary)
-1. Add the MIDI tutorial and workflow when MIDI input is implemented.
-2. Add rendered-DOM selector coverage and expand `done()` predicate tests.
-3. Verify tutorial flows in desktop and mobile browsers, including permission-denied guidance.
+1. Add rendered-DOM selector coverage and expand `done()` predicate tests.
+2. Verify tutorial flows in desktop and mobile browsers, including MIDI device permissions and permission-denied guidance.

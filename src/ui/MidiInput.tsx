@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseMidiMessage, supportsMidiInput, type MidiMessage } from '../platform/midi';
 import type { Channel } from '../model/project';
-import { Capacitor } from '@capacitor/core';
-import { CapacitorMIDIDevice, type PluginListenerHandle } from '@eugabrielsilva/capacitor-midi-device';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
+import { CapacitorMIDIDevice } from '@eugabrielsilva/capacitor-midi-device';
 
 interface MidiEventLike {
   data: Uint8Array;

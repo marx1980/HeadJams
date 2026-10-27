@@ -6,8 +6,17 @@ Phases 0–4 (beat maker, tutorials, sampling, composition, sound shaping), Phas
 
 Every screen has a **? Help** button that opens the tutorial hub: browse by feature (Actions) or by goal (Workflows, e.g. make a song). Progress is saved locally.
 
+## MIDI keyboard
+
+Connect a MIDI keyboard from the Beat screen in a browser with Web MIDI support or in the Capacitor Android/iOS app. Choose the destination channel, start MIDI recording, play, then stop; captured notes are quantized to the current grid and saved into the selected pattern. MIDI access requires a device and browser permission.
+
 ## Essential Commands
 - Install: `npm install`
 - Run: `npm run dev`
 - Test: `npm test`
 - Build: `npm run build` (writes the GitHub Pages site to `dist/`; source entry: `app/index.html`)
+- Mobile build and sync: `npm run build:mobile` (builds with relative asset paths and syncs Capacitor projects)
+
+## Capacitor builds
+
+Install Android Studio and its Android SDK to build/run `android/`. Build iOS with Xcode on macOS from `ios/App/`. After changing web code, run `npm run build:mobile`, then open the native project in its IDE. Native MIDI uses the Capacitor MIDI plugin; the browser version requires Web MIDI support and a secure context. Android/iOS packaging still requires the platform IDE and signing setup.
