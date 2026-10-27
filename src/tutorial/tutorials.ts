@@ -62,7 +62,7 @@ export const TUTORIALS: Tutorial[] = [
     title: '4. Add a channel',
     steps: [
       { view: 'beat', text: 'Tap "Add channel" to get a new row.', target: '#add-channel', done: (s) => s.project.channels.length > s.base.channels.length },
-      { view: 'beat', text: 'Pick a sound for it from the sound menu.', target: '.sound-select', done: (s) => s.events.has('sound-change') },
+      { view: 'beat', text: 'Pick a sound for it from the sound menu.', target: '.sound-picker-trigger', done: (s) => s.events.has('sound-change') },
       { view: 'beat', text: 'Tap the speaker button to preview a sound.', target: '.preview-btn', done: (s) => s.events.has('preview') },
     ],
   },
