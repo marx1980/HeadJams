@@ -20,7 +20,8 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
   const channel = project.channels.find((item) => item.id === channelId) ?? project.channels[0];
   const scale = SCALES.find((item) => item.id === project.scaleId) ?? SCALES[0];
   const steps = totalSteps(project);
-  const scaleRoots = useMemo(() => scalePitches(project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
+  const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
+  const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
   const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
   const pitches = Array.from({ length: PITCH_COUNT }, (_, index) => LOW_PITCH + PITCH_COUNT - 1 - index);
 
@@ -40,7 +41,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
   };
   const addChord = () => {
     if (!channel) return;
-    const updated = chordPitches(chordRoot, chordQuality).reduce((current, pitch, index) => {
+    const updated = chordPitches(activeChordRoot, chordQuality).reduce((current, pitch, index) => {
       const chordPitch = snap ? snapPitchToScale(pitch, project.scaleRoot, scale) : pitch;
       return addNote(current, channel.id, {
         id: `note-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2)}`,
@@ -67,7 +68,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
               {pattern.name}
             </button>
           ))}
-          <button onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}>＋ New pattern</button>
+          <button id="new-pattern" onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}>＋ New pattern</button>
           {project.currentPatternId && (
             <>
               <button className="secondary" onClick={() => {
@@ -109,7 +110,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
       {channel ? (
         <div className="piano-roll" role="grid" aria-label={`${channel.name} piano roll`}>
           {pitches.map((pitch) => (
-            <div className="piano-row" role="row" key={pitch}>
+            <div className="piano-row" role="row" key={pitch} style={{ gridTemplateColumns: `44px repeat(${steps}, minmax(22px, 1fr))` }}>
               <span className="pitch-label">{NOTE_NAMES[pitch % 12]}{Math.floor(pitch / 12) - 1}</span>
               {Array.from({ length: steps }, (_, step) => {
                 const activeNote = channel.notes?.find((note) => note.step === step && note.pitch === pitch);
@@ -118,6 +119,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
                   <button key={step} role="gridcell" aria-label={`${NOTE_NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}, step ${step + 1}`}
                     aria-pressed={Boolean(activeNote)} title={activeNote ? 'Remove note' : 'Add note'}
                     className={`piano-cell${inScale ? ' scale-note' : ''}${activeNote ? ' note-on' : ''}`}
+                    id={pitch === pitches[0] && step === 0 ? 'piano-roll-cell' : undefined}
                     onClick={() => addPianoNote(step, pitch)} />
                 );
               })}
@@ -130,7 +132,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
         <div className="chord-controls">
           <strong>Chord assist</strong>
           <label>Root note
-            <select value={chordRoot} onChange={(event) => setChordRoot(Number(event.target.value))}>
+            <select value={activeChordRoot} onChange={(event) => setChordRoot(Number(event.target.value))}>
               {scaleRoots.map((pitch) => <option key={pitch} value={pitch}>{NOTE_NAMES[pitch % 12]}{Math.floor(pitch / 12) - 1}</option>)}
             </select>
           </label>
@@ -144,7 +146,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
               {Array.from({ length: steps }, (_, step) => <option key={step} value={step}>{step + 1}</option>)}
             </select>
           </label>
-          <button onClick={addChord}>＋ Add chord</button>
+          <button id="add-chord" onClick={addChord}>＋ Add chord</button>
         </div>
       )}
 

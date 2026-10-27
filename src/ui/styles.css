@@ -62,3 +62,8 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .timeline-bar { grid-row: 1; border-left: 1px solid #555; padding-left: 6px; font-size: .75rem; opacity: .7; }
 .timeline-clip { grid-row: 2; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 4px; background: #118ab2; border-radius: 6px; padding: 2px 6px; min-width: 0; }
 .timeline-clip button { min-height: 28px; padding: 0 8px; }
+@media (max-width: 640px) {
+  .composition-controls { align-items: stretch; }
+  .pattern-controls { align-items: stretch; }
+  .timeline { min-width: max-content; }
+}

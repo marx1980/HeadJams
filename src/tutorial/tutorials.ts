@@ -20,6 +20,7 @@ export interface Tutorial {
 }
 
 export const countNotes = (p: Project): number => p.channels.reduce((n, c) => n + c.steps.filter(Boolean).length, 0);
+const countPianoNotes = (p: Project): number => p.channels.reduce((n, channel) => n + (channel.notes?.length ?? 0), 0);
 
 export const TUTORIALS: Tutorial[] = [
   {
@@ -71,6 +72,16 @@ export const TUTORIALS: Tutorial[] = [
     steps: [
       { text: 'Allow microphone access and record a sound.', target: '#record-sample', done: (s) => s.events.has('record-start') },
       { text: 'Stop the recording, trim it if needed, and save it to your library.', target: '#save-sample', done: (s) => s.events.has('sample-saved') },
+    ],
+  },
+  {
+    id: 'composition',
+    title: '7. Build a composition',
+    steps: [
+      { text: 'Create a pattern so your composition can have multiple sections.', target: '#new-pattern', done: (s) => s.project.patterns.length > s.base.patterns.length },
+      { text: 'Add a note in the piano roll. Scale tones are highlighted, and Snap to scale keeps notes in key.', target: '#piano-roll-cell', done: (s) => countPianoNotes(s.project) > countPianoNotes(s.base) },
+      { text: 'Use Chord assist to add a chord, then add the pattern to the arrangement timeline.', target: '#add-chord', done: (s) => countPianoNotes(s.project) >= countPianoNotes(s.base) + 4 },
+      { text: 'Add the selected pattern to the timeline to create a song arrangement.', target: '.arrangement-heading button', done: (s) => s.project.arrangement.length > s.base.arrangement.length },
     ],
   },
 ];
