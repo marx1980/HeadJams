@@ -73,8 +73,11 @@ First run shows only Beat + Library; Notes, Sound and Song tabs appear (or are u
 6. Manual usability pass (the pending 2-minute test) on desktop and phone width.
 7. Update README/plan.md; resume Phase 5 (PWA, Capacitor, sync, MIDI), which gain natural homes: Settings/Account in ⋯ menu, Marketplace as a Library sub-tab.
 
-## 8. Open questions
-- Is 5 tabs too many? Alternative: merge Sound into Library ("Sounds") for 4 tabs.
-- Should Notes and Beat be one screen with a toggle per channel (grid vs piano roll)?
-- Hide advanced tabs for first-time users (section 6), or always show?
-- Desktop: keep tabs, or a side-by-side layout (Beat on top, Notes/Sound in a lower panel)?
+## 8. Decisions (from review)
+1. **Five tabs is not too many** – keep Sound separate from Library.
+2. **Beat and Notes merge** into one screen. Each channel gets a Grid / Piano roll toggle (drum-like sounds default to Grid, tonal sounds to Piano roll). Scale, snap and pitch/time tools show only in Piano roll mode. Result: **Beat, Sound, Library, Song** tabs, plus the top bar. (Superseded: the separate Notes tab in sections 3-4.)
+3. **Progressive disclosure: yes** – first run shows Beat and Library; Sound and Song unlock after the first loop is played (or via "Show all" in settings).
+4. **Desktop: side-by-side layout** – Beat on top, with a lower dock showing Sound / Library / Song panels beside or under it; phones keep the bottom tab bar. Same components, different layout via CSS breakpoint.
+
+## 9. Next step
+Implementation per section 7, adjusted for the decisions above (no `NotesView`; add per-channel editor toggle; add desktop dock layout). Awaiting go-ahead before touching code.
