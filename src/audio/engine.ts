@@ -12,6 +12,17 @@ export class Engine {
   private buffers = new Map<string, AudioBuffer>();
   private sched?: Scheduler;
   private timer?: number;
+  private master?: GainNode;
+  private filter?: BiquadFilterNode;
+  private eqLow?: BiquadFilterNode;
+  private eqMid?: BiquadFilterNode;
+  private eqHigh?: BiquadFilterNode;
+  private delay?: DelayNode;
+  private delayFeedback?: GainNode;
+  private delayWet?: GainNode;
+  private reverbWet?: GainNode;
+  private reverbDry?: GainNode;
+  private convolver?: ConvolverNode;
   playing = false;
 
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
@@ -32,9 +43,72 @@ export class Engine {
   }
 
   private async ensureCtx(): Promise<AudioContext> {
-    this.ctx ??= new AudioContext();
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+      this.setupEffects(this.ctx);
+    }
     if (this.ctx.state === 'suspended') await this.ctx.resume();
+    this.updateEffects();
     return this.ctx;
+  }
+
+  private setupEffects(ctx: AudioContext) {
+    this.master = ctx.createGain();
+    this.filter = ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.eqLow = ctx.createBiquadFilter();
+    this.eqLow.type = 'lowshelf';
+    this.eqLow.frequency.value = 250;
+    this.eqMid = ctx.createBiquadFilter();
+    this.eqMid.type = 'peaking';
+    this.eqMid.frequency.value = 1000;
+    this.eqMid.Q.value = 1;
+    this.eqHigh = ctx.createBiquadFilter();
+    this.eqHigh.type = 'highshelf';
+    this.eqHigh.frequency.value = 6000;
+
+    this.delay = ctx.createDelay(1);
+    this.delay.delayTime.value = 0.25;
+    const delayDry = ctx.createGain();
+    this.delayWet = ctx.createGain();
+    const delaySum = ctx.createGain();
+    this.delayFeedback = ctx.createGain();
+    const convolver = ctx.createConvolver();
+    const impulseLength = Math.floor(ctx.sampleRate * 1.5);
+    const impulse = ctx.createBuffer(2, impulseLength, ctx.sampleRate);
+    for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < impulseLength; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / impulseLength) ** 3;
+      }
+    }
+    convolver.buffer = impulse;
+    this.convolver = convolver;
+    this.reverbDry = ctx.createGain();
+    this.reverbWet = ctx.createGain();
+
+    this.master.connect(this.filter).connect(this.eqLow).connect(this.eqMid).connect(this.eqHigh);
+    this.eqHigh.connect(delayDry).connect(delaySum);
+    this.eqHigh.connect(this.delay).connect(this.delayWet).connect(delaySum);
+    this.delay.connect(this.delayFeedback).connect(this.delay);
+    delaySum.connect(this.reverbDry).connect(ctx.destination);
+    delaySum.connect(convolver).connect(this.reverbWet).connect(ctx.destination);
+  }
+
+  private updateEffects() {
+    if (!this.ctx || !this.filter || !this.eqLow || !this.eqMid || !this.eqHigh
+      || !this.delay || !this.delayFeedback || !this.delayWet || !this.reverbDry || !this.reverbWet) return;
+    const effects = this.getProject().effects;
+    const now = this.ctx.currentTime;
+    this.filter.type = effects.filterCutoff >= 20000 ? 'allpass' : 'lowpass';
+    this.filter.frequency.setTargetAtTime(effects.filterCutoff, now, 0.02);
+    this.eqLow.gain.setTargetAtTime(effects.eqLow, now, 0.02);
+    this.eqMid.gain.setTargetAtTime(effects.eqMid, now, 0.02);
+    this.eqHigh.gain.setTargetAtTime(effects.eqHigh, now, 0.02);
+    this.delayFeedback.gain.setTargetAtTime(effects.delay * 0.35, now, 0.02);
+    this.delayWet.gain.setTargetAtTime(effects.delay * 0.45, now, 0.02);
+    this.reverbDry.gain.setTargetAtTime(1, now, 0.02);
+    this.reverbWet.gain.setTargetAtTime(effects.reverb * 0.45, now, 0.02);
   }
 
   private play(def: SoundDef, time: number, volume: number, pan: number) {
@@ -48,7 +122,7 @@ export class Engine {
     gain.gain.value = Math.max(l, r);
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
-    src.connect(gain).connect(panner).connect(ctx.destination);
+    src.connect(gain).connect(panner).connect(this.master!);
     src.start(time);
   }
 
@@ -65,7 +139,7 @@ export class Engine {
     gain.gain.setValueAtTime(level, end);
     gain.gain.linearRampToValueAtTime(0, end + 0.03);
     panner.pan.setValueAtTime(pan, start);
-    gain.connect(panner).connect(ctx.destination);
+    gain.connect(panner).connect(this.master!);
 
     if (def.sampleId) {
       const buffer = this.buffer(def);
@@ -108,6 +182,7 @@ export class Engine {
       lookAhead: 0.15,
       onStep: (step, time) => {
         const p = this.getProject();
+        this.updateEffects();
         const stepLen = stepDuration(p.bpm, p.noteLength);
         for (const source of channelsForPlaybackStep(p, step)) {
           for (const c of audibleChannels({ ...p, channels: source.channels })) {

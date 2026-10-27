@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addArrangementClip, addChannel, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
   channelsForPlaybackStep, createChannel, createProject, removeArrangementClip, removeChannel, removeNote, removePattern, selectPattern,
-  setBpm, setLoopBars, setNoteLength, setScale, toggleStep, totalSteps, MAX_CHANNELS,
+  setBpm, setEffects, setLoopBars, setNoteLength, setScale, toggleStep, totalSteps, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
 
@@ -40,6 +40,11 @@ describe('project model', () => {
   it('clamps bpm', () => {
     expect(setBpm(createProject(), 999).bpm).toBe(200);
     expect(setBpm(createProject(), 1).bpm).toBe(40);
+  });
+  it('stores bounded effects settings with neutral defaults', () => {
+    expect(createProject().effects).toEqual({ reverb: 0, delay: 0, filterCutoff: 20000, eqLow: 0, eqMid: 0, eqHigh: 0 });
+    expect(setEffects(createProject(), { reverb: 2, filterCutoff: 30, eqMid: -20 }).effects)
+      .toMatchObject({ reverb: 1, filterCutoff: 200, eqMid: -12 });
   });
   it('adds custom sounds', () => {
     const { project, sound } = addCustomSound(createProject(), ' ', { wave: 'sine', freq: 100, freqEnd: 50, decay: 0.2, cutoff: 1000 });

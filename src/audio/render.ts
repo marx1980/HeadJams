@@ -6,6 +6,120 @@ import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
 
+interface BiquadCoefficients {
+  b0: number;
+  b1: number;
+  b2: number;
+  a0: number;
+  a1: number;
+  a2: number;
+}
+
+function applyBiquad(input: Float32Array, coefficients: BiquadCoefficients): Float32Array {
+  const { b0, b1, b2, a0, a1, a2 } = coefficients;
+  const output = new Float32Array(input.length);
+  let x1 = 0;
+  let x2 = 0;
+  let y1 = 0;
+  let y2 = 0;
+  for (let i = 0; i < input.length; i++) {
+    const x0 = input[i];
+    const y0 = (b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+    output[i] = y0;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+  }
+  return output;
+}
+
+function lowpassCoefficients(cutoff: number, sampleRate: number): BiquadCoefficients {
+  const omega = 2 * Math.PI * Math.min(cutoff, sampleRate * 0.49) / sampleRate;
+  const cosine = Math.cos(omega);
+  const alpha = Math.sin(omega) / Math.SQRT2;
+  return {
+    b0: (1 - cosine) / 2,
+    b1: 1 - cosine,
+    b2: (1 - cosine) / 2,
+    a0: 1 + alpha,
+    a1: -2 * cosine,
+    a2: 1 - alpha,
+  };
+}
+
+function shelfCoefficients(frequency: number, gainDb: number, sampleRate: number, high: boolean): BiquadCoefficients {
+  const a = 10 ** (gainDb / 40);
+  const omega = 2 * Math.PI * frequency / sampleRate;
+  const cosine = Math.cos(omega);
+  const sine = Math.sin(omega);
+  const alpha = sine / 2 * Math.SQRT2;
+  const root = 2 * Math.sqrt(a) * alpha;
+  if (high) {
+    return {
+      b0: a * ((a + 1) + (a - 1) * cosine + root),
+      b1: -2 * a * ((a - 1) + (a + 1) * cosine),
+      b2: a * ((a + 1) + (a - 1) * cosine - root),
+      a0: (a + 1) - (a - 1) * cosine + root,
+      a1: 2 * ((a - 1) - (a + 1) * cosine),
+      a2: (a + 1) - (a - 1) * cosine - root,
+    };
+  }
+  return {
+    b0: a * ((a + 1) - (a - 1) * cosine + root),
+    b1: 2 * a * ((a - 1) - (a + 1) * cosine),
+    b2: a * ((a + 1) - (a - 1) * cosine - root),
+    a0: (a + 1) + (a - 1) * cosine + root,
+    a1: -2 * ((a - 1) + (a + 1) * cosine),
+    a2: (a + 1) + (a - 1) * cosine - root,
+  };
+}
+
+function peakCoefficients(frequency: number, gainDb: number, sampleRate: number): BiquadCoefficients {
+  const a = 10 ** (gainDb / 40);
+  const omega = 2 * Math.PI * frequency / sampleRate;
+  const cosine = Math.cos(omega);
+  const alpha = Math.sin(omega) / 2;
+  return {
+    b0: 1 + alpha * a,
+    b1: -2 * cosine,
+    b2: 1 - alpha * a,
+    a0: 1 + alpha / a,
+    a1: -2 * cosine,
+    a2: 1 - alpha / a,
+  };
+}
+
+function processEffects(input: Float32Array, effects: Project['effects'], sampleRate: number): Float32Array {
+  let output = input;
+  if (effects.filterCutoff < 20000) output = applyBiquad(output, lowpassCoefficients(effects.filterCutoff, sampleRate));
+  if (effects.eqLow !== 0) output = applyBiquad(output, shelfCoefficients(250, effects.eqLow, sampleRate, false));
+  if (effects.eqMid !== 0) output = applyBiquad(output, peakCoefficients(1000, effects.eqMid, sampleRate));
+  if (effects.eqHigh !== 0) output = applyBiquad(output, shelfCoefficients(Math.min(6000, sampleRate * 0.4), effects.eqHigh, sampleRate, true));
+
+  if (effects.delay > 0) {
+    const delaySamples = Math.max(1, Math.round(sampleRate * 0.25));
+    const feedback = effects.delay * 0.35;
+    for (let i = delaySamples; i < output.length; i++) {
+      output[i] += output[i - delaySamples] * feedback;
+    }
+  }
+  if (effects.reverb > 0) {
+    const taps = [0.029, 0.041, 0.053, 0.071, 0.097, 0.131, 0.173, 0.229];
+    const source = output;
+    output = new Float32Array(source.length);
+    for (let i = 0; i < source.length; i++) {
+      let value = source[i];
+      for (let tap = 0; tap < taps.length; tap++) {
+        const index = i - Math.round(taps[tap] * sampleRate);
+        if (index >= 0) value += source[index] * effects.reverb * (0.18 / (tap + 1));
+      }
+      output[i] = value;
+    }
+  }
+  return output;
+}
+
 export function panGains(volume: number, pan: number): [number, number] {
   return [volume * (pan > 0 ? 1 - pan : 1), volume * (pan < 0 ? 1 + pan : 1)];
 }
@@ -15,8 +129,9 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
   const stepLen = Math.round(stepDuration(p.bpm, p.noteLength) * sr);
   const songSteps = arrangementLength(p) || totalSteps(p);
   const loopLen = stepLen * songSteps;
-  const left = new Float32Array(loopLen + sr);
-  const right = new Float32Array(loopLen + sr);
+  const tail = sr * (1 + (p.effects.delay > 0 ? 1.5 : 0) + (p.effects.reverb > 0 ? 0.5 : 0));
+  const left = new Float32Array(loopLen + tail);
+  const right = new Float32Array(loopLen + tail);
   const cache = new Map<string, Float32Array>();
   const mix = (data: Float32Array, start: number, gl: number, gr: number) => {
     for (let k = 0; k < data.length && start + k < left.length; k++) {
@@ -79,5 +194,8 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
       }
     }
   }
-  return { left, right };
+  return {
+    left: processEffects(left, p.effects, sr),
+    right: processEffects(right, p.effects, sr),
+  };
 }

@@ -53,6 +53,15 @@ export interface ArrangementClip {
   lengthSteps: number;
 }
 
+export interface ProjectEffects {
+  reverb: number;
+  delay: number;
+  filterCutoff: number;
+  eqLow: number;
+  eqMid: number;
+  eqHigh: number;
+}
+
 export interface Project {
   name: string;
   bpm: number;
@@ -66,6 +75,7 @@ export interface Project {
   patterns: Pattern[];
   currentPatternId?: string;
   arrangement: ArrangementClip[];
+  effects: ProjectEffects;
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
@@ -73,8 +83,29 @@ export const LOOP_BARS: LoopBars[] = [1, 2, 4];
 export const MAX_CHANNELS = 8;
 export const MAX_PITCH = 127;
 export const MIN_PITCH = 0;
+export const DEFAULT_EFFECTS: ProjectEffects = {
+  reverb: 0,
+  delay: 0,
+  filterCutoff: 20000,
+  eqLow: 0,
+  eqMid: 0,
+  eqHigh: 0,
+};
 
 export const totalSteps = (p: Pick<Project, 'noteLength' | 'loopBars'>): number => p.noteLength * p.loopBars;
+
+export function normalizeEffects(effects?: Partial<ProjectEffects> | null): ProjectEffects {
+  const bounded = (value: number | undefined, fallback: number, min: number, max: number) =>
+    Number.isFinite(value) ? Math.min(max, Math.max(min, value!)) : fallback;
+  return {
+    reverb: bounded(effects?.reverb, DEFAULT_EFFECTS.reverb, 0, 1),
+    delay: bounded(effects?.delay, DEFAULT_EFFECTS.delay, 0, 1),
+    filterCutoff: bounded(effects?.filterCutoff, DEFAULT_EFFECTS.filterCutoff, 200, 20000),
+    eqLow: bounded(effects?.eqLow, DEFAULT_EFFECTS.eqLow, -12, 12),
+    eqMid: bounded(effects?.eqMid, DEFAULT_EFFECTS.eqMid, -12, 12),
+    eqHigh: bounded(effects?.eqHigh, DEFAULT_EFFECTS.eqHigh, -12, 12),
+  };
+}
 
 export function createChannel(id: string, name: string, soundId: string, steps = 16): Channel {
   return { id, name, soundId, volume: 0.8, pan: 0, mute: false, solo: false, steps: new Array(steps).fill(false), notes: [] };
@@ -86,6 +117,7 @@ export function createProject(name = 'Untitled'): Project {
     channels: [createChannel('ch1', 'Kick', 'kick-1')],
     customSounds: [],
     scaleRoot: 0, scaleId: 'major', patterns: [], arrangement: [],
+    effects: { ...DEFAULT_EFFECTS },
   };
 }
 
@@ -142,6 +174,10 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
 
 export function setBpm(p: Project, bpm: number): Project {
   return { ...p, bpm: Math.min(200, Math.max(40, Math.round(bpm) || p.bpm)) };
+}
+
+export function setEffects(p: Project, effects: Partial<ProjectEffects>): Project {
+  return { ...p, effects: normalizeEffects({ ...p.effects, ...effects }) };
 }
 
 export function setScale(p: Project, root: number, scaleId: string): Project {
