@@ -15,6 +15,7 @@ import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } fr
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
+import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import './styles.css';
 
@@ -90,7 +91,6 @@ export function App() {
   }, []);
 
   const sounds = useMemo(() => allSounds(project), [project]);
-  const categories = useMemo(() => [...new Set(sounds.map((s) => s.category))], [sounds]);
 
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
@@ -211,19 +211,12 @@ export function App() {
           return (
             <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
-                <select className="sound-select" aria-label={`Sound for ${c.name}`} value={c.soundId}
-                  onChange={(e) => {
-                    const d = findSound(project, e.target.value);
-                    setProject(updateChannel(project, c.id, { soundId: e.target.value, name: d?.name ?? c.name }));
-                    preview(d, c.volume);
+                <SoundPicker sounds={sounds} soundId={c.soundId} onPreview={(sound) => preview(sound, c.volume)}
+                  onSelect={(sound) => {
+                    setProject(updateChannel(project, c.id, { soundId: sound.id, name: sound.name }));
+                    preview(sound, c.volume);
                     emit('sound-change');
-                  }}>
-                  {categories.map((cat) => (
-                    <optgroup key={cat} label={cat}>
-                      {sounds.filter((s) => s.category === cat).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+                  }} />
                 <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}>🔊</button>
                 <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
