@@ -70,6 +70,7 @@ export interface ProjectEffects {
 }
 
 export interface Project {
+  formatVersion?: number;
   name: string;
   bpm: number;
   /** Grid resolution: 4 = quarter notes, 8 = eighths, 16 = sixteenths (steps per bar). */
@@ -99,6 +100,7 @@ export const DEFAULT_EFFECTS: ProjectEffects = {
   eqMid: 0,
   eqHigh: 0,
 };
+export const PROJECT_FORMAT_VERSION = 2;
 
 export const totalSteps = (p: Pick<Project, 'noteLength' | 'loopBars'>): number => p.noteLength * p.loopBars;
 
@@ -121,6 +123,7 @@ export function createChannel(id: string, name: string, soundId: string, steps =
 
 export function createProject(name = 'Untitled'): Project {
   return {
+    formatVersion: PROJECT_FORMAT_VERSION,
     name, bpm: 100, noteLength: 16, loopBars: 1,
     channels: [createChannel('ch1', 'Kick', 'kick-1')],
     customSounds: [],

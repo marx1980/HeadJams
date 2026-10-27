@@ -7,6 +7,7 @@ import {
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
 import { allSounds, findSound, SAMPLE_RATE, STARTER_SOUNDS } from '../library/sounds';
+import { createInstrumentRegistry } from '../library/instrumentRegistry';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { renderProject } from '../audio/render';
@@ -14,6 +15,7 @@ import { encodeWav } from '../audio/wav';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
 import { SoundDesigner } from './SoundDesigner';
+import { SoundPicker } from './SoundPicker';
 import { SampleLibrary } from './SampleLibrary';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import './styles.css';
@@ -48,6 +50,8 @@ export function App() {
   const [pianoChannels, setPianoChannels] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState('');
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
+  const [sampleAssetsReady, setSampleAssetsReady] = useState(false);
+  const [pickerChannelId, setPickerChannelId] = useState<string | null>(null);
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -78,6 +82,7 @@ export function App() {
         const loaded = new Map<string, SampleData>();
         samples.forEach((sample) => { if (sample) loaded.set(sample.id, sample); });
         setSampleData(loaded);
+        setSampleAssetsReady(true);
       });
     return () => { active = false; };
     // Load persisted samples once; newly created samples are added in onSaveSample.
@@ -90,7 +95,10 @@ export function App() {
   }, []);
 
   const sounds = useMemo(() => allSounds(project), [project]);
-  const categories = useMemo(() => [...new Set(sounds.map((s) => s.category))], [sounds]);
+  const registry = useMemo(() => createInstrumentRegistry(
+    sounds,
+    sampleAssetsReady ? new Set(sampleData.keys()) : undefined,
+  ), [sounds, sampleAssetsReady, sampleData]);
 
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
@@ -211,19 +219,10 @@ export function App() {
           return (
             <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
-                <select className="sound-select" aria-label={`Sound for ${c.name}`} value={c.soundId}
-                  onChange={(e) => {
-                    const d = findSound(project, e.target.value);
-                    setProject(updateChannel(project, c.id, { soundId: e.target.value, name: d?.name ?? c.name }));
-                    preview(d, c.volume);
-                    emit('sound-change');
-                  }}>
-                  {categories.map((cat) => (
-                    <optgroup key={cat} label={cat}>
-                      {sounds.filter((s) => s.category === cat).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+                <button className="sound-select" aria-label={`Choose sound for ${c.name}`} onClick={() => setPickerChannelId(c.id)}>
+                  {registry.entries.find((sound) => sound.id === c.soundId)?.name
+                    ?? (findSound(project, c.soundId) ? `Unavailable sound: ${findSound(project, c.soundId)!.name}` : `Missing sound: ${c.soundId}`)}
+                </button>
                 <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}>🔊</button>
                 <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
@@ -313,7 +312,7 @@ export function App() {
 
         <div id="pane-library" role="tabpanel" aria-labelledby="tab-library" className={`pane pane-library${view === 'library' ? ' active' : ''}`}>
       <SampleLibrary
-        sounds={sounds}
+        sounds={registry.entries}
         channels={project.channels}
         onPreview={(sound) => preview(sound)}
         onUse={(soundId, channelId) => {
@@ -344,6 +343,23 @@ export function App() {
       </div>
 
       {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep} />}
+      {pickerChannelId && (
+        <SoundPicker
+          sounds={registry.entries}
+          selectedSoundId={project.channels.find((channel) => channel.id === pickerChannelId)?.soundId ?? ''}
+          onPreview={(sound) => preview(sound, project.channels.find((channel) => channel.id === pickerChannelId)?.volume)}
+          onSelect={(sound) => {
+            const channel = project.channels.find((item) => item.id === pickerChannelId);
+            if (channel) {
+              setProject(updateChannel(project, channel.id, { soundId: sound.id, name: sound.name }));
+              preview(sound, channel.volume);
+              emit('sound-change');
+            }
+            setPickerChannelId(null);
+          }}
+          onClose={() => setPickerChannelId(null)}
+        />
+      )}
     </main>
   );
 }

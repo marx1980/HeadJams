@@ -33,6 +33,24 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .sound-meta { font-size: 0.75rem; opacity: 0.7; }
 .sound-actions { margin-top: auto; }
 .sound-actions button { min-height: 34px; }
+.sound-select { max-width: min(250px, 100%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.sound-picker-backdrop { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 12px; background: #000a; }
+.sound-picker { width: min(620px, 100%); max-height: min(85vh, 760px); overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #1d1d2d; border: 1px solid #666; border-radius: 12px; box-shadow: 0 16px 48px #0009; }
+.sound-picker-header, .sound-picker-heading, .sound-picker-actions { display: flex; align-items: center; gap: 8px; }
+.sound-picker-header { justify-content: space-between; }
+.sound-picker-heading h2 { margin: 0; font-size: 1.1rem; }
+.sound-picker-search { display: flex; flex-direction: column; gap: 4px; }
+.sound-picker-groups, .sound-picker-results { display: grid; gap: 8px; }
+.sound-picker-groups { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.sound-picker-groups button { min-height: 52px; text-align: left; }
+.sound-picker-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px; border: 1px solid #444; border-radius: 8px; background: #262638; }
+.sound-picker-item.selected { border-color: #06d6a0; }
+.sound-picker-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.sound-picker-copy span { font-size: .75rem; opacity: .75; }
+.sound-picker-copy .sound-picker-current { color: #06d6a0; opacity: 1; }
+.sound-picker-warning { margin: 0; color: #ffd166; }
+.sound-picker-actions { flex-shrink: 0; }
+.sound-picker-actions button { min-width: 42px; }
 .sample-editor { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #444; padding-top: 10px; }
 .sample-editor label, .library-filters label { min-width: 150px; }
 .sample-editor input[type='file'], .sample-editor input:not([type='range']):not([type='checkbox']) { max-width: 100%; }
@@ -84,6 +102,11 @@ button.on { background: var(--color, #ffd166); color: #000; }
 @media (max-width: 640px) {
   .tabs { position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0; padding: 6px; border-top: 1px solid #444; z-index: 9; }
   .app { padding-bottom: 200px; }
+  .sound-picker-backdrop { align-items: end; padding: 0; }
+  .sound-picker { width: 100%; max-height: 90vh; min-height: 65vh; border-radius: 14px 14px 0 0; padding: 14px; }
+  .sound-picker-item { align-items: flex-start; }
+  .sound-picker-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .sound-picker-actions button { min-height: 44px; }
 }
 @media (min-width: 1100px) {
   .app { max-width: 1500px; }

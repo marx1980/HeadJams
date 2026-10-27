@@ -6,6 +6,7 @@ import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
+import { resolveSoundSource } from './soundSource';
 
 export class Engine {
   private ctx?: AudioContext;
@@ -13,6 +14,7 @@ export class Engine {
   private sched?: Scheduler;
   private timer?: number;
   private master?: GainNode;
+  private previewBus?: GainNode;
   private filter?: BiquadFilterNode;
   private eqLow?: BiquadFilterNode;
   private eqMid?: BiquadFilterNode;
@@ -28,13 +30,16 @@ export class Engine {
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
 
   private buffer(def: SoundDef): AudioBuffer | undefined {
-    const sample = def.sampleId ? this.getSample(def.sampleId) : undefined;
-    if (def.sampleId && !sample) return undefined;
+    const source = resolveSoundSource(def);
+    const sample = source.kind === 'sample' ? this.getSample(source.sampleId) : undefined;
+    if (source.kind === 'sample' && !sample) return undefined;
     const key = `${def.id}:${JSON.stringify(def.params)}:${sample?.id ?? ''}`;
     let b = this.buffers.get(key);
     if (!b) {
       const ctx = this.ctx!;
-      const data = sample ? resampleSample(sample.samples, sample.sampleRate, ctx.sampleRate) : renderSound(def.params, ctx.sampleRate);
+      const data = source.kind === 'sample'
+        ? resampleSample(sample!.samples, sample!.sampleRate, ctx.sampleRate)
+        : renderSound(source.params, ctx.sampleRate);
       b = ctx.createBuffer(1, data.length, ctx.sampleRate);
       b.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
       this.buffers.set(key, b);
@@ -54,6 +59,8 @@ export class Engine {
 
   private setupEffects(ctx: AudioContext) {
     this.master = ctx.createGain();
+    this.previewBus = ctx.createGain();
+    this.previewBus.connect(ctx.destination);
     this.filter = ctx.createBiquadFilter();
     this.filter.type = 'lowpass';
     this.eqLow = ctx.createBiquadFilter();
@@ -111,7 +118,7 @@ export class Engine {
     this.reverbWet.gain.setTargetAtTime(effects.reverb * 0.45, now, 0.02);
   }
 
-  private play(def: SoundDef, time: number, volume: number, pan: number) {
+  private play(def: SoundDef, time: number, volume: number, pan: number, destination: AudioNode = this.master!) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     const buffer = this.buffer(def);
@@ -122,7 +129,7 @@ export class Engine {
     gain.gain.value = Math.max(l, r);
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
-    src.connect(gain).connect(panner).connect(this.master!);
+    src.connect(gain).connect(panner).connect(destination);
     src.start(time);
   }
 
@@ -141,12 +148,13 @@ export class Engine {
     panner.pan.setValueAtTime(pan, start);
     gain.connect(panner).connect(this.master!);
 
-    if (def.sampleId) {
+    const sourceDefinition = resolveSoundSource(def);
+    if (sourceDefinition.kind === 'sample') {
       const buffer = this.buffer(def);
       if (!buffer) return;
       const source = ctx.createBufferSource();
       source.buffer = buffer;
-      const rate = pitchToFrequency(pitch) / Math.max(10, def.params.freq);
+      const rate = pitchToFrequency(pitch) / sourceDefinition.rootFrequency;
       source.playbackRate.setValueAtTime(Math.min(8, Math.max(0.125, rate)), start);
       source.connect(gain);
       source.start(start);
@@ -167,7 +175,7 @@ export class Engine {
 
   async preview(def: SoundDef, volume = 0.8) {
     const ctx = await this.ensureCtx();
-    this.play(def, ctx.currentTime, volume, 0);
+    this.play(def, ctx.currentTime, volume, 0, this.previewBus!);
   }
 
   async start() {
