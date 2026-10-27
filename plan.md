@@ -11,14 +11,52 @@ Microphone recording and audio-file import, sample trimming and normalization, s
 Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangement timeline, and composition tutorial.
 Not yet verified: manual 2-minute usability test in a real browser.
 
-## QUEUED
+## OPEN
+- Manual 2-minute usability test in a real browser (Phase 3).
+
+## DONE (continued)
 ### 4. Phase 4: Sound shaping — DONE
-- Effects chain (reverb, delay, filter, EQ) — DONE.
-- Pitch/time tools (transpose, shift, duration scaling) and swing templates — DONE.
+Effects chain (reverb, delay, filter, EQ); pitch/time tools (transpose, shift, duration scaling); swing templates.
 ### 4b. UI reorganization — DONE
-Four screens (Beat, Sound, Library, Song) with top bar and project menu; see `ui-design.md`.
-### 5. Phase 5: Platform and community — NOT STARTED
-PWA offline, Capacitor builds, accounts/cloud sync, MIDI, sample marketplace.
+Four screens (Beat, Sound, Library, Song); see `ui-design.md`.
+
+## QUEUED (merged with the Sound Library expansion)
+Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 sample editor, §17-24 recognition). All features of the expansion are retained; its three delivery sequences (§24, §25, §28) are replaced by this single list. Execution rule: one focused PR per sub-phase; read this plan and the code first; preserve existing projects and sounds; add migration/backward-compat tests; run tests and production build; report limitations and risks.
+
+### 5. Sound Library architecture — NOT STARTED (§1, §2, §13-15)
+- Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
+- `SoundSource` abstraction in the audio engine (synth, sample, multisample), on-demand loading with cache, separate preview bus that never modifies the project.
+- Hierarchical picker (mobile bottom sheet) replacing every sound `<select>` (e.g. `App.tsx` channel sound select, Sound screen); Favourites, Recent, search, preview; reuse Library tags/search.
+- Missing-sound state; bump project format version once, with migration tests.
+### 6. Instruments and drums — NOT STARTED (§4-11)
+- Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
+- Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.
+- Re-categorise the existing 30 synth sounds into the new groups without changing IDs.
+- Assets: synthesized sounds stay the default; sampled packs live in a `sounds/` folder served from GitHub Pages and fetched on demand behind `SoundSource` (CDN can replace later); start with a small core.
+### 7. Guitar chords — NOT STARTED (§3)
+- Chord event (symbol + articulation: sustained, down/up strum, muted, power) resolved to playable voicings; fallback generated voicing; never silently substitute chords. Reuse Phase 3 chord assist.
+### 8. Sample Editor — NOT STARTED (§16)
+Distinct naming from Phase 4 note transpose/duration tools (these edit audio, those edit notes). Lives in the Library screen. Reuse existing EQ/filter/reverb/delay DSP via offline render.
+- 8a: sample metadata and IndexedDB migration (original, settings, cached processed, version); non-destructive chain; own undo/reset; noise reduction, gate, fades, gain; original vs processed compare.
+- 8b: pitch shift, fine tune, tune-to-note, speed, time stretch, reverse.
+- 8c: BPM detection, fit to beat/bar.
+- 8d: 3-band EQ, high-pass, compression presets.
+- 8e: creative effects (reverb, delay, distortion, chorus, lo-fi).
+### 9. Editor hardening and UX polish — NOT STARTED (§25 Phase 7)
+- Piano roll and Beat grid ready for recognised events (optional `confidence`, `pitchBend`, source take on the existing step-based events); search/favourites/recent polish; remaining instruments.
+### 10. Recognition — NOT STARTED (§17-21, §23)
+Keep the step-based project `NoteEvent`; recognition output uses a separate seconds-based type quantised into step events.
+- 10a: recognition adapter and event models; Original/Cleaned/Quantised versions stored with the sample.
+- 10b: melody and bass (Basic Pitch behind the adapter, YIN fallback).
+- 10c: beatbox (onset detection + broad classifier, manual correction, kit mapping).
+- 10d: tempo detection, count-in/metronome, quantisation, loop recording, multi-track layering.
+- Privacy: on-device processing by default.
+### 11. Arrangement assistance — NOT STARTED (§22)
+Chord suggestions, bass generation, accompaniment/harmony, style templates, higher-quality rendering/export. Generated material kept separate from transcription.
+### 12. Hardening — NOT STARTED
+Accessibility, privacy, performance, export, deployment; expansion definition of done (§27).
+### 13. Platform and community — NOT STARTED (last)
+PWA offline (including sound-pack and sample caching), Capacitor builds, MIDI (optionally drum map), accounts/cloud sync (incl. sample processing and recognition data), sample marketplace (reusing asset-licence records).
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
