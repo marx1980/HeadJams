@@ -52,8 +52,16 @@ export interface Channel {
   notes: NoteEvent[];
   stepEventMetadata?: Record<number, StepEventMetadata>;
   chordEvents?: ChordEvent[];
+  generatedMetadata?: GeneratedTrackMetadata;
   kitId?: string;
   role?: DrumRole;
+}
+
+export interface GeneratedTrackMetadata {
+  generatedBy: 'arrangement-assistant';
+  kind: 'chord-suggestions';
+  sourceChannelId: string;
+  confidence: number;
 }
 
 export interface NoteEvent {
@@ -142,7 +150,7 @@ export const DEFAULT_EFFECTS: ProjectEffects = {
   eqMid: 0,
   eqHigh: 0,
 };
-export const CURRENT_PROJECT_FORMAT_VERSION = 3;
+export const CURRENT_PROJECT_FORMAT_VERSION = 4;
 
 export const totalSteps = (p: Pick<Project, 'noteLength' | 'loopBars'>): number => p.noteLength * p.loopBars;
 

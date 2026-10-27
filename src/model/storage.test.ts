@@ -37,23 +37,23 @@ describe('project storage migration', () => {
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
 
     const loaded = loadProject();
-    expect(loaded.formatVersion).toBe(3);
+    expect(loaded.formatVersion).toBe(4);
     expect(loaded.channels[0].soundId).toBe('legacy-custom-id');
     expect(loaded.customSounds[0].sampleId).toBe('legacy-sample-id');
   });
 
-  it('prefers v2 projects and saves the current format version', () => {
+  it('prefers current projects and saves the current format version', () => {
     const legacy = createProject();
     legacy.name = 'Legacy';
     const current = createProject();
     current.name = 'Current';
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
-    values.set('musicmaker.project.v3', JSON.stringify(current));
+    values.set('musicmaker.project.v4', JSON.stringify(current));
 
     expect(loadProject().name).toBe('Current');
     saveProject(current);
-    const saved = JSON.parse(values.get('musicmaker.project.v3')!) as { formatVersion: number };
-    expect(saved.formatVersion).toBe(3);
+    const saved = JSON.parse(values.get('musicmaker.project.v4')!) as { formatVersion: number };
+    expect(saved.formatVersion).toBe(4);
   });
 
   it('round-trips optional kit roles without changing the project format version', () => {
@@ -63,7 +63,7 @@ describe('project storage migration', () => {
     saveProject(project);
 
     const loaded = loadProject();
-    expect(loaded.formatVersion).toBe(3);
+    expect(loaded.formatVersion).toBe(4);
     expect(loaded.channels[0]).toMatchObject({ kitId: 'studio-kit', role: 'kick' });
   });
 
@@ -78,7 +78,7 @@ describe('project storage migration', () => {
 
     const older = createProject();
     delete (older.channels[0] as { chordEvents?: unknown }).chordEvents;
-    values.set('musicmaker.project.v3', JSON.stringify(older));
+    values.set('musicmaker.project.v4', JSON.stringify(older));
     expect(loadProject().channels[0].chordEvents).toEqual([]);
   });
 
@@ -98,25 +98,25 @@ describe('project storage migration', () => {
     });
 
     const older = createProject();
-    values.set('musicmaker.project.v3', JSON.stringify(older));
+    values.set('musicmaker.project.v4', JSON.stringify(older));
     expect(loadProject().channels[0].stepEventMetadata).toEqual({});
   });
 
   it('falls back to the legacy project when the v2 entry is corrupt', () => {
     const legacy = createProject();
     legacy.name = 'Recoverable';
-    values.set('musicmaker.project.v3', '{broken');
+    values.set('musicmaker.project.v4', '{broken');
     values.set('musicmaker.project.v1', JSON.stringify(legacy));
 
     expect(loadProject().name).toBe('Recoverable');
   });
 
-  it('migrates v2 projects and persists recognition provenance in v3', () => {
+  it('migrates v2 projects and persists recognition provenance in v4', () => {
     const legacy = createProject();
     delete (legacy as Partial<typeof legacy>).recognitionTakes;
     values.set('musicmaker.project.v2', JSON.stringify(legacy));
     const migrated = loadProject();
-    expect(migrated.formatVersion).toBe(3);
+    expect(migrated.formatVersion).toBe(4);
     expect(migrated.recognitionTakes).toEqual([]);
 
     migrated.recognitionTakes = [{
@@ -146,5 +146,61 @@ describe('project storage migration', () => {
     }];
     saveProject(migrated);
     expect(loadProject().recognitionTakes).toEqual(migrated.recognitionTakes);
+  });
+
+  it('migrates v3 projects and preserves valid generated-track metadata', () => {
+    const legacy = createProject();
+    legacy.formatVersion = 3;
+    legacy.channels[0].generatedMetadata = {
+      generatedBy: 'arrangement-assistant',
+      kind: 'chord-suggestions',
+      sourceChannelId: 'ch2',
+      confidence: 1.4,
+    };
+    values.set('musicmaker.project.v3', JSON.stringify(legacy));
+
+    const migrated = loadProject();
+    expect(migrated.formatVersion).toBe(4);
+    expect(migrated.channels[0].generatedMetadata).toEqual({
+      generatedBy: 'arrangement-assistant',
+      kind: 'chord-suggestions',
+      sourceChannelId: 'ch2',
+      confidence: 1,
+    });
+  });
+
+  it('round-trips generated metadata on tracks and pattern snapshots', () => {
+    const project = createProject();
+    const metadata = {
+      generatedBy: 'arrangement-assistant' as const,
+      kind: 'chord-suggestions' as const,
+      sourceChannelId: 'ch1',
+      confidence: 0.82,
+    };
+    project.channels[0].generatedMetadata = metadata;
+    project.patterns = [{
+      id: 'pattern-1',
+      name: 'Verse',
+      channels: [{ ...project.channels[0], steps: [...project.channels[0].steps], notes: [...project.channels[0].notes] }],
+      lengthSteps: 16,
+    }];
+    saveProject(project);
+
+    const loaded = loadProject();
+    expect(loaded.channels[0].generatedMetadata).toEqual(metadata);
+    expect(loaded.patterns[0].channels[0].generatedMetadata).toEqual(metadata);
+  });
+
+  it('discards malformed generated-track metadata during load', () => {
+    const legacy = createProject();
+    legacy.channels[0].generatedMetadata = {
+      generatedBy: 'arrangement-assistant',
+      kind: 'chord-suggestions',
+      sourceChannelId: '',
+      confidence: Number.NaN,
+    };
+    values.set('musicmaker.project.v4', JSON.stringify(legacy));
+
+    expect(loadProject().channels[0].generatedMetadata).toBeUndefined();
   });
 });

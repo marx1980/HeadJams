@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  addArrangementClip, addChordEvent, addNote, addPattern, arrangementLength, removeArrangementClip, removeChordEvent, removeNote,
+  addArrangementClip, addChordEvent, addNote, addPattern, arrangementLength, MAX_CHANNELS, removeArrangementClip, removeChordEvent, removeNote,
   removePattern, renamePattern, scaleChannelNoteDurations, selectPattern, shiftChannelNotes, totalSteps,
   transposeChannelNotes, type Project,
 } from '../model/project';
+import type { NoteEvent } from '../model/project';
 import {
   CHORD_ARTICULATIONS, CHORD_QUALITIES, chordPitches, formatChordSymbol, isPitchInScale, SCALES,
   scalePitches, snapPitchToScale, type ChordArticulation, type ChordQuality,
 } from '../model/music';
 import { findSound } from '../library/sounds';
+import { suggestChordsFromNotes, type ChordChoice, type ChordSuggestion } from '../library/chordSuggestion';
+import { addGeneratedChordChannel, removeGeneratedChordChannel, replaceGeneratedChordChannel } from '../model/arrangement';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
@@ -228,8 +231,56 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
 }
 
 export function SongEditor({ project, onChange }: { project: Project; onChange: (project: Project) => void }) {
+  const [sourceChannelId, setSourceChannelId] = useState('');
+  const [useOriginalPerformance, setUseOriginalPerformance] = useState(false);
+  const [suggestions, setSuggestions] = useState<ChordSuggestion[] | null>(null);
+  const [replaceChannelId, setReplaceChannelId] = useState('');
+  useEffect(() => { setSuggestions(null); }, [project]);
   const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
+  const sourceChannels = project.channels.filter((channel) =>
+    !channel.generatedMetadata && (channel.notes?.length ?? 0) > 0,
+  );
+  const sourceChannel = sourceChannels.find((channel) => channel.id === sourceChannelId) ?? sourceChannels[0];
+  const sourceTake = sourceChannel
+    ? project.recognitionTakes.find((take) => sourceChannel.notes.some((note) => note.sourceTakeId === take.id))
+    : undefined;
+  const originalNotes: NoteEvent[] = sourceTake
+    ? sourceTake.originalEvents.flatMap((event) => {
+      if (!('pitch' in event)) return [];
+      const stepSeconds = 60 / project.bpm * 4 / project.noteLength;
+      return [{
+        id: event.id,
+        step: Math.max(0, Math.floor(event.startSeconds / stepSeconds)) % totalSteps(project),
+        pitch: event.pitch,
+        durationSteps: Math.max(1, Math.round(event.durationSeconds / stepSeconds)),
+        confidence: event.confidence,
+      }];
+    })
+    : [];
+  const inputNotes = useOriginalPerformance && sourceTake ? originalNotes : sourceChannel?.notes ?? [];
+  const generatedChannels = project.channels.filter((channel) => channel.generatedMetadata?.kind === 'chord-suggestions');
   const updatePattern = (id: string) => onChange(selectPattern(project, id));
+  const generateSuggestions = () => {
+    if (!sourceChannel) return;
+    setSuggestions(suggestChordsFromNotes(
+      inputNotes, project.scaleRoot, project.scaleId, project.noteLength, project.loopBars,
+    ));
+  };
+  const selectSuggestion = (index: number, choice: ChordChoice) => {
+    setSuggestions((current) => current?.map((suggestion, itemIndex) =>
+      itemIndex === index ? { ...suggestion, ...choice } : suggestion,
+    ) ?? null);
+  };
+  const selectedReplaceChannel = generatedChannels.find((channel) => channel.id === replaceChannelId) ?? generatedChannels[0];
+  const addSuggestions = () => {
+    if (!sourceChannel || !suggestions?.length) return;
+    const updated = addGeneratedChordChannel(project, sourceChannel.id, suggestions);
+    if (updated !== project) onChange(updated);
+  };
+  const replaceSuggestions = () => {
+    if (!sourceChannel || !selectedReplaceChannel || !suggestions?.length) return;
+    onChange(replaceGeneratedChordChannel(project, selectedReplaceChannel.id, sourceChannel.id, suggestions));
+  };
   const appendArrangementClip = () => {
     const patternId = project.currentPatternId ?? project.patterns[0]?.id;
     if (!patternId) return;
@@ -283,6 +334,85 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
           </div>
         ) : <p className="hint">Add patterns to build a song timeline. Without clips, playback loops the selected pattern.</p>}
       </div>
+      <section className="arrangement-assistant" aria-label="Chord suggestions">
+        <h3>Arrangement assistance · Chord suggestions</h3>
+        <p className="hint">Suggestions use one melody track and never change it. Preview and add them as a separate editable track.</p>
+        <div className="arrangement-assistant-controls">
+          <label>Melody source
+            <select aria-label="Melody source" value={sourceChannel?.id ?? ''}
+              onChange={(event) => { setSourceChannelId(event.target.value); setSuggestions(null); }}>
+              <option value="" disabled>{sourceChannels.length ? 'Choose a melody…' : 'Add notes to a channel first'}</option>
+              {sourceChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+            </select>
+          </label>
+          {sourceTake && (
+            <label className="check-label">
+              <input type="checkbox" checked={useOriginalPerformance}
+                onChange={(event) => { setUseOriginalPerformance(event.target.checked); setSuggestions(null); }} />
+              Use only original performance notes
+            </label>
+          )}
+          <button className="secondary" disabled={!sourceChannel || !inputNotes.length} onClick={generateSuggestions}>
+            ✨ Suggest chords
+          </button>
+        </div>
+        {suggestions && (
+          <div className="chord-suggestions" aria-live="polite">
+            {suggestions.length ? suggestions.map((suggestion, index) => {
+              const choices = [{ root: suggestion.root, quality: suggestion.quality }, ...suggestion.alternatives];
+              const selectedValue = `${suggestion.root}:${suggestion.quality}`;
+              return (
+                <label key={`${suggestion.step}-${index}`} className="chord-suggestion">
+                  Bar {Math.floor(suggestion.step / project.noteLength) + 1}
+                  <select aria-label={`Chord suggestion for bar ${Math.floor(suggestion.step / project.noteLength) + 1}`}
+                    value={selectedValue}
+                    onChange={(event) => {
+                      const choice = choices.find((item) => `${item.root}:${item.quality}` === event.target.value);
+                      if (choice) selectSuggestion(index, choice);
+                    }}>
+                    {choices.map((choice) => (
+                      <option key={`${choice.root}:${choice.quality}`} value={`${choice.root}:${choice.quality}`}>
+                        {formatChordSymbol(choice.root, choice.quality)}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={suggestion.confidence < 0.6 ? 'low-confidence-label' : ''}>
+                    {suggestion.confidence < 0.6 ? 'Low confidence · ' : ''}{Math.round(suggestion.confidence * 100)}%
+                  </span>
+                </label>
+              );
+            }) : <p className="hint">No melody notes were found in this loop.</p>}
+            {!!suggestions.length && (
+              <div className="arrangement-assistant-actions">
+                <button disabled={project.channels.length >= MAX_CHANNELS} onClick={addSuggestions}>＋ Add as a separate track</button>
+                {!!generatedChannels.length && (
+                  <>
+                    <label>Replace generated track
+                      <select aria-label="Generated track to replace" value={selectedReplaceChannel?.id ?? ''}
+                        onChange={(event) => setReplaceChannelId(event.target.value)}>
+                        {generatedChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                      </select>
+                    </label>
+                    <button className="secondary" disabled={!selectedReplaceChannel} onClick={replaceSuggestions}>Replace selected track</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {!!generatedChannels.length && (
+          <div className="generated-track-list" aria-label="Generated chord tracks">
+            <strong>Generated tracks</strong>
+            {generatedChannels.map((channel) => (
+              <div key={channel.id}>
+                <span>{channel.name} · {Math.round((channel.generatedMetadata?.confidence ?? 0) * 100)}% confidence</span>
+                <button className="secondary" aria-label={`Remove ${channel.name}`}
+                  onClick={() => onChange(removeGeneratedChordChannel(project, channel.id))}>Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }

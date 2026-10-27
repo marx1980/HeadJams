@@ -252,6 +252,7 @@ export function App() {
                   <input aria-label={`Track name ${c.name}`} value={c.name}
                     onChange={(e) => setProject(updateChannel(project, c.id, { name: e.target.value }))} />
                 </label>
+                {c.generatedMetadata && <span className="generated-track-badge">Generated · Chords</span>}
                 <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
                   loadingSoundIds={loadingSoundIds}
                   onPreview={(sound) => preview(sound, c.volume)}
