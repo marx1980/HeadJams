@@ -17,6 +17,10 @@ export interface SynthParams {
   cutoff: number;
 }
 
+export type SoundType = 'pitched' | 'chord' | 'percussion' | 'kit';
+export type PlaybackMode = 'notes' | 'chord' | 'one-shot' | 'kit';
+export type DrumRole = 'kick' | 'snare' | 'hat' | 'tom' | 'cymbal' | 'clap' | 'hand-percussion' | 'shaker' | 'auxiliary';
+
 export interface SoundDef {
   id: string;
   name: string;
@@ -24,6 +28,12 @@ export interface SoundDef {
   params: SynthParams;
   sampleId?: string;
   tags?: string[];
+  subcategory?: string;
+  type?: SoundType;
+  playbackMode?: PlaybackMode;
+  assetSource?: 'procedural' | 'user-sample';
+  assetAttribution?: string;
+  assetLicense?: string;
 }
 
 export interface Channel {
@@ -36,6 +46,8 @@ export interface Channel {
   solo: boolean;
   steps: boolean[];
   notes: NoteEvent[];
+  kitId?: string;
+  role?: DrumRole;
 }
 
 export interface NoteEvent {
@@ -377,6 +389,9 @@ export function addSampleSound(p: Project, name: string, sampleId: string, tags:
     params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.1, cutoff: 12000 },
     sampleId,
     tags,
+    assetSource: 'user-sample',
+    assetAttribution: 'User-provided audio',
+    assetLicense: 'Not verified by MusicMaker',
   };
   return { ...p, customSounds: [...p.customSounds, sound] };
 }

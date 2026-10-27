@@ -56,6 +56,7 @@ describe('project model', () => {
     const project = addSampleSound(createProject(), 'Field recording', 'sample-1', ['field', 'outdoor']);
     expect(project.customSounds[0]).toMatchObject({
       name: 'Field recording', category: 'Samples', sampleId: 'sample-1', tags: ['field', 'outdoor'],
+      assetSource: 'user-sample', assetAttribution: 'User-provided audio', assetLicense: 'Not verified by MusicMaker',
     });
   });
   it('stores pitch events and keeps them synchronized in the active pattern', () => {
