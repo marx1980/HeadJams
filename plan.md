@@ -32,7 +32,10 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [ ] Multisample source selection and playback; deferred until `SoundDef` can represent multisample zones and licensed assets are available.
 ### 6. Instruments and drums — IN PROGRESS (§4-11)
 - [x] Added a first synthesized drum and percussion expansion while retaining the existing catalog IDs and project format.
-- Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
+- [x] Added synthesized starter presets in the Keys group.
+- [x] Added synthesized starter presets in the Strings group.
+- [x] Added synthesized starter presets in the Brass & Winds group.
+- Guitar notes, more bass and synth presets, additional drums and percussion, and licence/attribution records.
 - Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.
 - Re-categorise the existing 30 synth sounds into the new groups without changing IDs.
 - Assets: synthesized sounds stay the default; sampled packs live in a `sounds/` folder served from GitHub Pages and fetched on demand behind `SoundSource` (CDN can replace later); start with a small core.

@@ -4,7 +4,7 @@ import { createInstrumentRegistry, STARTER_SOUNDS, validateInstrumentRegistry } 
 
 describe('instrument registry', () => {
   it('keeps starter sound IDs unique and stable', () => {
-    expect(STARTER_SOUNDS).toHaveLength(39);
+    expect(STARTER_SOUNDS).toHaveLength(48);
     expect(new Set(STARTER_SOUNDS.map((sound) => sound.id)).size).toBe(STARTER_SOUNDS.length);
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('kick-1');
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('fx-1');
@@ -21,6 +21,23 @@ describe('instrument registry', () => {
     });
     expect(registry.map((entry) => entry.id)).toContain('kick-1');
     expect(registry.map((entry) => entry.id)).toContain('fx-1');
+  });
+
+  it('adds synthesized Keys, Strings, and Brass & Winds presets', () => {
+    const registry = createInstrumentRegistry([]);
+
+    for (const [id, group] of [
+      ['keys-1', 'Keys'],
+      ['strings-1', 'Strings'],
+      ['brass-1', 'Brass & Winds'],
+    ]) {
+      expect(registry.find((entry) => entry.id === id)).toMatchObject({
+        origin: 'built-in', source: 'synth', group,
+      });
+    }
+    expect(registry.map((entry) => entry.sound.name)).toContain('Organ Synth');
+    expect(registry.map((entry) => entry.sound.name)).toContain('Strings Pad');
+    expect(registry.map((entry) => entry.sound.name)).toContain('Flute Synth');
   });
 
   it('includes built-in and custom sounds with source and group metadata', () => {
