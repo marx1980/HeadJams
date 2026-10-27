@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { NoteEvent, Project } from '../model/project';
 import { totalSteps } from '../model/project';
+import { findSound } from '../library/sounds';
+import type { Engine } from '../audio/engine';
 import { parseMidiNoteMessage, quantizeMidiNote } from '../platform/midi';
 
 interface MidiInputLike {
@@ -18,6 +20,7 @@ interface PendingNote {
   startedAt: number;
   channelId: string;
   velocity: number;
+  voiceId?: string;
 }
 
 type MidiNavigator = Navigator & {
@@ -25,9 +28,10 @@ type MidiNavigator = Navigator & {
 };
 
 export function MidiRecorder({
-  project, onNote,
+  project, engine, onNote,
 }: {
   project: Project;
+  engine: Engine;
   onNote: (channelId: string, note: NoteEvent) => void;
 }) {
   const [recording, setRecording] = useState(false);
@@ -65,11 +69,20 @@ export function MidiRecorder({
       const key = `${input.id}:${message.channel}:${message.pitch}`;
       const now = performance.now();
       if (message.type === 'note-on') {
+        const currentProject = projectRef.current;
+        const targetChannelId = channelIdRef.current;
+        const channel = currentProject.channels.find((item) => item.id === targetChannelId);
+        const sound = channel ? findSound(currentProject, channel.soundId) : undefined;
+        const voiceId = `midi-voice-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+        if (channel && sound) {
+          void engine.startMidiNote(voiceId, sound, message.pitch, channel.volume, channel.pan, message.velocity);
+        }
         const pending = pendingNotesRef.current.get(key) ?? [];
         pending.push({
           startedAt: now,
-          channelId: channelIdRef.current,
+          channelId: targetChannelId,
           velocity: message.velocity,
+          ...(channel && sound ? { voiceId } : {}),
         });
         pendingNotesRef.current.set(key, pending);
         return;
@@ -77,6 +90,7 @@ export function MidiRecorder({
       const pending = pendingNotesRef.current.get(key);
       const started = pending?.shift();
       if (!started) return;
+      if (started.voiceId) engine.stopMidiNote(started.voiceId);
       if (pending?.length === 0) pendingNotesRef.current.delete(key);
       const currentProject = projectRef.current;
       const quantized = quantizeMidiNote(
@@ -108,9 +122,12 @@ export function MidiRecorder({
     return () => {
       for (const input of selectedInputs) input.onmidimessage = null;
       access.onstatechange = null;
+      for (const notes of pendingNotesRef.current.values()) {
+        for (const note of notes) if (note.voiceId) engine.stopMidiNote(note.voiceId);
+      }
       pendingNotesRef.current.clear();
     };
-  }, [access, inputRevision, recording, selectedInputId]);
+  }, [access, engine, inputRevision, recording, selectedInputId]);
 
   const startRecording = async () => {
     setError('');
@@ -120,7 +137,8 @@ export function MidiRecorder({
       return;
     }
     try {
-      const midiAccess = await requestAccess.call(navigator);
+      const midiPromise = requestAccess.call(navigator);
+      const [midiAccess] = await Promise.all([midiPromise, engine.activateAudio()]);
       captureStartedAtRef.current = performance.now();
       pendingNotesRef.current.clear();
       setAccess(midiAccess);
@@ -133,6 +151,9 @@ export function MidiRecorder({
 
   const stopRecording = () => {
     setRecording(false);
+    for (const notes of pendingNotesRef.current.values()) {
+      for (const note of notes) if (note.voiceId) engine.stopMidiNote(note.voiceId);
+    }
     pendingNotesRef.current.clear();
   };
 

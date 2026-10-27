@@ -266,7 +266,7 @@ export function App() {
 
       <div className={`workspace view-${view}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
-          <MidiRecorder project={project} onNote={(channelId, note) =>
+          <MidiRecorder project={project} engine={engine} onNote={(channelId, note) =>
             setProject((current) => addNote(current, channelId, note))} />
           <div className="row beat-options">
             <label>Note length

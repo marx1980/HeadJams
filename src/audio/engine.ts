@@ -8,6 +8,11 @@ import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { guitarChordPitches, pitchToFrequency } from '../model/music';
 
+interface LiveMidiVoice {
+  source: OscillatorNode | AudioBufferSourceNode;
+  gain: GainNode;
+}
+
 export class Engine {
   private ctx?: AudioContext;
   private buffers = new Map<string, AudioBuffer>();
@@ -27,6 +32,8 @@ export class Engine {
   private reverbWet?: GainNode;
   private reverbDry?: GainNode;
   private convolver?: ConvolverNode;
+  private liveMidiVoices = new Map<string, LiveMidiVoice>();
+  private liveMidiRequests = new Set<string>();
   playing = false;
 
   constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
@@ -55,6 +62,69 @@ export class Engine {
     if (this.ctx.state === 'suspended') await this.ctx.resume();
     this.updateEffects();
     return this.ctx;
+  }
+
+  async activateAudio() {
+    await this.ensureCtx();
+  }
+
+  async startMidiNote(id: string, def: SoundDef, pitch: number, volume: number, pan: number, velocity: number) {
+    this.liveMidiRequests.add(id);
+    const ctx = await this.ensureCtx();
+    if (!this.liveMidiRequests.has(id)) return;
+    this.stopMidiNote(id);
+    this.liveMidiRequests.add(id);
+
+    const gain = ctx.createGain();
+    const panner = ctx.createStereoPanner();
+    const now = ctx.currentTime;
+    const level = Math.max(0, volume * Math.min(1, Math.max(0, velocity)));
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(level, now + 0.008);
+    panner.pan.setValueAtTime(pan, now);
+    gain.connect(panner).connect(this.master!);
+
+    let source: OscillatorNode | AudioBufferSourceNode;
+    if (def.sampleId) {
+      const buffer = this.buffer(def);
+      if (!buffer) {
+        this.liveMidiRequests.delete(id);
+        return;
+      }
+      const sampleSource = ctx.createBufferSource();
+      sampleSource.buffer = buffer;
+      sampleSource.playbackRate.value = Math.min(8, Math.max(0.125, pitchToFrequency(pitch) / Math.max(10, def.params.freq)));
+      source = sampleSource;
+    } else {
+      const oscillator = ctx.createOscillator();
+      oscillator.type = def.params.wave === 'saw' ? 'sawtooth' : def.params.wave === 'noise' ? 'triangle' : def.params.wave;
+      oscillator.frequency.setValueAtTime(pitchToFrequency(pitch), now);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.min(def.params.cutoff, ctx.sampleRate / 2), now);
+      oscillator.connect(filter).connect(gain);
+      source = oscillator;
+    }
+
+    if (source instanceof AudioBufferSourceNode) source.connect(gain);
+    source.onended = () => {
+      if (this.liveMidiVoices.get(id)?.source === source) this.liveMidiVoices.delete(id);
+      this.liveMidiRequests.delete(id);
+    };
+    this.liveMidiVoices.set(id, { source, gain });
+    source.start(now);
+  }
+
+  stopMidiNote(id: string) {
+    this.liveMidiRequests.delete(id);
+    const voice = this.liveMidiVoices.get(id);
+    if (!voice || !this.ctx) return;
+    this.liveMidiVoices.delete(id);
+    const now = this.ctx.currentTime;
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+    voice.gain.gain.linearRampToValueAtTime(0, now + 0.025);
+    try { voice.source.stop(now + 0.03); } catch { /* source already ended */ }
   }
 
   private setupEffects(ctx: AudioContext) {
