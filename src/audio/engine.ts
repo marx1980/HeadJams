@@ -179,6 +179,7 @@ export class Engine {
       bpm: () => this.getProject().bpm,
       totalSteps: () => arrangementLength(this.getProject()) || totalSteps(this.getProject()),
       stepsPerBar: () => this.getProject().noteLength,
+      swingTemplate: () => this.getProject().swingTemplate,
       lookAhead: 0.15,
       onStep: (step, time) => {
         const p = this.getProject();
