@@ -14,12 +14,11 @@ Everything lives on one scrolling page: a header with 9 controls, the channel/st
 
 ## 3. Proposed navigation
 Persistent **top bar** (always visible): logo · ▶ Play/■ Stop · BPM · project menu (⋯) · ? Help.
-**Tab bar** (bottom on mobile, top on desktop), 5 tabs:
+**Tab bar** (bottom on mobile, top on desktop), **4 tabs** (final; Notes merged into Beat, see section 8):
 
 | Tab | Purpose | Contents (from today's UI) |
 |---|---|---|
-| 🥁 **Beat** (home) | Make a loop with taps | Channel strips + step grid, add channel, per-channel sound picker/preview/M/S/volume/remove, Note length, Loop length (1/2/4 bars) |
-| 🎹 **Notes** | Melodies and chords | Piano roll, channel picker, note duration, scale root/scale/snap, Pitch/time tools (collapsed "Tools" drawer) |
+| 🥁 **Beat** (home) | Make loops and melodies | Per-channel Grid / Piano roll toggle (piano roll, scale/snap, pitch/time tools); channel strips + step grid, add channel, per-channel sound picker/preview/M/S/volume/remove, Note length, Loop length (1/2/4 bars) |
 | 🎚 **Sound** | Shape the sound | Sound shaping (reverb, delay, filter, EQ), Swing, "Make a sound" designer; optional per-channel vs master toggle later |
 | 📚 **Library** | Find, record, import sounds | Search/tags, pad view, record mic, import file, trim/normalize, "Use on channel…" |
 | 🎬 **Song** | Arrange the whole track | Pattern list (new/rename/remove), loop launcher, arrangement timeline |
@@ -40,7 +39,7 @@ Note length [1/16▾]  Loop [2 bars▾]
 ```
 Swing moves to Sound; Template to ⋯ menu and to the first-run welcome.
 
-### Notes
+### Piano roll mode (inside Beat)
 Channel picker on top, piano roll fills the screen, scale controls in a compact row, pitch/time tools in a bottom sheet. Empty state: "Pick a channel to add notes."
 
 ### Sound
