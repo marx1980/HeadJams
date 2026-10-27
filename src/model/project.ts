@@ -1,6 +1,13 @@
 export type NoteLength = 4 | 8 | 16;
 export type LoopBars = 1 | 2 | 4;
 export type Wave = 'sine' | 'square' | 'saw' | 'triangle' | 'noise';
+export const SWING_TEMPLATES = [
+  { id: 'straight', label: 'Straight', amount: 0 },
+  { id: 'light', label: 'Light swing', amount: 0.08 },
+  { id: 'medium', label: 'Medium swing', amount: 0.16 },
+  { id: 'triplet', label: 'Triplet swing', amount: 1 / 6 },
+] as const;
+export type SwingTemplate = (typeof SWING_TEMPLATES)[number]['id'];
 
 export interface SynthParams {
   wave: Wave;
@@ -76,6 +83,7 @@ export interface Project {
   currentPatternId?: string;
   arrangement: ArrangementClip[];
   effects: ProjectEffects;
+  swingTemplate: SwingTemplate;
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
@@ -118,6 +126,7 @@ export function createProject(name = 'Untitled'): Project {
     customSounds: [],
     scaleRoot: 0, scaleId: 'major', patterns: [], arrangement: [],
     effects: { ...DEFAULT_EFFECTS },
+    swingTemplate: 'straight',
   };
 }
 
@@ -185,6 +194,14 @@ export function setScale(p: Project, root: number, scaleId: string): Project {
   return { ...p, scaleRoot: ((Math.round(root) % 12) + 12) % 12, scaleId };
 }
 
+export function normalizeSwingTemplate(template?: unknown): SwingTemplate {
+  return SWING_TEMPLATES.some((item) => item.id === template) ? template as SwingTemplate : 'straight';
+}
+
+export function setSwingTemplate(p: Project, swingTemplate: SwingTemplate): Project {
+  return { ...p, swingTemplate: normalizeSwingTemplate(swingTemplate) };
+}
+
 export function updateChannel(p: Project, id: string, patch: Partial<Channel>): Project {
   return syncCurrentPattern(p, p.channels.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 }
@@ -233,6 +250,43 @@ export function removeNote(p: Project, channelId: string, noteId: string): Proje
       ? { ...channel, notes: (channel.notes ?? []).filter((note) => note.id !== noteId) }
       : channel,
   ));
+}
+
+export function transposeChannelNotes(p: Project, channelId: string, semitones: number): Project {
+  if (!Number.isFinite(semitones)) return p;
+  const shift = Math.round(semitones);
+  return updateChannel(p, channelId, {
+    notes: (p.channels.find((channel) => channel.id === channelId)?.notes ?? []).map((note) => ({
+      ...note,
+      pitch: Math.max(MIN_PITCH, Math.min(MAX_PITCH, note.pitch + shift)),
+    })),
+  });
+}
+
+export function shiftChannelNotes(p: Project, channelId: string, steps: number): Project {
+  if (!Number.isFinite(steps)) return p;
+  const channel = p.channels.find((item) => item.id === channelId);
+  if (!channel) return p;
+  const length = Math.max(1, channel.steps.length);
+  const shift = Math.round(steps);
+  return updateChannel(p, channelId, {
+    notes: (channel.notes ?? []).map((note) => ({
+      ...note,
+      step: ((note.step + shift) % length + length) % length,
+    })),
+  });
+}
+
+export function scaleChannelNoteDurations(p: Project, channelId: string, factor: number): Project {
+  if (!Number.isFinite(factor) || factor <= 0) return p;
+  const channel = p.channels.find((item) => item.id === channelId);
+  if (!channel) return p;
+  return updateChannel(p, channelId, {
+    notes: (channel.notes ?? []).map((note) => ({
+      ...note,
+      durationSteps: Math.max(1, Math.round(note.durationSteps * factor)),
+    })),
+  });
 }
 
 export function addPattern(p: Project, name = 'Pattern'): Project {
