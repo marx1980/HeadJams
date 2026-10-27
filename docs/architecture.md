@@ -15,6 +15,7 @@ Web Audio API (AudioWorklet where needed). A look-ahead scheduler (`src/audio/sc
 - Mixer: per-channel gain, pan, mute, solo.
 - Persistence: localStorage for project metadata and IndexedDB for sample audio.
 - UI (`src/ui`): channel strip, step grid, pad view, library browser; tutorials in `src/tutorial`.
+- Planned (see `plan.md`): instrument registry with stable IDs and `SoundSource` (synth/sample/multisample, lazy loading, preview bus); non-destructive sample editor; recognition adapter (audio -> events).
 - Later: effects chain, arrangement timeline, optional cloud sync.
 
 ## State
