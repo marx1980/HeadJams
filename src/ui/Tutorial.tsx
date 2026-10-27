@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TUTORIALS, type Tutorial as T, type TutorialState } from '../tutorial/tutorials';
+import { TUTORIALS, type Tutorial as T, type TutorialState, type TutorialStep } from '../tutorial/tutorials';
 
 export function TutorialMenu({ onPick, onClose }: { onPick: (t: T) => void; onClose: () => void }) {
   return (
@@ -13,11 +13,13 @@ export function TutorialMenu({ onPick, onClose }: { onPick: (t: T) => void; onCl
   );
 }
 
-export function TutorialOverlay({ tutorial, state, onExit }: { tutorial: T; state: TutorialState; onExit: () => void }) {
+export function TutorialOverlay({ tutorial, state, onExit, onStep }: { tutorial: T; state: TutorialState; onExit: () => void; onStep: (step: TutorialStep) => void }) {
   const [index, setIndex] = useState(0);
   const step = tutorial.steps[index];
   const done = step.done(state);
   const last = index === tutorial.steps.length - 1;
+
+  useEffect(() => { onStep(step); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!step.target) return;

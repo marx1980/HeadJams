@@ -71,3 +71,24 @@ button.on { background: var(--color, #ffd166); color: #000; }
   .pattern-controls { align-items: stretch; }
   .timeline { min-width: max-content; }
 }
+.bar { position: sticky; top: 0; z-index: 5; background: #14141f; padding: 6px 0; }
+.project-menu { position: relative; }
+.menu-popup { position: absolute; right: 0; top: 46px; z-index: 6; min-width: 200px; margin: 0; }
+.tabs { display: flex; gap: 6px; margin: 8px 0; position: sticky; top: 56px; z-index: 4; background: #14141f; padding: 4px 0; }
+.tabs button { flex: 1; }
+.pane { display: none; }
+.pane.active { display: block; }
+.pitch-time-controls summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
+.piano-editor { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.beat-options { align-items: end; }
+@media (max-width: 640px) {
+  .tabs { position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0; padding: 6px; border-top: 1px solid #444; z-index: 9; }
+  .app { padding-bottom: 200px; }
+}
+@media (min-width: 1100px) {
+  .app { max-width: 1500px; }
+  .workspace { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  .workspace:not(.view-beat) { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .pane-beat { display: block; }
+  .workspace.view-beat .pane:not(.pane-beat) { display: none; }
+}
