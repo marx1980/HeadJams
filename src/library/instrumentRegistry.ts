@@ -1,4 +1,4 @@
-import type { SoundDef, SynthParams } from '../model/project';
+import type { PlaybackMode, SoundDef, SoundType, SynthParams } from '../model/project';
 
 export interface InstrumentRegistryEntry {
   id: string;
@@ -6,6 +6,9 @@ export interface InstrumentRegistryEntry {
   origin: 'built-in' | 'custom';
   source: 'synth' | 'sample';
   group: string;
+  subgroup?: string;
+  type: SoundType;
+  playbackMode: PlaybackMode;
 }
 
 export interface InstrumentRegistryIssue {
@@ -14,13 +17,52 @@ export interface InstrumentRegistryIssue {
 }
 
 export function soundLibraryGroup(sound: SoundDef): string {
+  if (sound.category === 'Synths') return 'Synths';
   if (sound.category === 'Lead') return 'Synths';
   if (sound.category === 'FX') return 'FX & Other';
   return sound.category;
 }
 
+function starterSubgroup(id: string, category: string): string | undefined {
+  const group = category === 'Lead' ? 'Synths' : category === 'FX' ? 'FX & Other' : category;
+  if (group === 'Drums') {
+    if (id.startsWith('kick-')) return 'Kick';
+    if (id.startsWith('snare-')) return 'Snare';
+    if (id.startsWith('hat-')) return 'Hi-Hat';
+    if (id.startsWith('tom-')) return 'Toms';
+    if (id.startsWith('cymbal-')) return 'Cymbal';
+    if (id.startsWith('clap-')) return 'Clap';
+  }
+  if (group === 'Percussion') {
+    if (['perc-3', 'perc-7', 'perc-8'].includes(id)) return 'Shakers';
+    if (['perc-4', 'perc-5'].includes(id)) return 'Hand Percussion';
+    return 'Auxiliary';
+  }
+  if (group === 'Keys') return id === 'keys-3' ? 'Other Keys' : 'Piano';
+  if (group === 'Strings') return id === 'strings-3' ? 'Ensemble' : 'Solo';
+  if (group === 'Guitars') return id.startsWith('guitar-acoustic') ? 'Acoustic' : 'Electric';
+  if (group === 'Bass') return id === 'bass-6' || id === 'bass-7' || id === 'bass-8' ? 'Electric' : 'Synth';
+  if (group === 'Synths') {
+    if (id === 'lead-8') return 'Pad';
+    if (id === 'lead-9') return 'Pluck';
+    return 'Lead';
+  }
+  if (group === 'Brass & Winds') return id === 'brass-1' ? 'Brass' : 'Woodwind';
+  if (group === 'FX & Other') return 'FX';
+  return undefined;
+}
+
 const s = (id: string, name: string, category: string, wave: SynthParams['wave'], freq: number, freqEnd: number, decay: number, cutoff: number): SoundDef => ({
-  id, name, category, params: { wave, freq, freqEnd, decay, cutoff },
+  id,
+  name,
+  category: category === 'Lead' ? 'Synths' : category,
+  params: { wave, freq, freqEnd, decay, cutoff },
+  subcategory: starterSubgroup(id, category),
+  type: ['Drums', 'Percussion', 'FX'].includes(category) ? 'percussion' : 'pitched',
+  playbackMode: ['Drums', 'Percussion', 'FX'].includes(category) ? 'one-shot' : 'notes',
+  assetSource: 'procedural',
+  assetAttribution: 'MusicMaker procedural synthesizer',
+  assetLicense: 'Original procedural synthesis; no third-party audio asset',
 });
 
 export const STARTER_SOUNDS: SoundDef[] = [
@@ -43,6 +85,39 @@ export const STARTER_SOUNDS: SoundDef[] = [
   s('perc-1', 'Rim', 'Percussion', 'square', 800, 700, 0.04, 6000),
   s('perc-2', 'Cowbell', 'Percussion', 'square', 560, 540, 0.2, 4000),
   s('perc-3', 'Shaker', 'Percussion', 'noise', 200, 200, 0.12, 14000),
+  s('kick-5', 'Kick Electronic', 'Drums', 'sine', 95, 35, 0.45, 6000),
+  s('snare-4', 'Snare Deep', 'Drums', 'noise', 200, 200, 0.35, 3500),
+  s('hat-5', 'Hat Pedal', 'Drums', 'noise', 200, 200, 0.045, 10000),
+  s('cymbal-1', 'Cymbal Crash', 'Drums', 'noise', 200, 200, 0.9, 16000),
+  s('cymbal-2', 'Cymbal Ride', 'Drums', 'noise', 200, 200, 0.55, 13000),
+  s('perc-4', 'Conga Low', 'Percussion', 'sine', 180, 100, 0.45, 4000),
+  s('perc-5', 'Bongo High', 'Percussion', 'sine', 420, 260, 0.22, 5000),
+  s('perc-6', 'Woodblock', 'Percussion', 'square', 900, 800, 0.08, 5000),
+  s('perc-7', 'Tambourine', 'Percussion', 'noise', 200, 200, 0.18, 14000),
+  s('keys-1', 'Soft Keys', 'Keys', 'sine', 440, 440, 0.45, 6000),
+  s('keys-2', 'Bright Keys', 'Keys', 'triangle', 660, 660, 0.25, 10000),
+  s('keys-3', 'Organ Synth', 'Keys', 'square', 330, 330, 0.7, 5000),
+  s('strings-1', 'Strings Sustained', 'Strings', 'triangle', 440, 440, 0.8, 5000),
+  s('strings-2', 'Strings Pluck', 'Strings', 'saw', 330, 330, 0.3, 3000),
+  s('strings-3', 'Strings Pad', 'Strings', 'sine', 220, 220, 1, 2500),
+  s('brass-1', 'Brass Synth', 'Brass & Winds', 'saw', 440, 440, 0.5, 4000),
+  s('brass-2', 'Flute Synth', 'Brass & Winds', 'sine', 660, 660, 0.6, 8000),
+  s('brass-3', 'Reed Synth', 'Brass & Winds', 'square', 392, 392, 0.4, 3500),
+  s('guitar-acoustic-1', 'Nylon Guitar · Synth', 'Guitars', 'triangle', 330, 330, 0.35, 4500),
+  s('guitar-acoustic-2', 'Steel Guitar · Synth', 'Guitars', 'saw', 392, 392, 0.28, 6500),
+  s('guitar-electric-1', 'Clean Electric Guitar · Synth', 'Guitars', 'triangle', 440, 440, 0.4, 5000),
+  s('guitar-electric-2', 'Muted Electric Guitar · Synth', 'Guitars', 'square', 330, 330, 0.12, 2800),
+  s('guitar-electric-3', 'Guitar Harmonics · Synth', 'Guitars', 'sine', 880, 880, 0.5, 9000),
+  s('bass-6', 'Bass Finger', 'Bass', 'triangle', 73, 73, 0.32, 2200),
+  s('bass-7', 'Bass Pick', 'Bass', 'square', 82, 82, 0.24, 1800),
+  s('bass-8', 'Bass Slap', 'Bass', 'saw', 98, 98, 0.16, 3200),
+  s('lead-6', 'Analog Lead', 'Lead', 'saw', 440, 440, 0.3, 3800),
+  s('lead-7', 'Digital Lead', 'Lead', 'square', 523, 523, 0.24, 7000),
+  s('lead-8', 'Warm Pad', 'Lead', 'triangle', 330, 330, 0.9, 2400),
+  s('lead-9', 'Soft Pluck', 'Lead', 'sine', 660, 660, 0.2, 5500),
+  s('kick-6', 'Kick 808', 'Drums', 'sine', 85, 28, 0.55, 5000),
+  s('snare-5', 'Snare Rimshot', 'Drums', 'noise', 200, 200, 0.12, 11500),
+  s('perc-8', 'Maraca', 'Percussion', 'noise', 200, 200, 0.1, 15000),
   s('bass-1', 'Bass Sub', 'Bass', 'sine', 55, 55, 0.5, 4000),
   s('bass-2', 'Bass Saw', 'Bass', 'saw', 55, 55, 0.4, 1200),
   s('bass-3', 'Bass Square', 'Bass', 'square', 65, 65, 0.35, 900),
@@ -64,6 +139,9 @@ export function createInstrumentRegistry(customSounds: readonly SoundDef[]): Ins
     ...entry,
     source: entry.sound.sampleId ? 'sample' : 'synth',
     group: soundLibraryGroup(entry.sound),
+    subgroup: entry.sound.subcategory,
+    type: entry.sound.type ?? (entry.sound.sampleId ? 'percussion' : 'pitched'),
+    playbackMode: entry.sound.playbackMode ?? (entry.sound.sampleId ? 'one-shot' : 'notes'),
   }));
 }
 

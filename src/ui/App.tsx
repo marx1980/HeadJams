@@ -7,6 +7,7 @@ import {
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
 import { allSounds, findSound, SAMPLE_RATE, STARTER_SOUNDS } from '../library/sounds';
+import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { renderProject } from '../audio/render';
@@ -50,6 +51,7 @@ export function App() {
   const [message, setMessage] = useState('');
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
   const [samplesLoaded, setSamplesLoaded] = useState(false);
+  const [drumKitId, setDrumKitId] = useState('');
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -102,6 +104,22 @@ export function App() {
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
     else { await engine.start(); emit('play'); }
+  };
+
+  const applySelectedDrumKit = () => {
+    const kit = findDrumKit(drumKitId);
+    if (!kit) return;
+    let result = applyDrumKit(project, kit);
+    if (result.status === 'confirmation-required') {
+      if (!window.confirm(`Applying ${kit.name} will replace assigned drum sounds. Keep all patterns and apply the kit?`)) return;
+      result = applyDrumKit(project, kit, true);
+    }
+    if (result.status === 'capacity-exceeded') {
+      flash('There is not enough channel space to apply this kit. Remove a channel and try again.');
+      return;
+    }
+    setProject(result.project);
+    flash(`${kit.name} applied · patterns preserved ✓`);
   };
 
   const exportWav = () => {
@@ -210,6 +228,13 @@ export function App() {
                 </select>
               </label>
             )}
+            <label>Drum kit
+              <select aria-label="Drum kit" value={drumKitId} onChange={(e) => setDrumKitId(e.target.value)}>
+                <option value="">Choose a kit…</option>
+                {DRUM_KITS.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
+              </select>
+            </label>
+            <button className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
           </div>
           <section className="channels">
         {project.channels.map((c, ci) => {

@@ -56,6 +56,17 @@ describe('project storage migration', () => {
     expect(saved.formatVersion).toBe(2);
   });
 
+  it('round-trips optional kit roles without changing the project format version', () => {
+    const project = createProject();
+    project.channels[0].kitId = 'studio-kit';
+    project.channels[0].role = 'kick';
+    saveProject(project);
+
+    const loaded = loadProject();
+    expect(loaded.formatVersion).toBe(2);
+    expect(loaded.channels[0]).toMatchObject({ kitId: 'studio-kit', role: 'kick' });
+  });
+
   it('falls back to the legacy project when the v2 entry is corrupt', () => {
     const legacy = createProject();
     legacy.name = 'Recoverable';

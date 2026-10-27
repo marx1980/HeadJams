@@ -30,11 +30,27 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [x] Hierarchical picker replacing channel sound selection; Favourites, Recent, search, preview, mobile bottom sheet, and Library reuse.
 - [x] Missing-sound state and project format v2 migration tests; old sound/sample references are preserved.
 - [ ] Multisample source selection and playback; deferred until `SoundDef` can represent multisample zones and licensed assets are available.
-### 6. Instruments and drums — NOT STARTED (§4-11)
-- Keys, guitar notes, bass, strings, synths, brass/winds; expanded drums and percussion; licence/attribution records.
-- Drum kits: a kit creates ordinary percussion channels (no engine change); each channel stores `kitId` and `role` (kick, snare, ...) so a later kit swap maps by role and keeps patterns. A drum-map channel (MIDI-style slots) is an optional later upgrade.
-- Re-categorise the existing 30 synth sounds into the new groups without changing IDs.
-- Assets: synthesized sounds stay the default; sampled packs live in a `sounds/` folder served from GitHub Pages and fetched on demand behind `SoundSource` (CDN can replace later); start with a small core.
+### 6. Instruments and drums — DONE (§4-11; procedural starter catalog)
+- [x] Added a first synthesized drum and percussion expansion while retaining the existing catalog IDs and project format.
+- [x] Added synthesized starter presets in the Keys group.
+- [x] Added synthesized starter presets in the Strings group.
+- [x] Added synthesized starter presets in the Brass & Winds group.
+- [x] Added Bass Finger.
+- [x] Added Bass Pick.
+- [x] Added Bass Slap.
+- [x] Added Analog Lead.
+- [x] Added Digital Lead.
+- [x] Added Warm Pad.
+- [x] Added Soft Pluck.
+- [x] Added Kick 808.
+- [x] Added Snare Rimshot.
+- [x] Added Maraca percussion.
+- [x] Added five synthesized guitar-note presets, with playable note-mode metadata.
+- [x] Organized built-in sounds into groups and subgroups, re-categorized legacy Lead presets as Synths, and preserved all existing IDs.
+- [x] Added source, attribution, and license-status records for all built-in procedural sounds.
+- [x] Added Studio, 808, and Percussion kits; kit application maps by channel role, preserves pattern content, asks before replacing assignments, and respects the channel limit.
+- [ ] Sampled packs remain deferred until audio assets with verified licenses and attribution are available; no third-party samples are bundled.
+- Drum-map channels (MIDI-style slots) remain an optional later upgrade.
 ### 7. Guitar chords — NOT STARTED (§3)
 - Chord event (symbol + articulation: sustained, down/up strum, muted, power) resolved to playable voicings; fallback generated voicing; never silently substitute chords. Reuse Phase 3 chord assist.
 ### 8. Sample Editor — NOT STARTED (§16)
