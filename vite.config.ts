@@ -6,6 +6,6 @@ export default defineConfig({
   root: 'app',
   base: '/MusicMaker/',
   plugins: [react()],
-  build: { outDir: '../dist', assetsDir: 'assets' },
+  build: { outDir: '../dist', emptyOutDir: true, assetsDir: 'assets' },
   test: { root: '.' },
 });
