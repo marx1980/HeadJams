@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addArrangementClip, addChannel, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
+  addArrangementClip, addChannel, addChordEvent, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
   channelsForPlaybackStep, createChannel, createProject, removeArrangementClip, removeChannel, removeNote, removePattern, selectPattern,
   scaleChannelNoteDurations, setBpm, setEffects, setLoopBars, setNoteLength, setScale, setSwingTemplate, shiftChannelNotes,
-  toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
+  removeChordEvent, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
 
@@ -68,6 +68,21 @@ describe('project model', () => {
     p = removeNote(p, 'ch1', 'note-1');
     expect(p.patterns[0].channels[0].notes).toEqual([]);
     expect(p.currentPatternId).toBe(patternId);
+  });
+  it('stores guitar chord symbols as events and keeps them synchronized through editing tools', () => {
+    let p = addPattern(createProject(), 'Verse');
+    p = addChordEvent(p, 'ch1', {
+      id: 'chord-1', step: 2, root: 60, quality: 'major7', articulation: 'down-strum', durationSteps: 2,
+    });
+    expect(p.channels[0].chordEvents?.[0]).toMatchObject({ root: 60, quality: 'major7', articulation: 'down-strum' });
+    expect(p.patterns[0].channels[0].chordEvents).toEqual(p.channels[0].chordEvents);
+    p = transposeChannelNotes(p, 'ch1', 2);
+    p = shiftChannelNotes(p, 'ch1', 1);
+    p = scaleChannelNoteDurations(p, 'ch1', 2);
+    expect(p.channels[0].chordEvents?.[0]).toMatchObject({ root: 62, step: 3, durationSteps: 4 });
+    expect(p.patterns[0].channels[0].chordEvents).toEqual(p.channels[0].chordEvents);
+    p = removeChordEvent(p, 'ch1', 'chord-1');
+    expect(p.patterns[0].channels[0].chordEvents).toEqual([]);
   });
   it('switches patterns and persists edits without sharing channel arrays', () => {
     let p = toggleStep(addPattern(createProject(), 'Verse'), 'ch1', 0);

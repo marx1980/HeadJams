@@ -4,7 +4,7 @@ import { createInstrumentRegistry, STARTER_SOUNDS, validateInstrumentRegistry } 
 
 describe('instrument registry', () => {
   it('keeps starter sound IDs unique and stable', () => {
-    expect(STARTER_SOUNDS).toHaveLength(63);
+    expect(STARTER_SOUNDS).toHaveLength(67);
     expect(new Set(STARTER_SOUNDS.map((sound) => sound.id)).size).toBe(STARTER_SOUNDS.length);
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('kick-1');
     expect(STARTER_SOUNDS.map((sound) => sound.id)).toContain('fx-1');
@@ -71,6 +71,16 @@ describe('instrument registry', () => {
     expect(STARTER_SOUNDS.every((sound) =>
       sound.assetSource === 'procedural' && Boolean(sound.assetAttribution && sound.assetLicense),
     )).toBe(true);
+  });
+
+  it('registers synthesized chord-mode guitar presets in the Chords subgroup', () => {
+    const registry = createInstrumentRegistry([]);
+    const chordPresets = registry.filter((entry) => entry.subgroup === 'Chords');
+    expect(chordPresets.map((entry) => entry.id)).toEqual([
+      'guitar-chord-acoustic', 'guitar-chord-clean', 'guitar-chord-crunch', 'guitar-chord-power',
+    ]);
+    expect(chordPresets.every((entry) => entry.group === 'Guitars' && entry.type === 'chord'
+      && entry.playbackMode === 'chord' && entry.source === 'synth')).toBe(true);
   });
 
   it('includes ten additional Bass, Synths, Drums, and Percussion sounds', () => {
