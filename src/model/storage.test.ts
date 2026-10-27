@@ -191,6 +191,20 @@ describe('project storage migration', () => {
     expect(loaded.patterns[0].channels[0].generatedMetadata).toEqual(metadata);
   });
 
+  it('round-trips bass-generation metadata without a project-format migration', () => {
+    const project = createProject();
+    const metadata = {
+      generatedBy: 'arrangement-assistant' as const,
+      kind: 'bass-generation' as const,
+      sourceChannelId: 'ch1',
+      confidence: 0.74,
+    };
+    project.channels[0].generatedMetadata = metadata;
+    saveProject(project);
+
+    expect(loadProject().channels[0].generatedMetadata).toEqual(metadata);
+  });
+
   it('discards malformed generated-track metadata during load', () => {
     const legacy = createProject();
     legacy.channels[0].generatedMetadata = {

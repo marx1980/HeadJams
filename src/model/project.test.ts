@@ -5,7 +5,10 @@ import {
   scaleChannelNoteDurations, setBpm, setEffects, setLoopBars, setNoteLength, setScale, setSwingTemplate, shiftChannelNotes,
   removeChordEvent, setStepEventMetadata, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
-import { addGeneratedChordChannel, removeGeneratedChordChannel, replaceGeneratedChordChannel } from './arrangement';
+import {
+  addGeneratedBassChannel, addGeneratedChordChannel, generateBassFromChords, generateBassFromMelody,
+  removeGeneratedChordChannel, removeGeneratedTrack, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
+} from './arrangement';
 import { TEMPLATES } from './templates';
 import { suggestChordsFromNotes } from '../library/chordSuggestion';
 
@@ -201,6 +204,55 @@ describe('project model', () => {
     expect(addGeneratedChordChannel(p, p.channels[1].id, suggestions)).toBe(p);
     expect(replaceGeneratedChordChannel(p, 'ch1', 'ch1', suggestions)).toBe(p);
     expect(removeGeneratedChordChannel(p, 'ch1')).toBe(p);
+  });
+  it('generates bass notes from chord suggestions and melody notes within the bass register', () => {
+    const chordBass = generateBassFromChords([
+      { root: 62, quality: 'minor', step: 0, durationSteps: 16, confidence: 0.8, alternatives: [] },
+    ], 16, 16);
+    expect(chordBass).toHaveLength(4);
+    expect(chordBass.map(({ step, pitch }) => [step, pitch])).toEqual([[0, 38], [4, 45], [8, 38], [12, 45]]);
+
+    const melodyBass = generateBassFromMelody([
+      { id: 'high-note', step: 2, pitch: 84, durationSteps: 3, confidence: 0.6 },
+      { id: 'low-note', step: 6, pitch: 24, durationSteps: 20 },
+    ], 16);
+    expect(melodyBass).toEqual([
+      { id: 'bass-melody-0-2-36', step: 2, pitch: 36, durationSteps: 3, confidence: 0.6 },
+      { id: 'bass-melody-1-6-36', step: 6, pitch: 36, durationSteps: 10 },
+    ]);
+  });
+  it('adds, replaces, and removes bass as a separate generated track without changing the melody', () => {
+    const melody = { id: 'melody-1', step: 0, pitch: 60, durationSteps: 2, confidence: 0.9 };
+    let p = addPattern(addNote(createProject(), 'ch1', melody), 'Verse');
+    const first = generateBassFromMelody([melody], totalSteps(p));
+    p = addGeneratedBassChannel(p, 'ch1', first);
+    const bassId = p.channels[1].id;
+
+    expect(p.channels[0].notes).toMatchObject([melody]);
+    expect(p.channels[1]).toMatchObject({
+      name: 'Generated bass · Kick',
+      soundId: 'bass-6',
+      generatedMetadata: { generatedBy: 'arrangement-assistant', kind: 'bass-generation', sourceChannelId: 'ch1' },
+    });
+    expect(p.patterns[0].channels[1].generatedMetadata).toEqual(p.channels[1].generatedMetadata);
+
+    const replacement = [{ id: 'replacement', step: 4, pitch: 43, durationSteps: 2, confidence: 0.7 }];
+    p = replaceGeneratedBassChannel(p, bassId, 'ch1', replacement);
+    expect(p.channels[1].notes).toEqual(replacement);
+    expect(p.channels[0].notes).toMatchObject([melody]);
+    expect(replaceGeneratedBassChannel(p, 'ch1', 'ch1', replacement)).toBe(p);
+    p = removeGeneratedTrack(p, bassId);
+    expect(p.channels).toHaveLength(1);
+    expect(p.channels[0].notes).toMatchObject([melody]);
+  });
+  it('rejects bass suggestions with invalid source, notes, or channel capacity', () => {
+    const melody = { id: 'melody-1', step: 0, pitch: 60, durationSteps: 1 };
+    let p = addNote(createProject(), 'ch1', melody);
+    const notes = generateBassFromMelody([melody], totalSteps(p));
+    expect(addGeneratedBassChannel(p, 'missing', notes)).toBe(p);
+    expect(addGeneratedBassChannel(p, 'ch1', [{ ...notes[0], step: totalSteps(p) }])).toBe(p);
+    for (let index = 1; index < MAX_CHANNELS; index++) p = addChannel(p, `Channel ${index}`, 'keys-1');
+    expect(addGeneratedBassChannel(p, 'ch1', notes)).toBe(p);
   });
   it('templates are consistent', () => {
     for (const t of TEMPLATES) {
