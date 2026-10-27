@@ -10,6 +10,7 @@ export type View = 'beat' | 'sound' | 'library' | 'song';
 
 export type TutorialTab = View | 'global';
 export type TutorialLevel = 'beginner' | 'intermediate';
+export type TutorialCapability = 'microphone';
 
 export interface TutorialStep {
   text: string;
@@ -17,6 +18,8 @@ export interface TutorialStep {
   info?: boolean;
   /** Shown when the target element is not on screen (e.g. permission denied or feature unavailable). */
   fallback?: string;
+  /** Browser capability required to use this tutorial. */
+  requires?: TutorialCapability[];
   /** Screen that must be showing for this step. */
   view?: View;
   /** Open the project menu (Save / Export). */
@@ -42,6 +45,7 @@ export interface Tutorial {
   features: string[];
   /** Message shown when the final step is completed. */
   doneMessage: string;
+  requires?: TutorialCapability[];
   steps: TutorialStep[];
 }
 
@@ -53,9 +57,9 @@ export interface Workflow {
 }
 
 export const GROUPS: Record<TutorialTab, string[]> = {
-  beat: ['Grid & timing', 'Channels & sounds', 'Kits & chords', 'Mix & tempo'],
+  beat: ['Grid & timing', 'Channels & sounds', 'Kits & chords', 'Mix & tempo', 'Review & access'],
   sound: ['Designer', 'Effects'],
-  library: ['Recording', 'Importing', 'Sample Editor', 'Recognition'],
+  library: ['Recording', 'Importing', 'Sample Editor', 'Recognition', 'Library tools'],
   song: ['Patterns', 'Arrangement', 'Assist', 'Export'],
   global: ['Basics', 'Export', 'Privacy & offline'],
 };
@@ -80,6 +84,8 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'recognition-edit', label: 'Recognition correction' }, { id: 'patterns', label: 'Patterns' },
   { id: 'timeline', label: 'Arrangement timeline' }, { id: 'arrangement-assist', label: 'Arrangement assistance' },
   { id: 'export-options', label: 'Export options' }, { id: 'privacy-offline', label: 'Privacy and offline use' },
+  { id: 'confidence-cues', label: 'Confidence and source-take cues' }, { id: 'keyboard-navigation', label: 'Keyboard navigation' },
+  { id: 'library-tools', label: 'Pad view, search and tags' },
 ];
 
 export const TUTORIALS: Tutorial[] = [
@@ -129,6 +135,7 @@ export const TUTORIALS: Tutorial[] = [
   {
     id: 'record-sample', title: '6. Record a sample', tab: 'library', group: 'Recording', level: 'beginner', estMinutes: 2,
     summary: 'Record your own sound with the microphone.', features: ['recording'], doneMessage: 'Your recording is in the library.',
+    requires: ['microphone'],
     steps: [
       { view: 'library', text: 'Allow microphone access and record a sound.', target: '#record-sample', fallback: 'Recording needs a microphone and permission. You can import an audio file instead (see "Import audio").', done: (s) => s.events.has('record-start') },
       { view: 'library', text: 'Stop the recording, trim it if needed, and save it to your library.', target: '#save-sample', done: (s) => s.events.has('sample-saved') },
@@ -223,9 +230,9 @@ export const TUTORIALS: Tutorial[] = [
     id: 'import-audio', title: 'Import audio', tab: 'library', group: 'Importing', level: 'beginner', estMinutes: 1,
     summary: 'Bring in an audio file and search your library.', features: ['import'], doneMessage: 'Imported samples live in your library.',
     steps: [
-      info('Choose an audio file to import, trim it, and save it to the library.', { view: 'library', target: '.sample-library' }),
+      { view: 'library', text: 'Choose an audio file to import. It opens in the editor so you can preview or trim it.', target: '.sample-editor input[type="file"]', fallback: 'Choose an audio file in the Sample Editor to begin.', done: (s) => s.events.has('sample-imported') },
       { view: 'library', text: 'Save it so it appears in the library.', target: '#save-sample', done: (s) => s.events.has('sample-saved') },
-      info('Use search and tags to find sounds, and the pads to play them.', { target: '.sample-library' }),
+      info('Use search and tags to find sounds, and switch to Pad view to play them.', { target: '.sample-library' }),
     ],
   },
   {
@@ -233,8 +240,8 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Trim, clean, tune, stretch and add effects without losing the original.', features: ['sample-editor'], doneMessage: 'Edits are non-destructive: reset any time.',
     steps: [
       info('Pick a sample in "Samples to edit". Your original audio is always kept.', { view: 'library', target: '.sample-edit-list', fallback: 'Record or import a sample first.' }),
-      info('Open Clean (trim, gain, noise), Tune (pitch), Time (speed, fit to beat), Tone (EQ, compression) or Creative effects.', { target: '.sample-editor details' }),
-      info('Compare with the original, undo/redo, or reset whenever you like.', { target: '.sample-editor' }),
+      { text: 'Adjust a setting in Clean, Tune, Time, Tone or Creative effects. The edit stays reversible.', target: '.sample-editor details', done: (s) => s.events.has('sample-edited') },
+      { text: 'Save the edit. The original audio remains available to compare or restore.', target: '.sample-edit-actions button:not(.secondary)', done: (s) => s.events.has('sample-updated') || s.events.has('sample-saved') },
     ],
   },
   {
@@ -250,7 +257,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'recognition-edit', title: 'Correct a recognized take', tab: 'library', group: 'Recognition', level: 'intermediate', estMinutes: 2,
     summary: 'Fix pitch and timing, quantise, and reclassify drums.', features: ['recognition-edit'], doneMessage: 'The original audio is kept as a muted track.',
     steps: [
-      info('Use Timing correction and Quantisation to tidy the rhythm.', { view: 'library', target: '[aria-label="Quantisation strength"]' }),
+      { text: 'Change timing or pitch correction, or edit an event to refine the recognized take.', view: 'library', target: '[aria-label="Quantisation strength"]', fallback: 'Recognize a recording first to edit its events.', done: (s) => s.events.has('recognition-edited') },
       info('Use Pitch correction for melodies, or change Classify/Sound on drum events.', { target: '.recognition-results' }),
       info('Low-confidence events are marked; review them by ear. Restore returns to the original result.', { target: '.recognition-results' }),
     ],
@@ -296,7 +303,36 @@ export const TUTORIALS: Tutorial[] = [
       info('After the first load the app works offline. Clearing site data removes your projects and samples, so export WAVs you want to keep.'),
     ],
   },
+  {
+    id: 'confidence-cues', title: 'Review confidence and source cues', tab: 'beat', group: 'Review & access', level: 'beginner', estMinutes: 1,
+    summary: 'Spot uncertain recognized notes and find their source take.', features: ['confidence-cues'], doneMessage: 'You know what to review in a generated part.',
+    steps: [
+      info('Recognized notes and beat steps show confidence and source-take details in their accessible labels and tooltips.', { view: 'beat', target: '.recognized, .piano-cell.low-confidence', fallback: 'Recognize a melody or beatbox performance first to see confidence cues.' }),
+      info('Review low-confidence events by ear. A pitch-bend marker indicates a note with recorded pitch movement.', { view: 'beat', target: '.confidence-indicator, .pitch-bend-indicator' }),
+    ],
+  },
+  {
+    id: 'keyboard-navigation', title: 'Navigate with the keyboard', tab: 'beat', group: 'Review & access', level: 'beginner', estMinutes: 1,
+    summary: 'Move through the beat grid and piano roll without a mouse.', features: ['keyboard-navigation'], doneMessage: 'You can edit patterns from the keyboard.',
+    steps: [
+      { view: 'beat', text: 'Focus a beat step, then use the arrow keys to move; Home and End jump to the first and last step.', target: '.grid [role="gridcell"]', done: (s) => s.events.has('keyboard-nav') },
+      { view: 'beat', pianoRoll: true, text: 'In the piano roll, use the arrow keys to move between pitches and steps.', target: '.piano-roll [role="gridcell"]', done: (s) => s.events.has('piano-keyboard-nav') },
+    ],
+  },
+  {
+    id: 'library-tools', title: 'Search, tag and play library sounds', tab: 'library', group: 'Library tools', level: 'beginner', estMinutes: 1,
+    summary: 'Find sounds by name or tag and use the pad layout.', features: ['library-tools'], doneMessage: 'You can quickly find and audition library sounds.',
+    steps: [
+      { view: 'library', text: 'Search by sound name, category or tag.', target: '#library-search', done: (s) => s.events.has('library-search') },
+      { view: 'library', text: 'Filter by a tag to narrow the results.', target: '#library-tag', done: (s) => s.events.has('library-tag') },
+      { view: 'library', text: 'Switch to Pad view to audition sounds in a larger layout.', target: '#pad-view', done: (s) => s.events.has('pad-view') },
+    ],
+  },
 ];
+
+export function isTutorialAvailable(tutorial: Tutorial, capabilities: ReadonlySet<TutorialCapability>): boolean {
+  return (tutorial.requires ?? []).every((capability) => capabilities.has(capability));
+}
 
 export const WORKFLOWS: Workflow[] = [
   { id: 'make-song', title: 'Make a song from scratch', outcome: 'You will have a playable, exported song.', tutorialIds: ['first-beat', 'add-channel', 'composition', 'timeline', 'save-export'] },

@@ -356,9 +356,10 @@ export function App() {
                 }}>✕</button>
               </div>
               {pianoChannels.has(c.id)
-                ? <PianoRoll project={project} onChange={setProject} channelId={c.id} />
+                ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
                 : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
-                  onToggle={(step) => setProject(toggleStep(project, c.id, step))} />}
+                  onToggle={(step) => setProject(toggleStep(project, c.id, step))}
+                  onKeyboardNavigate={() => emit('keyboard-nav')} />}
             </div>
           );
         })}
@@ -453,6 +454,7 @@ export function App() {
           updated.set(sample.id, sample);
           sampleDataRef.current = updated;
           setSampleData(updated);
+          emit('sample-updated');
           flash('Sample edits saved ✓');
         }}
         onRecordStart={async (durationMs, bars) => {
@@ -497,6 +499,10 @@ export function App() {
           if (result) setProject(result);
           else flash('There is not enough channel space to update this recognition track.');
         }}
+        onImport={() => emit('sample-imported')}
+        onEdit={() => emit('sample-edited')}
+        onRecognitionEdit={() => emit('recognition-edited')}
+        onLibraryAction={emit}
       />
 
         </div>
@@ -513,13 +519,14 @@ export function App() {
 }
 
 function BeatGrid({
-  channel, loopBars, noteLength, playStep, onToggle,
+  channel, loopBars, noteLength, playStep, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
   onToggle: (step: number) => void;
+  onKeyboardNavigate: () => void;
 }) {
   const [focusedStep, setFocusedStep] = useState(0);
   const steps = channel.steps;
@@ -533,12 +540,14 @@ function BeatGrid({
     };
     if (event.key === 'Home') {
       event.preventDefault();
+      onKeyboardNavigate();
       setFocusedStep(0);
       event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>('[data-step="0"]')?.focus();
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
+      onKeyboardNavigate();
       const last = Math.max(0, steps.length - 1);
       setFocusedStep(last);
       event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${last}"]`)?.focus();
@@ -547,6 +556,7 @@ function BeatGrid({
     const offset = offsets[event.key];
     if (offset === undefined) return;
     event.preventDefault();
+    onKeyboardNavigate();
     const next = Math.max(0, Math.min(steps.length - 1, step + offset));
     setFocusedStep(next);
     event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${next}"]`)?.focus();

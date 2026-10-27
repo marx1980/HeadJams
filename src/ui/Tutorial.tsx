@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GROUPS, TUTORIALS, WORKFLOWS, findTutorial, type Tutorial as T, type TutorialState, type TutorialStep, type TutorialTab } from '../tutorial/tutorials';
+import { GROUPS, TUTORIALS, WORKFLOWS, findTutorial, isTutorialAvailable, type Tutorial as T, type TutorialCapability, type TutorialState, type TutorialStep, type TutorialTab } from '../tutorial/tutorials';
 import { workflowProgress } from '../tutorial/progress';
 
 export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
@@ -31,6 +31,12 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   }, [onClose]);
 
   const tabs: TutorialTab[] = all || !tab ? ['beat', 'sound', 'library', 'song', 'global'] : [tab, 'global'];
+  const capabilities = new Set<TutorialCapability>();
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined') {
+    capabilities.add('microphone');
+  }
+  const availableTutorials = TUTORIALS.filter((tutorial) => isTutorialAvailable(tutorial, capabilities));
+  const availableIds = new Set(availableTutorials.map((tutorial) => tutorial.id));
   const tutorialRow = (t: T) => (
     <li key={t.id}>
       <button className="tut-item" onClick={() => onPick(t)}>
@@ -54,7 +60,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
       </div>
       {mode === 'actions' && tabs.map((tb) => (
         GROUPS[tb].map((group) => {
-          const items = TUTORIALS.filter((t) => t.tab === tb && t.group === group);
+          const items = availableTutorials.filter((t) => t.tab === tb && t.group === group);
           if (!items.length) return null;
           return (
             <details key={`${tb}-${group}`} open={tb === tab || all}>
@@ -66,7 +72,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
       ))}
       {mode === 'workflows' && (
         <ul className="tut-list">
-          {WORKFLOWS.map((w) => {
+          {WORKFLOWS.filter((w) => w.tutorialIds.every((id) => availableIds.has(id))).map((w) => {
             const p = workflowProgress(w, done);
             const next = p.nextId ? findTutorial(p.nextId) : undefined;
             return (
@@ -96,11 +102,33 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
   const [finished, setFinished] = useState(false);
   const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
   const [missing, setMissing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const step = tutorial.steps[index];
   const done = step.done(state) || skipped.has(index);
   const last = index === tutorial.steps.length - 1;
 
   useEffect(() => { onStep(step); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusables = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    (focusables()[0] ?? dialog)?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { onExit(); return; }
+      if (event.key !== 'Tab' || !dialog) return;
+      const items = focusables();
+      if (!items.length) { event.preventDefault(); dialog.focus(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [onExit, finished]);
 
   useEffect(() => {
     if (!step.target) return;
@@ -124,7 +152,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
 
   if (finished) {
     return (
-      <div className="tutorial-overlay" role="dialog" aria-label={tutorial.title}>
+      <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label={tutorial.title} tabIndex={-1} ref={dialogRef}>
         <p role="status">🎉 {tutorial.doneMessage}</p>
         <div className="row"><button onClick={onExit}>Close</button></div>
       </div>
@@ -132,7 +160,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
   }
 
   return (
-    <div className="tutorial-overlay" role="dialog" aria-label={tutorial.title}>
+    <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label={tutorial.title} tabIndex={-1} ref={dialogRef}>
       <div className="tut-title">{tutorial.title} (step {index + 1} of {tutorial.steps.length})</div>
       <p aria-live="polite">{done ? '✅ ' : '👉 '}{step.text}</p>
       {missing && step.fallback && <p className="tut-fallback" role="note">{step.fallback}</p>}
