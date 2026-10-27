@@ -89,7 +89,7 @@ export function generateBassFromMelody(notes: readonly NoteEvent[], stepCount: n
       step: note.step,
       pitch,
       durationSteps: Math.min(note.durationSteps, stepCount - note.step),
-      ...(note.confidence === undefined ? {} : { confidence: Math.max(0, Math.min(1, note.confidence)) }),
+      ...(Number.isFinite(note.confidence) ? { confidence: Math.max(0, Math.min(1, note.confidence!)) } : {}),
     }];
   });
 }

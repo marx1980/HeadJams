@@ -358,7 +358,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
         ) : <p className="hint">Add patterns to build a song timeline. Without clips, playback loops the selected pattern.</p>}
       </div>
       <section className="arrangement-assistant" aria-label="Arrangement assistance">
-        <h3>Arrangement assistance · Chord suggestions</h3>
+        <h3>Arrangement assistance</h3>
         <p className="hint">Suggestions use one melody track and never change it. Preview and add them as a separate editable track.</p>
         <div className="arrangement-assistant-controls">
           <label>Melody source
@@ -442,26 +442,39 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
             ? <p className="hint">Suggest and review chords above before generating a chord-following bass line.</p>
             : null}
           {bassPreview && (
-            <div className="arrangement-assistant-actions" aria-live="polite">
-              <span>{bassPreview.length ? `Preview: ${bassPreview.length} bass notes` : 'No bass notes could be generated.'}</span>
-              <button disabled={!bassPreview.length || project.channels.length >= MAX_CHANNELS} onClick={addBassTrack}>
-                ＋ Add bass track
-              </button>
-              {!!generatedBassChannels.length && (
-                <>
-                  <label>Replace bass track
-                    <select aria-label="Bass track to replace" value={generatedBassChannels.some((channel) => channel.id === replaceChannelId)
-                      ? replaceChannelId : generatedBassChannels[0].id}
-                      onChange={(event) => setReplaceChannelId(event.target.value)}>
-                      {generatedBassChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-                    </select>
-                  </label>
-                  <button className="secondary" disabled={!bassPreview.length}
-                    onClick={() => replaceBassTrack(generatedBassChannels.some((channel) => channel.id === replaceChannelId)
-                      ? replaceChannelId : generatedBassChannels[0].id)}>Replace bass track</button>
-                </>
+            <>
+              <p className="hint" aria-live="polite">
+                {bassPreview.length ? `Preview: ${bassPreview.length} bass notes` : 'No bass notes could be generated.'}
+              </p>
+              {!!bassPreview.length && (
+                <ol className="bass-note-preview" aria-label="Bass note preview">
+                  {bassPreview.slice(0, 16).map((note) => (
+                    <li key={note.id}>
+                      {NOTE_NAMES[note.pitch % 12]}{Math.floor(note.pitch / 12) - 1} · step {note.step + 1}
+                    </li>
+                  ))}
+                </ol>
               )}
-            </div>
+              <div className="arrangement-assistant-actions">
+                <button disabled={!bassPreview.length || project.channels.length >= MAX_CHANNELS} onClick={addBassTrack}>
+                  ＋ Add bass track
+                </button>
+                {!!generatedBassChannels.length && (
+                  <>
+                    <label>Replace bass track
+                      <select aria-label="Bass track to replace" value={generatedBassChannels.some((channel) => channel.id === replaceChannelId)
+                        ? replaceChannelId : generatedBassChannels[0].id}
+                        onChange={(event) => setReplaceChannelId(event.target.value)}>
+                        {generatedBassChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                      </select>
+                    </label>
+                    <button className="secondary" disabled={!bassPreview.length}
+                      onClick={() => replaceBassTrack(generatedBassChannels.some((channel) => channel.id === replaceChannelId)
+                        ? replaceChannelId : generatedBassChannels[0].id)}>Replace bass track</button>
+                  </>
+                )}
+              </div>
+            </>
           )}
         </div>
         {!!allGeneratedChannels.length && (

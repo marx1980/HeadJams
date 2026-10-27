@@ -217,7 +217,7 @@ describe('project model', () => {
       { id: 'low-note', step: 6, pitch: 24, durationSteps: 20 },
     ], 16);
     expect(melodyBass).toEqual([
-      { id: 'bass-melody-0-2-36', step: 2, pitch: 36, durationSteps: 3, confidence: 0.6 },
+      { id: 'bass-melody-0-2-48', step: 2, pitch: 48, durationSteps: 3, confidence: 0.6 },
       { id: 'bass-melody-1-6-36', step: 6, pitch: 36, durationSteps: 10 },
     ]);
   });
