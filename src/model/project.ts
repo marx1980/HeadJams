@@ -253,6 +253,10 @@ export function addArrangementClip(p: Project, patternId: string, startStep: num
   return { ...project, arrangement: [...project.arrangement, clip] };
 }
 
+export function removeArrangementClip(p: Project, clipId: string): Project {
+  return { ...p, arrangement: p.arrangement.filter((clip) => clip.id !== clipId) };
+}
+
 export function arrangementLength(p: Project): number {
   return p.arrangement.reduce((length, clip) => Math.max(length, clip.startStep + clip.lengthSteps), 0);
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addArrangementClip, addChannel, addCustomSound, addNote, addPattern, addSampleSound, arrangementLength, audibleChannels,
-  channelsForPlaybackStep, createChannel, createProject, removeChannel, removeNote, removePattern, selectPattern,
+  channelsForPlaybackStep, createChannel, createProject, removeArrangementClip, removeChannel, removeNote, removePattern, selectPattern,
   setBpm, setLoopBars, setNoteLength, setScale, toggleStep, totalSteps, MAX_CHANNELS,
 } from './project';
 import { TEMPLATES } from './templates';
@@ -81,6 +81,8 @@ describe('project model', () => {
     expect(channelsForPlaybackStep(p, 4)[0].localStep).toBe(0);
     expect(channelsForPlaybackStep(p, 7)[0].localStep).toBe(3);
     expect(channelsForPlaybackStep(p, 8)[0].localStep).toBe(4);
+    p = removeArrangementClip(p, p.arrangement[0].id);
+    expect(p.arrangement).toEqual([]);
     expect(removePattern(p, p.patterns[0].id).arrangement).toEqual([]);
   });
   it('stores a normalized scale root and scale id', () => {
