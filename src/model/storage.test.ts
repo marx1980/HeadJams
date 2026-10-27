@@ -67,6 +67,21 @@ describe('project storage migration', () => {
     expect(loaded.channels[0]).toMatchObject({ kitId: 'studio-kit', role: 'kick' });
   });
 
+  it('round-trips chord events and defaults older channels to no chord events', () => {
+    const project = createProject();
+    project.channels[0].chordEvents = [{
+      id: 'chord-1', step: 3, root: 62, quality: 'minor7', articulation: 'up-strum', durationSteps: 2,
+    }];
+    saveProject(project);
+
+    expect(loadProject().channels[0].chordEvents).toEqual(project.channels[0].chordEvents);
+
+    const older = createProject();
+    delete (older.channels[0] as { chordEvents?: unknown }).chordEvents;
+    values.set('musicmaker.project.v2', JSON.stringify(older));
+    expect(loadProject().channels[0].chordEvents).toEqual([]);
+  });
+
   it('falls back to the legacy project when the v2 entry is corrupt', () => {
     const legacy = createProject();
     legacy.name = 'Recoverable';

@@ -2,6 +2,7 @@ import {
   createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
   type Channel, type Pattern, type Project,
 } from './project';
+import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 
 const KEY = 'musicmaker.project.v2';
 const LEGACY_KEY = 'musicmaker.project.v1';
@@ -18,6 +19,14 @@ function normalizeProject(raw: string): Project | undefined {
     const normalizeChannel = (channel: Channel): Channel => ({
       ...channel,
       notes: Array.isArray(channel.notes) ? channel.notes : [],
+      chordEvents: Array.isArray(channel.chordEvents)
+        ? channel.chordEvents.filter((event) =>
+          Boolean(event && typeof event.id === 'string' && Number.isFinite(event.step)
+            && Number.isFinite(event.root) && Number.isFinite(event.durationSteps)
+            && CHORD_QUALITIES.some((item) => item.id === event.quality)
+            && CHORD_ARTICULATIONS.some((item) => item.id === event.articulation)),
+        ).map((event) => ({ ...event }))
+        : [],
     });
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({

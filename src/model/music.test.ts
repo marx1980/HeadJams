@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { chordPitches, isPitchInScale, pitchToFrequency, SCALES, scalePitches, snapPitchToScale } from './music';
+import {
+  chordPitches, formatChordSymbol, guitarChordPitches, isPitchInScale, pitchToFrequency, SCALES,
+  scalePitches, snapPitchToScale,
+} from './music';
 
 describe('music theory helpers', () => {
   const major = SCALES.find((scale) => scale.id === 'major')!;
@@ -24,6 +27,21 @@ describe('music theory helpers', () => {
     expect(chordPitches(60, 'major')).toEqual([60, 64, 67]);
     expect(chordPitches(60, 'minor')).toEqual([60, 63, 67]);
     expect(chordPitches(60, 'sus4')).toEqual([60, 65, 67]);
+    expect(chordPitches(60, 'seventh')).toEqual([60, 64, 67, 70]);
+    expect(chordPitches(60, 'major7')).toEqual([60, 64, 67, 71]);
+    expect(chordPitches(60, 'minor7')).toEqual([60, 63, 67, 70]);
+  });
+
+  it('resolves guitar chords to distinct playable string pitches and keeps power chords explicit', () => {
+    const pitches = guitarChordPitches(60, 'major');
+    expect(pitches.length).toBe(3);
+    expect(new Set(pitches).size).toBe(pitches.length);
+    expect(pitches.every((pitch) => pitch >= 40 && pitch <= 76)).toBe(true);
+    expect(pitches.map((pitch) => (pitch - 60 + 120) % 12)).toEqual(expect.arrayContaining([0, 4, 7]));
+    expect(guitarChordPitches(60, 'major', 'power').map((pitch) => (pitch - 60 + 120) % 12))
+      .toEqual(expect.arrayContaining([0, 7]));
+    expect(formatChordSymbol(60, 'minor7')).toBe('Cm7');
+    expect(formatChordSymbol(60, 'major', 'power')).toBe('C5');
   });
 
   it('converts MIDI pitches to equal-tempered frequency', () => {

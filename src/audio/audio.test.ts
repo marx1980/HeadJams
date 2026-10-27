@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STARTER_SOUNDS, findSound, renderPitchedNote, renderSound } from '../library/sounds';
-import { addArrangementClip, addNote, addPattern, addSampleSound, createProject, toggleStep } from '../model/project';
+import { addArrangementClip, addChordEvent, addNote, addPattern, addSampleSound, createProject, toggleStep, updateChannel } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { renderProject } from './render';
 import { encodeWav } from './wav';
@@ -45,6 +45,20 @@ describe('render + wav', () => {
     let project = addNote(createProject(), 'ch1', { id: 'a', step: 0, pitch: 60, durationSteps: 2 });
     project = addNote(project, 'ch1', { id: 'b', step: 0, pitch: 64, durationSteps: 2 });
     expect(renderProject(project, 8000).left.some((sample) => sample !== 0)).toBe(true);
+  });
+  it('renders guitar chord events with articulation-specific voicings', () => {
+    const base = updateChannel(createProject(), 'ch1', { soundId: 'guitar-chord-clean' });
+    const chord = addChordEvent(base, 'ch1', {
+      id: 'chord-1', step: 0, root: 60, quality: 'minor7', articulation: 'down-strum', durationSteps: 2,
+    });
+    const power = addChordEvent(base, 'ch1', {
+      id: 'chord-1', step: 0, root: 60, quality: 'minor7', articulation: 'power', durationSteps: 2,
+    });
+    const renderedChord = renderProject(chord, 8000).left;
+    const renderedPower = renderProject(power, 8000).left;
+    expect(renderedChord.some((sample) => sample !== 0)).toBe(true);
+    expect(renderedPower.some((sample) => sample !== 0)).toBe(true);
+    expect(renderedPower).not.toEqual(renderedChord);
   });
   it('renders clips at their arrangement positions and repeats pattern steps', () => {
     let project = addPattern(toggleStep(createProject(), 'ch1', 0), 'Verse');

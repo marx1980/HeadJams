@@ -4,7 +4,7 @@ import {
 import { findSound, renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration, stepDurationWithSwing } from './scheduler';
-import { pitchToFrequency } from '../model/music';
+import { guitarChordPitches, pitchToFrequency } from '../model/music';
 
 interface BiquadCoefficients {
   b0: number;
@@ -195,6 +195,24 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
             const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
             if (sample) mix(renderSampleNote(sample, def.params.freq, note.pitch, duration, note.velocity), start, gl, gr);
             else if (!def.sampleId) mix(renderPitchedNote(def.params, note.pitch, duration, note.velocity, sr), start, gl, gr);
+          }
+        }
+        if (def.playbackMode === 'chord') {
+          for (const event of c.chordEvents ?? []) {
+            if (event.step !== source.localStep) continue;
+            const pitches = guitarChordPitches(event.root, event.quality, event.articulation);
+            if (event.articulation === 'up-strum') pitches.reverse();
+            const duration = event.articulation === 'muted'
+              ? Math.min(0.08, event.durationSteps * stepLen / sr)
+              : event.durationSteps * stepLen / sr;
+            const velocity = (event.velocity ?? 1) * (event.articulation === 'muted' ? 0.75 : 1);
+            for (let index = 0; index < pitches.length; index++) {
+              const stagger = event.articulation === 'down-strum' || event.articulation === 'up-strum'
+                ? index * 0.018
+                : 0;
+              mix(renderPitchedNote(def.params, pitches[index], Math.max(0.01, duration - stagger), velocity, sr),
+                start + Math.round(stagger * sr), gl, gr);
+            }
           }
         }
       }

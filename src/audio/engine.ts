@@ -6,7 +6,7 @@ import { createSoundSource } from '../library/soundSource';
 import type { SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
-import { pitchToFrequency } from '../model/music';
+import { guitarChordPitches, pitchToFrequency } from '../model/music';
 
 export class Engine {
   private ctx?: AudioContext;
@@ -227,6 +227,23 @@ export class Engine {
             for (const note of c.notes ?? []) {
               if (note.step === source.localStep) {
                 this.playPitch(def, note.pitch, time, stepLen * note.durationSteps, c.volume, c.pan, note.velocity);
+              }
+            }
+            if (def.playbackMode === 'chord') {
+              for (const event of c.chordEvents ?? []) {
+                if (event.step !== source.localStep) continue;
+                const pitches = guitarChordPitches(event.root, event.quality, event.articulation);
+                if (event.articulation === 'up-strum') pitches.reverse();
+                const duration = event.articulation === 'muted'
+                  ? Math.min(0.08, stepLen * event.durationSteps)
+                  : stepLen * event.durationSteps;
+                const velocity = (event.velocity ?? 1) * (event.articulation === 'muted' ? 0.75 : 1);
+                for (let index = 0; index < pitches.length; index++) {
+                  const stagger = event.articulation === 'down-strum' || event.articulation === 'up-strum'
+                    ? index * 0.018
+                    : 0;
+                  this.playPitch(def, pitches[index], time + stagger, Math.max(0.01, duration - stagger), c.volume, c.pan, velocity);
+                }
               }
             }
           }

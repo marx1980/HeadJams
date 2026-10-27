@@ -1,3 +1,5 @@
+import type { ChordArticulation, ChordQuality } from './music';
+
 export type NoteLength = 4 | 8 | 16;
 export type LoopBars = 1 | 2 | 4;
 export type Wave = 'sine' | 'square' | 'saw' | 'triangle' | 'noise';
@@ -46,6 +48,7 @@ export interface Channel {
   solo: boolean;
   steps: boolean[];
   notes: NoteEvent[];
+  chordEvents?: ChordEvent[];
   kitId?: string;
   role?: DrumRole;
 }
@@ -54,6 +57,16 @@ export interface NoteEvent {
   id: string;
   step: number;
   pitch: number;
+  durationSteps: number;
+  velocity?: number;
+}
+
+export interface ChordEvent {
+  id: string;
+  step: number;
+  root: number;
+  quality: ChordQuality;
+  articulation: ChordArticulation;
   durationSteps: number;
   velocity?: number;
 }
@@ -149,6 +162,7 @@ function copyChannels(channels: Channel[]): Channel[] {
     ...channel,
     steps: [...channel.steps],
     notes: (channel.notes ?? []).map((note) => ({ ...note })),
+    ...(channel.chordEvents ? { chordEvents: channel.chordEvents.map((event) => ({ ...event })) } : {}),
   }));
 }
 
@@ -169,6 +183,7 @@ export function setLoopBars(p: Project, loopBars: LoopBars): Project {
     ...c,
     steps: Array.from({ length: len }, (_, i) => c.steps[i] ?? false),
     notes: (c.notes ?? []).filter((note) => note.step < len),
+    chordEvents: (c.chordEvents ?? []).filter((event) => event.step < len),
   })), len);
   return { ...updated, loopBars };
 }
@@ -189,6 +204,12 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
       const position = (note.step * newLen) / oldLen;
       return Number.isInteger(position)
         ? [{ ...note, step: position, durationSteps: Math.max(1, Math.round((note.durationSteps * newLen) / oldLen)) }]
+        : [];
+    }),
+    chordEvents: (c.chordEvents ?? []).flatMap((event) => {
+      const position = (event.step * newLen) / oldLen;
+      return Number.isInteger(position)
+        ? [{ ...event, step: position, durationSteps: Math.max(1, Math.round((event.durationSteps * newLen) / oldLen)) }]
         : [];
     }),
   })), newLen);
@@ -258,6 +279,37 @@ export function addNote(p: Project, channelId: string, note: NoteEvent): Project
   ));
 }
 
+export function addChordEvent(p: Project, channelId: string, event: ChordEvent): Project {
+  if (!event.id || !Number.isFinite(event.root) || !Number.isFinite(event.step) || !Number.isFinite(event.durationSteps)) return p;
+  if (!['major', 'minor', 'diminished', 'augmented', 'sus2', 'sus4', 'seventh', 'major7', 'minor7'].includes(event.quality)) return p;
+  if (!['sustained', 'down-strum', 'up-strum', 'muted', 'power'].includes(event.articulation)) return p;
+  const root = Math.max(MIN_PITCH, Math.min(MAX_PITCH, Math.round(event.root)));
+  const step = Math.max(0, Math.floor(event.step));
+  const durationSteps = Math.max(1, event.durationSteps);
+  const velocity = event.velocity === undefined || !Number.isFinite(event.velocity)
+    ? undefined
+    : Math.max(0, Math.min(1, event.velocity));
+  return syncCurrentPattern(p, p.channels.map((channel) =>
+    channel.id === channelId
+      ? {
+        ...channel,
+        chordEvents: [
+          ...(channel.chordEvents ?? []).filter((item) => item.id !== event.id),
+          { ...event, root, step, durationSteps, ...(velocity === undefined ? {} : { velocity }) },
+        ],
+      }
+      : channel,
+  ));
+}
+
+export function removeChordEvent(p: Project, channelId: string, eventId: string): Project {
+  return syncCurrentPattern(p, p.channels.map((channel) =>
+    channel.id === channelId
+      ? { ...channel, chordEvents: (channel.chordEvents ?? []).filter((event) => event.id !== eventId) }
+      : channel,
+  ));
+}
+
 export function removeNote(p: Project, channelId: string, noteId: string): Project {
   return syncCurrentPattern(p, p.channels.map((channel) =>
     channel.id === channelId
@@ -274,6 +326,10 @@ export function transposeChannelNotes(p: Project, channelId: string, semitones: 
       ...note,
       pitch: Math.max(MIN_PITCH, Math.min(MAX_PITCH, note.pitch + shift)),
     })),
+    chordEvents: (p.channels.find((channel) => channel.id === channelId)?.chordEvents ?? []).map((event) => ({
+      ...event,
+      root: Math.max(MIN_PITCH, Math.min(MAX_PITCH, event.root + shift)),
+    })),
   });
 }
 
@@ -288,6 +344,10 @@ export function shiftChannelNotes(p: Project, channelId: string, steps: number):
       ...note,
       step: ((note.step + shift) % length + length) % length,
     })),
+    chordEvents: (channel.chordEvents ?? []).map((event) => ({
+      ...event,
+      step: ((event.step + shift) % length + length) % length,
+    })),
   });
 }
 
@@ -299,6 +359,10 @@ export function scaleChannelNoteDurations(p: Project, channelId: string, factor:
     notes: (channel.notes ?? []).map((note) => ({
       ...note,
       durationSteps: Math.max(1, Math.round(note.durationSteps * factor)),
+    })),
+    chordEvents: (channel.chordEvents ?? []).map((event) => ({
+      ...event,
+      durationSteps: Math.max(1, Math.round(event.durationSteps * factor)),
     })),
   });
 }
