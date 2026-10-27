@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SoundDef } from '../model/project';
+import { soundLibraryGroup } from '../library/instrumentRegistry';
 
 const FAVORITES_KEY = 'musicmaker.favoriteSounds';
 const RECENT_KEY = 'musicmaker.recentSounds';
@@ -12,12 +13,6 @@ function readIds(key: string): string[] {
   } catch {
     return [];
   }
-}
-
-function groupFor(sound: SoundDef): string {
-  if (sound.category === 'Lead') return 'Synths';
-  if (sound.category === 'FX') return 'FX & Other';
-  return sound.category;
 }
 
 export function SoundPicker({
@@ -35,7 +30,7 @@ export function SoundPicker({
   const [recent, setRecent] = useState<string[]>(readIds(RECENT_KEY));
   const closeButton = useRef<HTMLButtonElement>(null);
   const selected = sounds.find((sound) => sound.id === soundId);
-  const groups = useMemo(() => [...new Set(sounds.map(groupFor))].sort(), [sounds]);
+  const groups = useMemo(() => [...new Set(sounds.map(soundLibraryGroup))].sort(), [sounds]);
   const matchingSounds = useMemo(() => {
     const matches = sounds.filter((sound) => {
       const matchesGroup = group === 'Favorites'
@@ -43,7 +38,7 @@ export function SoundPicker({
         : group === 'Recent'
           ? recent.includes(sound.id)
           : group
-            ? groupFor(sound) === group
+            ? soundLibraryGroup(sound) === group
             : true;
       const text = `${sound.name} ${sound.category} ${(sound.tags ?? []).join(' ')}`.toLowerCase();
       return matchesGroup && text.includes(query.trim().toLowerCase());
@@ -136,7 +131,7 @@ export function SoundPicker({
                   <div className={`sound-picker-item${sound.id === soundId ? ' current' : ''}`} key={sound.id}>
                     <span>
                       <strong>{sound.name}</strong>
-                      <small>{groupFor(sound)}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</small>
+                      <small>{soundLibraryGroup(sound)}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</small>
                     </span>
                     <div className="sound-picker-actions">
                       <button className="secondary" aria-label={`${favorites.includes(sound.id) ? 'Remove' : 'Add'} ${sound.name} ${favorites.includes(sound.id) ? 'from' : 'to'} favorites`}
