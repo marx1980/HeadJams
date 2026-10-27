@@ -126,6 +126,9 @@ button.on { background: var(--color, #ffd166); color: #000; }
 .tutorial-overlay p { margin: 4px 0 8px; font-size: 1.05rem; }
 .tut-highlight { outline: 3px solid #ffd166 !important; animation: pulse 1s infinite alternate; }
 @keyframes pulse { to { outline-offset: 3px; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
 .composition h2 { margin: 0; }
 .effects-panel h2 { margin: 0; }
 .effect-controls { display: flex; flex-wrap: wrap; gap: 12px; }

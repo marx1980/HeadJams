@@ -80,8 +80,12 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] 11c: scale-aware melody harmony and chord accompaniment are previewable; generated tracks can be edited, replaced, muted, and removed independently of their sources.
 - [x] 11d: Acoustic, Pop, Electronic, and Orchestral arrangement styles select accompaniment instruments and rhythmic patterns.
 - [x] 11e: offline WAV export supports 44.1/48/96 kHz, 16/24-bit PCM, and optional stereo peak normalization; all rendering remains local.
-### 12. Hardening — NOT STARTED
-Accessibility, privacy, performance, export, deployment; expansion definition of done (§27).
+### 12. Hardening — DONE
+- [x] Accessible keyboard navigation and sound-picker focus handling retained; reduced-motion preferences disable animation.
+- [x] WAV rendering and encoding run in a Web Worker; export reports progress state and failures without blocking the interface.
+- [x] WAV tests cover 44.1/48/96 kHz, stereo PCM, 16/24-bit output, normalization, and invalid input.
+- [x] Documented browser-local storage, privacy limits, and GitHub Pages release checks; added CI test/build validation.
+- [x] Verified tests and production build. Offline PWA caching remains Phase 13.
 ### 13. Platform and community — NOT STARTED (last)
 PWA offline (including sound-pack and sample caching), Capacitor builds, MIDI (optionally drum map), accounts/cloud sync (incl. sample processing and recognition data), sample marketplace (reusing asset-licence records).
 
