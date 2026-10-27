@@ -9,10 +9,10 @@ Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops w
 Microphone recording and audio-file import, sample trimming and normalization, searchable/tagged library, pad view, IndexedDB sample storage, sample playback and WAV export, recording tutorial.
 ### 3. Phase 3: Richer composition — DONE
 Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangement timeline, and composition tutorial.
-Not yet verified: manual 2-minute usability test in a real browser.
+Verified in a production browser on 2026-10-27: created and played a beat, imported and saved a sample, recognized a melody, and confirmed the generated track persisted after reload.
 
 ## OPEN
-- Manual 2-minute usability test in a real browser (Phase 3).
+- No unblocked Phase 0–9 implementation items remain. Phase 5 multisample playback and Phase 6 sampled packs remain deferred until their zone schema and licensed/attributed sample assets are available.
 
 ## DONE (continued)
 ### 4. Phase 4: Sound shaping — DONE
@@ -67,13 +67,13 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Piano roll and Beat grid identify low-confidence events and source takes, expose pitch-bend cues, and support arrow-key navigation.
 - [x] Sound picker has family icons and colour accents, loading/empty/missing states, synchronized Favourites/Recent lists, and keyboard-accessible navigation.
 - [x] Checked the procedural catalog: the existing 67 presets cover the specified instrument families; sampled packs remain deferred until licensed assets are available (§6).
-### 10. Recognition — NOT STARTED (§17-21, §23)
-Keep the step-based project `NoteEvent`; recognition output uses a separate seconds-based type quantised into step events.
-- 10a: recognition adapter and event models; Original/Cleaned/Quantised versions stored with the sample.
-- 10b: melody and bass (Basic Pitch behind the adapter, YIN fallback).
-- 10c: beatbox (onset detection + broad classifier, manual correction, kit mapping).
-- 10d: tempo detection, count-in/metronome, quantisation, loop recording, multi-track layering.
-- Privacy: on-device processing by default.
+### 10. Recognition — DONE (§17-21, §23)
+- [x] 10a: replaceable recognition adapter, seconds-based melody/percussion events, versioned project migration, and Original/Cleaned/Quantised provenance.
+- [x] 10b: local YIN melody/bass pitch tracking with confidence and bend points; scale-aware pitch correction, transpose, split/join/move/resize/delete, undo, and restore controls.
+- [x] 10c: local onset detection and broad percussion classification; per-event class/sound correction, confidence display, and playable unknown events.
+- [x] 10d: BPM estimates and half/double alternatives, count-in/metronome, loop-length recording with position display, adjustable track/selection quantisation, and layered editable tracks.
+- [x] Original audio is retained in IndexedDB and added as a muted, independently controllable playback track; generated events retain stable source-take and confidence metadata.
+- Privacy: all shipped recognition runs on-device. A third-party pitch engine can be supplied through the adapter, but Basic Pitch is not bundled; pitch and percussion classifications are best-effort and should be manually reviewed.
 ### 11. Arrangement assistance — NOT STARTED (§22)
 Chord suggestions, bass generation, accompaniment/harmony, style templates, higher-quality rendering/export. Generated material kept separate from transcription.
 ### 12. Hardening — NOT STARTED

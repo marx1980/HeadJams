@@ -2,20 +2,28 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Channel, SoundDef } from '../model/project';
 import type { SampleData } from '../library/sampleStorage';
 import { SampleEditor } from './SampleEditor';
+import { RecognitionPanel } from './RecognitionPanel';
+import type { Project } from '../model/project';
+import type { RecognitionTake } from '../model/recognition';
 
 export function SampleLibrary({
-  sounds, channels, sampleData, bpm, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample, onRecordStart,
+  sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
+  onRecordStart, onRecordStop, onRecognize, onRecognitionBpmChange,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
   sampleData: ReadonlyMap<string, SampleData>;
   bpm: number;
+  project: Project;
   onPreview: (sound: SoundDef) => void;
   onPreviewSample: (sample: SampleData) => void;
   onUse: (soundId: string, channelId: string) => void;
   onSaveSample: (name: string, tags: string[], sample: SampleData) => Promise<void>;
   onUpdateSample: (sample: SampleData) => Promise<void>;
-  onRecordStart: () => void;
+  onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
+  onRecordStop: () => void;
+  onRecognize: (take: RecognitionTake) => boolean;
+  onRecognitionBpmChange: (bpm: number, take?: RecognitionTake) => void;
 }) {
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('');
@@ -71,10 +79,20 @@ export function SampleLibrary({
         sounds={sounds}
         samples={sampleData}
         bpm={bpm}
+        loopBars={project.loopBars}
         onSaveSample={onSaveSample}
         onUpdateSample={onUpdateSample}
         onPreviewSample={onPreviewSample}
         onRecordStart={onRecordStart}
+        onRecordStop={onRecordStop}
+      />
+      <RecognitionPanel
+        project={project}
+        samples={sampleData}
+        sounds={sounds}
+        onApply={onRecognize}
+        onBpmChange={onRecognitionBpmChange}
+        onPreviewSample={onPreviewSample}
       />
     </section>
   );

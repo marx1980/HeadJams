@@ -3,9 +3,12 @@ import {
   type Channel, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
+import type {
+  DetectedNoteEvent, PercussionEvent, RecognitionEvent, RecognitionTake,
+} from './recognition';
 
-const KEY = 'musicmaker.project.v2';
-const LEGACY_KEY = 'musicmaker.project.v1';
+const KEY = 'musicmaker.project.v3';
+const LEGACY_KEYS = ['musicmaker.project.v2', 'musicmaker.project.v1'];
 
 function normalizeNote(note: NoteEvent): NoteEvent {
   const confidence = Number.isFinite(note.confidence)
@@ -13,7 +16,7 @@ function normalizeNote(note: NoteEvent): NoteEvent {
     : undefined;
   const pitchBend = Array.isArray(note.pitchBend)
     ? note.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
-      .map((point) => ({ time: point.time, value: point.value }))
+      .map((point) => ({ time: point.time, value: Math.max(-48, Math.min(48, point.value)) }))
     : undefined;
   const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0
     ? note.sourceTakeId
@@ -44,6 +47,86 @@ function normalizeStepEventMetadata(value: unknown, stepCount: number): Record<n
       ...(sourceTakeId === undefined ? {} : { sourceTakeId }),
     }]];
   }));
+}
+
+function normalizeRecognitionEvents(value: unknown): RecognitionEvent[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw): RecognitionEvent[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const event = raw as Partial<DetectedNoteEvent & PercussionEvent>;
+    if (typeof event.id !== 'string' || !Number.isFinite(event.startSeconds) || event.startSeconds! < 0) return [];
+    if (typeof event.type === 'string') {
+      if (!['kick', 'snare', 'closed-hat', 'open-hat', 'clap', 'tom', 'cymbal', 'bass', 'unknown'].includes(event.type)
+        || !Number.isFinite(event.velocity)) return [];
+      return [{
+        id: event.id,
+        type: event.type as PercussionEvent['type'],
+        startSeconds: event.startSeconds!,
+        velocity: Math.max(0, Math.min(1, event.velocity!)),
+        ...(Number.isFinite(event.confidence) ? { confidence: Math.max(0, Math.min(1, event.confidence!)) } : {}),
+        ...(typeof event.assignedSoundId === 'string' ? { assignedSoundId: event.assignedSoundId } : {}),
+      }];
+    }
+    if (!Number.isFinite(event.pitch) || !Number.isFinite(event.durationSeconds)
+      || event.durationSeconds! <= 0 || !Number.isFinite(event.velocity) || !Number.isFinite(event.confidence)) return [];
+    const pitchBend = Array.isArray(event.pitchBend)
+      ? event.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
+        .map((point) => ({ time: point.time, value: point.value }))
+      : undefined;
+    return [{
+      id: event.id,
+      pitch: Math.max(0, Math.min(127, Math.round(event.pitch!))),
+      ...(Number.isFinite(event.rawPitch) ? { rawPitch: Math.max(0, Math.min(127, event.rawPitch!)) } : {}),
+      startSeconds: event.startSeconds!,
+      durationSeconds: event.durationSeconds!,
+      velocity: Math.max(0, Math.min(1, event.velocity!)),
+      confidence: Math.max(0, Math.min(1, event.confidence!)),
+      ...(pitchBend ? { pitchBend } : {}),
+    }];
+  });
+}
+
+function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw): RecognitionTake[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const take = raw as Partial<RecognitionTake>;
+    if (typeof take.id !== 'string' || typeof take.sourceSampleId !== 'string'
+      || !['melody', 'bass', 'beat'].includes(take.mode ?? '')
+      || typeof take.modelId !== 'string' || typeof take.modelVersion !== 'string'
+      || !Number.isFinite(take.tempoBpm) || take.tempoBpm! < 40 || take.tempoBpm! > 240) return [];
+    const quantisation = take.quantisation;
+    if (!quantisation || typeof quantisation.enabled !== 'boolean'
+      || !Number.isFinite(quantisation.strength)
+      || !['quarter', 'eighth', 'sixteenth'].includes(quantisation.subdivision)) return [];
+    return [{
+      id: take.id,
+      sourceSampleId: take.sourceSampleId,
+      mode: take.mode!,
+      modelId: take.modelId,
+      modelVersion: take.modelVersion,
+      createdAt: Number.isFinite(take.createdAt) ? take.createdAt! : 0,
+      tempoBpm: take.tempoBpm!,
+      ...(Number.isFinite(take.detectedBpm) ? { detectedBpm: take.detectedBpm } : {}),
+      tempoAlternatives: Array.isArray(take.tempoAlternatives)
+        ? take.tempoAlternatives.filter((bpm) => Number.isFinite(bpm) && bpm >= 40 && bpm <= 240)
+        : [],
+      quantisation: {
+        enabled: quantisation.enabled,
+        strength: Math.max(0, Math.min(1, quantisation.strength)),
+        subdivision: quantisation.subdivision,
+      },
+      pitchCorrection: Number.isFinite(take.pitchCorrection) ? Math.max(0, Math.min(1, take.pitchCorrection!)) : 0,
+      scaleAwarePitch: take.scaleAwarePitch === true,
+      scaleRoot: Number.isInteger(take.scaleRoot) ? ((take.scaleRoot! % 12) + 12) % 12 : 0,
+      scaleId: typeof take.scaleId === 'string' ? take.scaleId : 'major',
+      transposeSemitones: Number.isFinite(take.transposeSemitones) ? Math.max(-48, Math.min(48, take.transposeSemitones!)) : 0,
+      originalEvents: normalizeRecognitionEvents(take.originalEvents),
+      quantisedEvents: normalizeRecognitionEvents(take.quantisedEvents),
+      channelIds: Array.isArray(take.channelIds) ? take.channelIds.filter((id) => typeof id === 'string') : [],
+      ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
+    }];
+  });
 }
 
 export function saveProject(p: Project): void {
@@ -89,13 +172,14 @@ function normalizeProject(raw: string): Project | undefined {
       arrangement: Array.isArray(p.arrangement) ? p.arrangement : [],
       effects: normalizeEffects(p.effects),
       swingTemplate: normalizeSwingTemplate(p.swingTemplate),
+      recognitionTakes: normalizeRecognitionTakes(p.recognitionTakes),
     };
   } catch { /* corrupt data: try the legacy key or fall back */ }
   return undefined;
 }
 
 export function loadProject(): Project {
-  for (const key of [KEY, LEGACY_KEY]) {
+  for (const key of [KEY, ...LEGACY_KEYS]) {
     try {
       const raw = localStorage.getItem(key);
       if (raw) {

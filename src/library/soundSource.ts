@@ -19,11 +19,12 @@ export function createSoundSource(sound: SoundDef): SoundSource {
   if (sound.sampleId) {
     return {
       kind: 'sample',
-      cacheKey: `sample:${sound.id}:${sound.sampleId}:${JSON.stringify(sound.params)}`,
+      cacheKey: `sample:${sound.id}:${sound.sampleId}:${sound.sampleVersion ?? 'processed'}:${JSON.stringify(sound.params)}`,
       sampleId: sound.sampleId,
       load: (sampleRate, getSample) => {
         const sample = getSample(sound.sampleId!);
-        return sample ? resampleSample(sample.samples, sample.sampleRate, sampleRate) : undefined;
+        const data = sound.sampleVersion === 'original' ? sample?.originalSamples ?? sample?.samples : sample?.samples;
+        return sample && data ? resampleSample(data, sample.sampleRate, sampleRate) : undefined;
       },
     };
   }

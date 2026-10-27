@@ -1,5 +1,5 @@
 import {
-  arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type Project, type SoundDef,
+  arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type PitchBendPoint, type Project, type SoundDef,
 } from '../model/project';
 import { findSound } from '../library/sounds';
 import { createSoundSource } from '../library/soundSource';
@@ -144,7 +144,10 @@ export class Engine {
     this.previewGain = undefined;
   }
 
-  private playPitch(def: SoundDef, pitch: number, time: number, duration: number, volume: number, pan: number, velocity = 1) {
+  private playPitch(
+    def: SoundDef, pitch: number, time: number, duration: number, volume: number, pan: number, velocity = 1,
+    pitchBend: PitchBendPoint[] = [],
+  ) {
     const ctx = this.ctx!;
     const start = Math.max(time, ctx.currentTime);
     const length = Math.max(0.01, duration);
@@ -152,6 +155,19 @@ export class Engine {
     const gain = ctx.createGain();
     const panner = ctx.createStereoPanner();
     const level = Math.max(0, volume * (Number.isFinite(velocity) ? Math.min(1, Math.max(0, velocity)) : 1));
+    const bends = pitchBend.filter((point) => Number.isFinite(point.time) && point.time >= 0
+      && Number.isFinite(point.value)).map((point) => ({ ...point, value: Math.max(-48, Math.min(48, point.value)) }))
+      .sort((a, b) => a.time - b.time);
+    const automateBends = (parameter: AudioParam, base: number) => {
+      parameter.setValueAtTime(base, start);
+      let previousTime = start;
+      for (const point of bends) {
+        const bendTime = Math.min(end, start + point.time);
+        if (bendTime <= previousTime) continue;
+        parameter.linearRampToValueAtTime(base * 2 ** (point.value / 12), bendTime);
+        previousTime = bendTime;
+      }
+    };
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(level, start + 0.008);
     gain.gain.setValueAtTime(level, end);
@@ -165,7 +181,7 @@ export class Engine {
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       const rate = pitchToFrequency(pitch) / Math.max(10, def.params.freq);
-      source.playbackRate.setValueAtTime(Math.min(8, Math.max(0.125, rate)), start);
+      automateBends(source.playbackRate, Math.min(8, Math.max(0.125, rate)));
       source.connect(gain);
       source.start(start);
       source.stop(end + 0.03);
@@ -174,7 +190,7 @@ export class Engine {
 
     const oscillator = ctx.createOscillator();
     oscillator.type = def.params.wave === 'saw' ? 'sawtooth' : def.params.wave === 'noise' ? 'triangle' : def.params.wave;
-    oscillator.frequency.setValueAtTime(pitchToFrequency(pitch), start);
+    automateBends(oscillator.frequency, pitchToFrequency(pitch));
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(Math.min(def.params.cutoff, ctx.sampleRate / 2), start);
@@ -249,7 +265,7 @@ export class Engine {
             if (c.steps[source.localStep]) this.play(def, time, c.volume, c.pan);
             for (const note of c.notes ?? []) {
               if (note.step === source.localStep) {
-                this.playPitch(def, note.pitch, time, stepLen * note.durationSteps, c.volume, c.pan, note.velocity);
+                this.playPitch(def, note.pitch, time, stepLen * note.durationSteps, c.volume, c.pan, note.velocity, note.pitchBend);
               }
             }
             if (def.playbackMode === 'chord') {
