@@ -59,7 +59,7 @@ export interface Channel {
 
 export interface GeneratedTrackMetadata {
   generatedBy: 'arrangement-assistant';
-  kind: 'chord-suggestions' | 'bass-generation';
+  kind: 'chord-suggestions' | 'bass-generation' | 'harmony-generation' | 'accompaniment-generation';
   sourceChannelId: string;
   confidence: number;
 }

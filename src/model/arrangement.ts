@@ -133,6 +133,56 @@ export function replaceGeneratedBassChannel(
   });
 }
 
+export type GeneratedArrangementKind = 'harmony-generation' | 'accompaniment-generation';
+
+export function addGeneratedArrangementChannel(
+  project: Project,
+  sourceChannelId: string,
+  name: string,
+  soundId: string,
+  kind: GeneratedArrangementKind,
+  notes: readonly NoteEvent[],
+): Project {
+  const source = project.channels.find((channel) => channel.id === sourceChannelId);
+  const valid = validNotes(project, notes);
+  if (!source || source.generatedMetadata || !name.trim() || !soundId || !valid.length
+    || project.channels.length >= MAX_CHANNELS) return project;
+  const next = addChannel(project, name, soundId);
+  const channel = next.channels.at(-1);
+  if (!channel || next === project) return project;
+  return updateChannel(next, channel.id, {
+    notes: valid,
+    generatedMetadata: {
+      generatedBy: 'arrangement-assistant',
+      kind,
+      sourceChannelId,
+      confidence: averageConfidence(valid),
+    },
+  });
+}
+
+export function replaceGeneratedArrangementChannel(
+  project: Project,
+  channelId: string,
+  sourceChannelId: string,
+  notes: readonly NoteEvent[],
+): Project {
+  const channel = project.channels.find((item) => item.id === channelId);
+  const source = project.channels.find((item) => item.id === sourceChannelId);
+  const valid = validNotes(project, notes);
+  if (!channel?.generatedMetadata
+    || (channel.generatedMetadata.kind !== 'harmony-generation' && channel.generatedMetadata.kind !== 'accompaniment-generation')
+    || !source || source.generatedMetadata || !valid.length) return project;
+  return updateChannel(project, channelId, {
+    notes: valid,
+    generatedMetadata: {
+      ...channel.generatedMetadata,
+      sourceChannelId,
+      confidence: averageConfidence(valid),
+    },
+  });
+}
+
 export function addGeneratedChordChannel(
   project: Project,
   sourceChannelId: string,

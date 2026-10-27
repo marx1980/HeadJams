@@ -6,9 +6,12 @@ import {
   removeChordEvent, setStepEventMetadata, toggleStep, totalSteps, transposeChannelNotes, MAX_CHANNELS,
 } from './project';
 import {
-  addGeneratedBassChannel, addGeneratedChordChannel, generateBassFromChords, generateBassFromMelody,
-  removeGeneratedChordChannel, removeGeneratedTrack, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
+  addGeneratedArrangementChannel, addGeneratedBassChannel, addGeneratedChordChannel,
+  generateBassFromChords, generateBassFromMelody, generateHarmonyFromMelody,
+  removeGeneratedChordChannel, removeGeneratedTrack, replaceGeneratedArrangementChannel,
+  replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from './arrangement';
+import { ARRANGEMENT_STYLES, generateChordAccompaniment } from '../library/arrangementStyles';
 import { TEMPLATES } from './templates';
 import { suggestChordsFromNotes } from '../library/chordSuggestion';
 
@@ -253,6 +256,38 @@ describe('project model', () => {
     expect(addGeneratedBassChannel(p, 'ch1', [{ ...notes[0], step: totalSteps(p) }])).toBe(p);
     for (let index = 1; index < MAX_CHANNELS; index++) p = addChannel(p, `Channel ${index}`, 'keys-1');
     expect(addGeneratedBassChannel(p, 'ch1', notes)).toBe(p);
+  });
+  it('generates scale-aware melody harmony and style-based chord accompaniment', () => {
+    const melody = [{ id: 'melody', step: 0, pitch: 60, durationSteps: 4, confidence: 0.8 }];
+    expect(generateHarmonyFromMelody(melody, 0, 'major', 16)).toMatchObject([
+      { step: 0, pitch: 64, durationSteps: 4, confidence: 0.8 },
+    ]);
+
+    const chords = [{ root: 60, quality: 'major' as const, step: 0, durationSteps: 16, confidence: 0.9, alternatives: [] }];
+    const acoustic = generateChordAccompaniment(chords, ARRANGEMENT_STYLES[0], 16, 16);
+    const pop = generateChordAccompaniment(chords, ARRANGEMENT_STYLES.find((style) => style.id === 'pop')!, 16, 16);
+    const electronic = generateChordAccompaniment(chords, ARRANGEMENT_STYLES.find((style) => style.id === 'electronic')!, 16, 16);
+    expect(acoustic.map((note) => note.step)).toEqual([0, 0, 0]);
+    expect(pop).toHaveLength(12);
+    expect(electronic.map((note) => note.step)).toEqual([2, 2, 2, 6, 6, 6, 10, 10, 10, 14, 14, 14]);
+  });
+  it('adds and replaces generated harmony or accompaniment as separately tagged tracks', () => {
+    const sourceNote = { id: 'melody', step: 0, pitch: 60, durationSteps: 4 };
+    let p = addNote(createProject(), 'ch1', sourceNote);
+    const harmony = generateHarmonyFromMelody([sourceNote], p.scaleRoot, p.scaleId, totalSteps(p));
+    p = addGeneratedArrangementChannel(p, 'ch1', 'Harmony · Kick', 'strings-1', 'harmony-generation', harmony);
+    const harmonyId = p.channels[1].id;
+    expect(p.channels[1].generatedMetadata?.kind).toBe('harmony-generation');
+    const accompaniment = [{ id: 'comp', step: 4, pitch: 64, durationSteps: 2 }];
+    p = addGeneratedArrangementChannel(p, 'ch1', 'Pop accompaniment', 'keys-2', 'accompaniment-generation', accompaniment);
+    const accompanimentId = p.channels[2].id;
+    expect(p.channels[2].generatedMetadata?.kind).toBe('accompaniment-generation');
+
+    const replacement = [{ id: 'replacement', step: 2, pitch: 67, durationSteps: 2 }];
+    p = replaceGeneratedArrangementChannel(p, accompanimentId, 'ch1', replacement);
+    expect(p.channels[2].notes).toEqual(replacement);
+    expect(replaceGeneratedArrangementChannel(p, harmonyId, 'ch1', replacement).channels[1].notes).not.toEqual(replacement);
+    expect(p.channels[0].notes).toMatchObject([sourceNote]);
   });
   it('templates are consistent', () => {
     for (const t of TEMPLATES) {

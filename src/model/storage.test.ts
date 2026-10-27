@@ -205,6 +205,16 @@ describe('project storage migration', () => {
     expect(loadProject().channels[0].generatedMetadata).toEqual(metadata);
   });
 
+  it('round-trips harmony and accompaniment metadata', () => {
+    for (const kind of ['harmony-generation', 'accompaniment-generation'] as const) {
+      const project = createProject();
+      const metadata = { generatedBy: 'arrangement-assistant' as const, kind, sourceChannelId: 'ch1', confidence: 0.8 };
+      project.channels[0].generatedMetadata = metadata;
+      saveProject(project);
+      expect(loadProject().channels[0].generatedMetadata).toEqual(metadata);
+    }
+  });
+
   it('discards malformed generated-track metadata during load', () => {
     const legacy = createProject();
     legacy.channels[0].generatedMetadata = {

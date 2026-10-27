@@ -12,9 +12,11 @@ import {
 import { findSound } from '../library/sounds';
 import { suggestChordsFromNotes, type ChordChoice, type ChordSuggestion } from '../library/chordSuggestion';
 import {
-  addGeneratedBassChannel, addGeneratedChordChannel, generateBassFromChords, generateBassFromMelody,
-  removeGeneratedTrack, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
+  addGeneratedArrangementChannel, addGeneratedBassChannel, addGeneratedChordChannel,
+  generateBassFromChords, generateBassFromMelody, removeGeneratedTrack,
+  replaceGeneratedArrangementChannel, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from '../model/arrangement';
+import { ARRANGEMENT_STYLES, generateChordAccompaniment, generateHarmonyFromMelody } from '../library/arrangementStyles';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
@@ -240,7 +242,10 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   const [replaceChannelId, setReplaceChannelId] = useState('');
   const [bassMode, setBassMode] = useState<'chords' | 'melody'>('chords');
   const [bassPreview, setBassPreview] = useState<NoteEvent[] | null>(null);
-  useEffect(() => { setSuggestions(null); setBassPreview(null); }, [project]);
+  const [arrangementMode, setArrangementMode] = useState<'harmony' | 'accompaniment'>('harmony');
+  const [arrangementStyleId, setArrangementStyleId] = useState(ARRANGEMENT_STYLES[0].id);
+  const [arrangementPreview, setArrangementPreview] = useState<NoteEvent[] | null>(null);
+  useEffect(() => { setSuggestions(null); setBassPreview(null); setArrangementPreview(null); }, [project]);
   const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
   const sourceChannels = project.channels.filter((channel) =>
     !channel.generatedMetadata && (channel.notes?.length ?? 0) > 0,
@@ -265,6 +270,9 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   const inputNotes = useOriginalPerformance && sourceTake ? originalNotes : sourceChannel?.notes ?? [];
   const generatedChannels = project.channels.filter((channel) => channel.generatedMetadata?.kind === 'chord-suggestions');
   const generatedBassChannels = project.channels.filter((channel) => channel.generatedMetadata?.kind === 'bass-generation');
+  const generatedArrangementChannels = project.channels.filter((channel) =>
+    channel.generatedMetadata?.kind === 'harmony-generation' || channel.generatedMetadata?.kind === 'accompaniment-generation',
+  );
   const allGeneratedChannels = project.channels.filter((channel) => channel.generatedMetadata);
   const updatePattern = (id: string) => onChange(selectPattern(project, id));
   const generateSuggestions = () => {
@@ -278,6 +286,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
       itemIndex === index ? { ...suggestion, ...choice } : suggestion,
     ) ?? null);
     setBassPreview(null);
+    setArrangementPreview(null);
   };
   const selectedReplaceChannel = generatedChannels.find((channel) => channel.id === replaceChannelId) ?? generatedChannels[0];
   const addSuggestions = () => {
@@ -303,6 +312,34 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   const replaceBassTrack = (channelId: string) => {
     if (!sourceChannel || !bassPreview?.length) return;
     onChange(replaceGeneratedBassChannel(project, channelId, sourceChannel.id, bassPreview));
+  };
+  const selectedStyle = ARRANGEMENT_STYLES.find((style) => style.id === arrangementStyleId) ?? ARRANGEMENT_STYLES[0];
+  const arrangementKind = arrangementMode === 'harmony' ? 'harmony-generation' : 'accompaniment-generation';
+  const replaceableArrangementChannels = generatedArrangementChannels.filter((channel) =>
+    channel.generatedMetadata?.kind === arrangementKind,
+  );
+  const generateArrangementPreview = () => {
+    const notes = arrangementMode === 'harmony'
+      ? generateHarmonyFromMelody(inputNotes, project.scaleRoot, project.scaleId, totalSteps(project))
+      : generateChordAccompaniment(suggestions ?? [], selectedStyle, project.noteLength, totalSteps(project));
+    setArrangementPreview(notes);
+  };
+  const addArrangementTrack = () => {
+    if (!sourceChannel || !arrangementPreview?.length) return;
+    const isHarmony = arrangementMode === 'harmony';
+    const updated = addGeneratedArrangementChannel(
+      project,
+      sourceChannel.id,
+      `${isHarmony ? 'Generated harmony' : `${selectedStyle.name} accompaniment`} · ${sourceChannel.name}`,
+      isHarmony ? 'strings-1' : selectedStyle.soundId,
+      arrangementKind,
+      arrangementPreview,
+    );
+    if (updated !== project) onChange(updated);
+  };
+  const replaceArrangementTrack = (channelId: string) => {
+    if (!sourceChannel || !arrangementPreview?.length) return;
+    onChange(replaceGeneratedArrangementChannel(project, channelId, sourceChannel.id, arrangementPreview));
   };
   const appendArrangementClip = () => {
     const patternId = project.currentPatternId ?? project.patterns[0]?.id;
@@ -363,7 +400,12 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
         <div className="arrangement-assistant-controls">
           <label>Melody source
             <select aria-label="Melody source" value={sourceChannel?.id ?? ''}
-              onChange={(event) => { setSourceChannelId(event.target.value); setSuggestions(null); setBassPreview(null); }}>
+              onChange={(event) => {
+                setSourceChannelId(event.target.value);
+                setSuggestions(null);
+                setBassPreview(null);
+                setArrangementPreview(null);
+              }}>
               <option value="" disabled>{sourceChannels.length ? 'Choose a melody…' : 'Add notes to a channel first'}</option>
               {sourceChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
             </select>
@@ -371,7 +413,12 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
           {sourceTake && (
             <label className="check-label">
               <input type="checkbox" checked={useOriginalPerformance}
-              onChange={(event) => { setUseOriginalPerformance(event.target.checked); setSuggestions(null); setBassPreview(null); }} />
+              onChange={(event) => {
+                setUseOriginalPerformance(event.target.checked);
+                setSuggestions(null);
+                setBassPreview(null);
+                setArrangementPreview(null);
+              }} />
               Use only original performance notes
             </label>
           )}
@@ -477,12 +524,73 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
             </>
           )}
         </div>
+        <div className="bass-assistant">
+          <h4>Harmony and accompaniment</h4>
+          <p className="hint">Generate a scale-aware harmony from the selected melody, or a rhythmic accompaniment from reviewed chords.</p>
+          <div className="arrangement-assistant-controls">
+            <label>Generate
+              <select aria-label="Arrangement part" value={arrangementMode}
+                onChange={(event) => {
+                  setArrangementMode(event.target.value as 'harmony' | 'accompaniment');
+                  setArrangementPreview(null);
+                }}>
+                <option value="harmony">Melody harmony</option>
+                <option value="accompaniment">Chord accompaniment</option>
+              </select>
+            </label>
+            {arrangementMode === 'accompaniment' && (
+              <label>Style
+                <select aria-label="Arrangement style" value={arrangementStyleId}
+                  onChange={(event) => { setArrangementStyleId(event.target.value); setArrangementPreview(null); }}>
+                  {ARRANGEMENT_STYLES.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
+                </select>
+              </label>
+            )}
+            <button className="secondary"
+              disabled={!sourceChannel || (arrangementMode === 'harmony' ? !inputNotes.length : !suggestions?.length)}
+              onClick={generateArrangementPreview}>Preview {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'}</button>
+          </div>
+          {arrangementMode === 'accompaniment' && !suggestions?.length
+            ? <p className="hint">Suggest and review chords above before generating an accompaniment.</p>
+            : null}
+          {arrangementPreview && (
+            <>
+              <p className="hint" aria-live="polite">
+                {arrangementPreview.length ? `Preview: ${arrangementPreview.length} notes` : 'No notes could be generated.'}
+              </p>
+              <div className="arrangement-assistant-actions">
+                <button disabled={!arrangementPreview.length || project.channels.length >= MAX_CHANNELS}
+                  onClick={addArrangementTrack}>＋ Add {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'} track</button>
+                {!!replaceableArrangementChannels.length && (
+                  <>
+                    <label>Replace generated track
+                      <select aria-label="Arrangement track to replace"
+                        value={replaceableArrangementChannels.some((channel) => channel.id === replaceChannelId)
+                          ? replaceChannelId : replaceableArrangementChannels[0].id}
+                        onChange={(event) => setReplaceChannelId(event.target.value)}>
+                        {replaceableArrangementChannels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                      </select>
+                    </label>
+                    <button className="secondary" disabled={!arrangementPreview.length}
+                      onClick={() => replaceArrangementTrack(replaceableArrangementChannels.some((channel) => channel.id === replaceChannelId)
+                        ? replaceChannelId : replaceableArrangementChannels[0].id)}>Replace generated track</button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         {!!allGeneratedChannels.length && (
           <div className="generated-track-list" aria-label="Generated arrangement tracks">
             <strong>Generated tracks</strong>
             {allGeneratedChannels.map((channel) => (
               <div key={channel.id}>
-                <span>{channel.name} · {channel.generatedMetadata?.kind === 'bass-generation' ? 'Bass' : 'Chords'} · {Math.round((channel.generatedMetadata?.confidence ?? 0) * 100)}% confidence</span>
+                <span>
+                  {channel.name} · {channel.generatedMetadata?.kind === 'bass-generation' ? 'Bass'
+                    : channel.generatedMetadata?.kind === 'harmony-generation' ? 'Harmony'
+                      : channel.generatedMetadata?.kind === 'accompaniment-generation' ? 'Accompaniment' : 'Chords'}
+                  {' · '}{Math.round((channel.generatedMetadata?.confidence ?? 0) * 100)}% confidence
+                </span>
                 <button className="secondary" aria-label={`Remove ${channel.name}`}
                   onClick={() => onChange(removeGeneratedTrack(project, channel.id))}>Remove</button>
               </div>

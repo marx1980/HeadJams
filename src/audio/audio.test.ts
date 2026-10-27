@@ -100,6 +100,24 @@ describe('render + wav', () => {
     expect(String.fromCharCode(v.getUint8(0), v.getUint8(1), v.getUint8(2), v.getUint8(3))).toBe('RIFF');
     expect(v.getUint32(24, true)).toBe(44100);
   });
+  it('encodes 24-bit PCM with the correct stereo layout', () => {
+    const buf = encodeWav(new Float32Array([1]), new Float32Array([-1]), 48000, { bitDepth: 24 });
+    const view = new DataView(buf);
+    expect(buf.byteLength).toBe(50);
+    expect(view.getUint16(32, true)).toBe(6);
+    expect(view.getUint16(34, true)).toBe(24);
+    expect(view.getUint32(40, true)).toBe(6);
+    expect([view.getUint8(44), view.getUint8(45), view.getUint8(46)]).toEqual([255, 255, 127]);
+    expect([view.getUint8(47), view.getUint8(48), view.getUint8(49)]).toEqual([1, 0, 128]);
+  });
+  it('normalizes stereo peaks to -1 dBFS and rejects malformed WAV input', () => {
+    const buf = encodeWav(new Float32Array([0.5]), new Float32Array([-0.25]), 44100, { normalize: true });
+    const view = new DataView(buf);
+    expect(view.getInt16(44, true)).toBeGreaterThan(29000);
+    expect(view.getInt16(44, true)).toBeLessThan(29500);
+    expect(() => encodeWav(new Float32Array(1), new Float32Array(2), 44100)).toThrow();
+    expect(() => encodeWav(new Float32Array(1), new Float32Array(1), 44100, { bitDepth: 32 as 16 })).toThrow();
+  });
 });
 
 describe('tutorials', () => {
