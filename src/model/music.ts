@@ -87,7 +87,7 @@ export function guitarChordPitches(
   if (!Number.isFinite(root) || !CHORD_INTERVALS[quality]) return [];
   const intervals = articulation === 'power' ? [0, 7, 12] : CHORD_INTERVALS[quality];
   const targetRoot = Math.round(root);
-  const assignments: Array<{ pitch: number; string: number; fret: number }>[][] = intervals.map((interval) => {
+  const assignments: Array<{ pitch: number; string: number; fret: number }>[] = intervals.map((interval) => {
     const target = targetRoot + interval;
     return GUITAR_OPEN_STRINGS.flatMap((openPitch, string) =>
       Array.from({ length: GUITAR_MAX_FRET + 1 }, (_, fret) => ({

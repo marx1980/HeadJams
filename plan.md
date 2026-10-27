@@ -51,8 +51,10 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [x] Added Studio, 808, and Percussion kits; kit application maps by channel role, preserves pattern content, asks before replacing assignments, and respects the channel limit.
 - [ ] Sampled packs remain deferred until audio assets with verified licenses and attribution are available; no third-party samples are bundled.
 - Drum-map channels (MIDI-style slots) remain an optional later upgrade.
-### 7. Guitar chords — NOT STARTED (§3)
-- Chord event (symbol + articulation: sustained, down/up strum, muted, power) resolved to playable voicings; fallback generated voicing; never silently substitute chords. Reuse Phase 3 chord assist.
+### 7. Guitar chords — DONE (§3)
+- Guitar chord events store a chord root, quality, duration, and articulation separately from note events; playable six-string voicings are generated without silently substituting unsupported chords.
+- Added major, minor, diminished, augmented, suspended, dominant seventh, major seventh, and minor seventh chords, plus sustained, down/up strum, muted, and power-chord articulations.
+- Added synthesized acoustic, clean electric, crunch, and power chord presets; chord events play in real time and offline WAV export, and survive project storage and pattern editing.
 ### 8. Sample Editor — NOT STARTED (§16)
 Distinct naming from Phase 4 note transpose/duration tools (these edit audio, those edit notes). Lives in the Library screen. Reuse existing EQ/filter/reverb/delay DSP via offline render.
 - 8a: sample metadata and IndexedDB migration (original, settings, cached processed, version); non-destructive chain; own undo/reset; noise reduction, gate, fades, gain; original vs processed compare.

@@ -31,11 +31,12 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
   const steps = totalSteps(project);
   const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
   const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
+  const activeGuitarStep = Math.min(guitarStep, steps - 1);
   const addGuitarChord = () => {
     if (!channel) return;
     onChange(addChordEvent(project, channel.id, {
       id: `chord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
-      step: guitarStep,
+      step: activeGuitarStep,
       root: guitarRoot,
       quality: guitarQuality,
       articulation: guitarArticulation,
@@ -150,7 +151,7 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
             </select>
           </label>
           <label>Step
-            <select aria-label="Guitar chord step" value={guitarStep} onChange={(event) => setGuitarStep(Number(event.target.value))}>
+            <select aria-label="Guitar chord step" value={activeGuitarStep} onChange={(event) => setGuitarStep(Number(event.target.value))}>
               {Array.from({ length: steps }, (_, step) => <option key={step} value={step}>{step + 1}</option>)}
             </select>
           </label>
