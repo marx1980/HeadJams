@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FEATURES, GROUPS, TUTORIALS, WORKFLOWS, findTutorial, type TutorialState } from './tutorials';
+import { FEATURES, GROUPS, TUTORIALS, WORKFLOWS, findTutorial, isTutorialAvailable, type TutorialCapability, type TutorialState } from './tutorials';
 import { DONE_KEY, loadDone, saveDone, workflowProgress } from './progress';
 import { createProject, toggleStep } from '../model/project';
 
@@ -26,6 +26,25 @@ describe('tutorial catalogue', () => {
     const ch = base.channels[0];
     const state: TutorialState = { base, project: ch ? toggleStep(base, ch.id, 0) : base, events: new Set() };
     expect(TUTORIALS[0].steps[0].done(state)).toBe(Boolean(ch));
+  });
+  it('gates microphone tutorials on browser capabilities', () => {
+    const record = findTutorial('record-sample');
+    const midi = findTutorial('midi-keyboard');
+    const importAudio = findTutorial('import-audio');
+    expect(record && isTutorialAvailable(record, new Set<TutorialCapability>())).toBe(false);
+    expect(importAudio && isTutorialAvailable(importAudio, new Set<TutorialCapability>())).toBe(true);
+    expect(record && isTutorialAvailable(record, new Set<TutorialCapability>(['microphone']))).toBe(true);
+    expect(midi && isTutorialAvailable(midi, new Set<TutorialCapability>())).toBe(false);
+    expect(midi && isTutorialAvailable(midi, new Set<TutorialCapability>(['midi']))).toBe(true);
+  });
+  it('uses completion events for editing and keyboard tutorials', () => {
+    const base = createProject();
+    const state = (events: string[]): TutorialState => ({ base, project: base, events: new Set(events) });
+    expect(findTutorial('sample-editor')?.steps[1].done(state(['sample-edited']))).toBe(true);
+    expect(findTutorial('sample-editor')?.steps[2].done(state(['sample-updated']))).toBe(true);
+    expect(findTutorial('recognition-edit')?.steps[0].done(state(['recognition-edited']))).toBe(true);
+    expect(findTutorial('keyboard-navigation')?.steps[0].done(state(['keyboard-nav']))).toBe(true);
+    expect(findTutorial('keyboard-navigation')?.steps[1].done(state(['piano-keyboard-nav']))).toBe(true);
   });
 });
 

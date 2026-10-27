@@ -8,7 +8,7 @@ import type { RecognitionTake } from '../model/recognition';
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, onRecognize, onRecognitionBpmChange,
+  onRecordStart, onRecordStop, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onLibraryAction,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -24,6 +24,10 @@ export function SampleLibrary({
   onRecordStop: () => void;
   onRecognize: (take: RecognitionTake) => boolean;
   onRecognitionBpmChange: (bpm: number, take?: RecognitionTake) => void;
+  onImport: () => void;
+  onEdit: () => void;
+  onRecognitionEdit: () => void;
+  onLibraryAction: (event: 'library-search' | 'library-tag' | 'pad-view') => void;
 }) {
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('');
@@ -44,14 +48,23 @@ export function SampleLibrary({
     <section className="panel sample-library" aria-label="Sound library">
       <div className="library-heading">
         <h2>Sound library</h2>
-        <button className="secondary" aria-pressed={padView} onClick={() => setPadView(!padView)}>{padView ? 'Library view' : 'Pad view'}</button>
+        <button id="pad-view" className="secondary" aria-pressed={padView} onClick={() => {
+          setPadView(!padView);
+          onLibraryAction('pad-view');
+        }}>{padView ? 'Library view' : 'Pad view'}</button>
       </div>
       <div className="library-filters">
         <label>Search sounds
-          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, category, or tag" />
+          <input id="library-search" type="search" value={query} onChange={(event) => {
+            setQuery(event.target.value);
+            if (event.target.value.trim()) onLibraryAction('library-search');
+          }} placeholder="Name, category, or tag" />
         </label>
         <label>Tag
-          <select value={tag} onChange={(event) => setTag(event.target.value)}>
+          <select id="library-tag" value={tag} onChange={(event) => {
+            setTag(event.target.value);
+            if (event.target.value) onLibraryAction('library-tag');
+          }}>
             <option value="">All tags</option>
             {availableTags.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
@@ -85,6 +98,8 @@ export function SampleLibrary({
         onPreviewSample={onPreviewSample}
         onRecordStart={onRecordStart}
         onRecordStop={onRecordStop}
+        onImport={onImport}
+        onEdit={onEdit}
       />
       <RecognitionPanel
         project={project}
@@ -93,6 +108,7 @@ export function SampleLibrary({
         onApply={onRecognize}
         onBpmChange={onRecognitionBpmChange}
         onPreviewSample={onPreviewSample}
+        onEdit={onRecognitionEdit}
       />
     </section>
   );

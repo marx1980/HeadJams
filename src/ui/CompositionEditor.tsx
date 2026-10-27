@@ -23,7 +23,12 @@ const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
 const LOW_PITCH = 48;
 const PITCH_COUNT = 36;
 
-export function PianoRoll({ project, onChange, channelId }: { project: Project; onChange: (project: Project) => void; channelId: string }) {
+export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: {
+  project: Project;
+  onChange: (project: Project) => void;
+  channelId: string;
+  onKeyboardNavigate?: () => void;
+}) {
   const [snap, setSnap] = useState(true);
   const [duration, setDuration] = useState(1);
   const [focusedCell, setFocusedCell] = useState({ step: 0, pitch: LOW_PITCH + PITCH_COUNT - 1 });
@@ -89,6 +94,7 @@ export function PianoRoll({ project, onChange, channelId }: { project: Project; 
     const offset = offsets[event.key];
     if (!offset) return;
     event.preventDefault();
+    onKeyboardNavigate?.();
     const nextStep = Math.max(0, Math.min(steps - 1, step + offset[0]));
     const nextPitch = Math.max(LOW_PITCH, Math.min(LOW_PITCH + PITCH_COUNT - 1, pitch + offset[1]));
     setFocusedCell({ step: nextStep, pitch: nextPitch });

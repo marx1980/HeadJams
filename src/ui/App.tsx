@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
+  LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
-  type Channel, type Project, type SoundDef, type SynthParams,
+  totalSteps, type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
@@ -19,6 +19,8 @@ import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
+import { MidiInput } from './MidiInput';
+import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
 import './styles.css';
 
 const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5', '#f15bb5', '#fb8500', '#8ecae6'];
@@ -55,12 +57,18 @@ export function App() {
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const [drumKitId, setDrumKitId] = useState('');
+  const [midiRecording, setMidiRecording] = useState(false);
+  const [midiTargetChannelId, setMidiTargetChannelId] = useState(project.channels[0]?.id ?? '');
   const [exportSampleRate, setExportSampleRate] = useState(SAMPLE_RATE);
   const [exportBitDepth, setExportBitDepth] = useState<16 | 24>(16);
   const [normalizeExport, setNormalizeExport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const recognitionPlaybackRef = useRef(false);
   const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
+  const midiRecordingRef = useRef(false);
+  const midiRecordingStartedAtRef = useRef<number | undefined>(undefined);
+  const midiTargetChannelRef = useRef(midiTargetChannelId);
+  const midiActiveNotesRef = useRef(new Map<string, RecordedMidiNote>());
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -69,6 +77,7 @@ export function App() {
   const engineRef = useRef<Engine | undefined>(undefined);
   engineRef.current ??= new Engine(() => projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id));
   const engine = engineRef.current;
+  midiTargetChannelRef.current = midiTargetChannelId;
 
   const emit = (e: string) => setEvents((s) => new Set(s).add(e));
   const startTutorial = (t: Tutorial) => {
@@ -83,6 +92,11 @@ export function App() {
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
   useEffect(() => { if (unlocked) localStorage.setItem(UNLOCK_KEY, '1'); }, [unlocked]);
   useEffect(() => { if (events.has('play')) setUnlocked(true); }, [events]);
+  useEffect(() => {
+    if (!project.channels.some((channel) => channel.id === midiTargetChannelId)) {
+      setMidiTargetChannelId(project.channels[0]?.id ?? '');
+    }
+  }, [project.channels, midiTargetChannelId]);
   useEffect(() => {
     let active = true;
     void Promise.all(project.customSounds.flatMap((sound) => sound.sampleId ? [getSample(sound.sampleId).catch(() => undefined)] : []))
@@ -116,6 +130,64 @@ export function App() {
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
     else { await engine.start(); emit('play'); }
+  };
+
+  const recordMidiNote = (voiceId: string, note: RecordedMidiNote, endedAt: number) => {
+    const startedAt = midiRecordingStartedAtRef.current;
+    if (startedAt === undefined) return;
+    const current = projectRef.current;
+    const channelId = midiTargetChannelRef.current;
+    if (!current.channels.some((channel) => channel.id === channelId)) return;
+    const recorded = recordedMidiEvent(note, endedAt, startedAt, current.bpm, current.noteLength, totalSteps(current));
+    if (!recorded) return;
+    setProject((projectValue) => addNote(projectValue, channelId, {
+      ...recorded,
+      id: `midi-${voiceId}-${Date.now().toString(36)}`,
+    }));
+    emit('midi-note-recorded');
+  };
+
+  const finishMidiRecording = () => {
+    midiRecordingRef.current = false;
+    const endedAt = performance.now();
+    for (const [voiceId, note] of midiActiveNotesRef.current) recordMidiNote(voiceId, note, endedAt);
+    midiActiveNotesRef.current.clear();
+    midiRecordingStartedAtRef.current = undefined;
+    setMidiRecording(false);
+  };
+
+  const onMidiRecordingChange = (recording: boolean) => {
+    if (recording) {
+      midiRecordingStartedAtRef.current = performance.now();
+      midiRecordingRef.current = true;
+      setMidiRecording(true);
+    } else {
+      finishMidiRecording();
+    }
+  };
+
+  const onMidiMessage = (message: MidiMessage, timestamp: number) => {
+    if (message.type === 'all-notes-off') {
+      engine.stopLiveNotes();
+      for (const [voiceId, note] of midiActiveNotesRef.current) recordMidiNote(voiceId, note, timestamp);
+      midiActiveNotesRef.current.clear();
+      return;
+    }
+    const voiceId = `${message.channel}-${message.pitch}`;
+    if (message.type === 'note-off') {
+      engine.stopLiveNote(voiceId);
+      const note = midiActiveNotesRef.current.get(voiceId);
+      if (note && midiRecordingRef.current) recordMidiNote(voiceId, note, timestamp);
+      midiActiveNotesRef.current.delete(voiceId);
+      return;
+    }
+    const current = projectRef.current;
+    const channel = current.channels.find((item) => item.id === midiTargetChannelRef.current);
+    const sound = channel ? findSound(current, channel.soundId) : undefined;
+    if (sound && channel) void engine.startLiveNote(voiceId, sound, message.pitch, message.velocity, channel.volume, channel.pan);
+    if (midiRecordingRef.current) {
+      midiActiveNotesRef.current.set(voiceId, { pitch: message.pitch, velocity: message.velocity, startedAt: timestamp });
+    }
   };
 
   const applySelectedDrumKit = () => {
@@ -312,6 +384,15 @@ export function App() {
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
           </div>
+          <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
+            onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
+            onRecordingChange={onMidiRecordingChange} onMessage={onMidiMessage}
+            onConnected={() => emit('midi-connected')}
+            onReleaseAll={() => {
+              engine.stopLiveNotes();
+              if (midiRecordingRef.current) finishMidiRecording();
+              else midiActiveNotesRef.current.clear();
+            }} />
           <section className="channels">
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
@@ -356,9 +437,10 @@ export function App() {
                 }}>✕</button>
               </div>
               {pianoChannels.has(c.id)
-                ? <PianoRoll project={project} onChange={setProject} channelId={c.id} />
+                ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
                 : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
-                  onToggle={(step) => setProject(toggleStep(project, c.id, step))} />}
+                  onToggle={(step) => setProject(toggleStep(project, c.id, step))}
+                  onKeyboardNavigate={() => emit('keyboard-nav')} />}
             </div>
           );
         })}
@@ -453,6 +535,7 @@ export function App() {
           updated.set(sample.id, sample);
           sampleDataRef.current = updated;
           setSampleData(updated);
+          emit('sample-updated');
           flash('Sample edits saved ✓');
         }}
         onRecordStart={async (durationMs, bars) => {
@@ -497,6 +580,10 @@ export function App() {
           if (result) setProject(result);
           else flash('There is not enough channel space to update this recognition track.');
         }}
+        onImport={() => emit('sample-imported')}
+        onEdit={() => emit('sample-edited')}
+        onRecognitionEdit={() => emit('recognition-edited')}
+        onLibraryAction={emit}
       />
 
         </div>
@@ -513,13 +600,14 @@ export function App() {
 }
 
 function BeatGrid({
-  channel, loopBars, noteLength, playStep, onToggle,
+  channel, loopBars, noteLength, playStep, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
   onToggle: (step: number) => void;
+  onKeyboardNavigate: () => void;
 }) {
   const [focusedStep, setFocusedStep] = useState(0);
   const steps = channel.steps;
@@ -533,12 +621,14 @@ function BeatGrid({
     };
     if (event.key === 'Home') {
       event.preventDefault();
+      onKeyboardNavigate();
       setFocusedStep(0);
       event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>('[data-step="0"]')?.focus();
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
+      onKeyboardNavigate();
       const last = Math.max(0, steps.length - 1);
       setFocusedStep(last);
       event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${last}"]`)?.focus();
@@ -547,6 +637,7 @@ function BeatGrid({
     const offset = offsets[event.key];
     if (offset === undefined) return;
     event.preventDefault();
+    onKeyboardNavigate();
     const next = Math.max(0, Math.min(steps.length - 1, step + offset));
     setFocusedStep(next);
     event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${next}"]`)?.focus();

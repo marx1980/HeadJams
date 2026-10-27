@@ -20,7 +20,7 @@ const PERCUSSION_CLASSES: PercussionClass[] = [
 ];
 
 export function RecognitionPanel({
-  project, samples, sounds, onApply, onBpmChange, onPreviewSample,
+  project, samples, sounds, onApply, onBpmChange, onPreviewSample, onEdit,
 }: {
   project: Project;
   samples: ReadonlyMap<string, SampleData>;
@@ -28,6 +28,7 @@ export function RecognitionPanel({
   onApply: (take: RecognitionTake) => boolean;
   onBpmChange: (bpm: number, take?: RecognitionTake) => void;
   onPreviewSample: (sample: SampleData) => void;
+  onEdit: () => void;
 }) {
   const [sampleId, setSampleId] = useState('');
   const [mode, setMode] = useState<RecognitionMode>('melody');
@@ -108,6 +109,7 @@ export function RecognitionPanel({
       return false;
     }
     setEventHistory((history) => [...history, activeTake.quantisedEvents]);
+    onEdit();
     return true;
   };
   const updateEvent = (eventId: string, update: (event: RecognitionEvent) => RecognitionEvent) => {

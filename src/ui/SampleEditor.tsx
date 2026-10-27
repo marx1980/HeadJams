@@ -32,7 +32,7 @@ function Setting({
 }
 
 export function SampleEditor({
-  sounds, samples, bpm, loopBars, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart, onRecordStop,
+  sounds, samples, bpm, loopBars, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart, onRecordStop, onImport, onEdit,
 }: {
   sounds: SoundDef[];
   samples: ReadonlyMap<string, SampleData>;
@@ -43,6 +43,8 @@ export function SampleEditor({
   onPreviewSample: (sample: SampleData) => void;
   onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
   onRecordStop: () => void;
+  onImport: () => void;
+  onEdit: () => void;
 }) {
   const [activeSampleId, setActiveSampleId] = useState('');
   const [draft, setDraft] = useState<DraftSample>();
@@ -151,7 +153,7 @@ export function SampleEditor({
     setError('');
   };
 
-  const loadAudio = async (blob: Blob, fallbackName: string) => {
+  const loadAudio = async (blob: Blob, fallbackName: string, imported = false) => {
     setError('');
     const context = new AudioContext();
     try {
@@ -165,6 +167,7 @@ export function SampleEditor({
         name: fallbackName.replace(/\.[^.]+$/, '') || 'My sample',
         samples: mono, sampleRate: decoded.sampleRate,
       });
+      if (imported) onImport();
     } catch {
       setError('This audio could not be decoded. Try a WAV, MP3, or OGG file.');
     } finally {
@@ -194,6 +197,7 @@ export function SampleEditor({
     setUndoStack((history) => [...history.slice(-49), settings]);
     setRedoStack([]);
     setSettings((current) => ({ ...current, ...updates }));
+    onEdit();
   };
 
   const undo = () => {
@@ -330,12 +334,12 @@ export function SampleEditor({
         <label>Import audio
           <input type="file" accept="audio/*,.wav,.mp3,.ogg" onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) void loadAudio(file, file.name);
+            if (file) void loadAudio(file, file.name, true);
             event.target.value = '';
           }} />
         </label>
         {!recording && !countingIn
-          ? <button className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
+          ? <button id="record-sample" className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
           : <button onClick={stopRecording}>{countingIn ? 'Cancel count-in' : '■ Stop recording'}</button>}
         <label>Count-in
           <select aria-label="Recording count-in" value={countInBars} disabled={recording || countingIn}
@@ -388,7 +392,7 @@ export function SampleEditor({
             id: 'sample-processed-preview', samples: processed, sampleRate,
           })}>Preview processed</button>
           <button className="secondary" onClick={reset}>Reset to original</button>
-          <button onClick={() => void save()} disabled={busy}>{busy ? 'Saving…' : 'Save sample'}</button>
+          <button id="save-sample" onClick={() => void save()} disabled={busy}>{busy ? 'Saving…' : 'Save sample'}</button>
         </div>
         <details className="sample-tool-family">
           <summary>Clean</summary>

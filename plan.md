@@ -4,7 +4,7 @@ This is the source of truth for what should be built next. Research: `docs/resea
 ## COMPLETED
 ### 0. Phase 0: Foundations — DONE
 ### 1. Phase 1: Simple, fully functional MVP — DONE
-Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 24, see Phase 14).
+Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 28, see Phase 14).
 ### 2. Phase 2: Sound library and sampling — DONE
 Microphone recording and audio-file import, sample trimming and normalization, searchable/tagged library, pad view, IndexedDB sample storage, sample playback and WAV export, recording tutorial.
 ### 3. Phase 3: Richer composition — DONE
@@ -12,7 +12,7 @@ Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangemen
 Verified in a production browser on 2026-10-27: created and played a beat, imported and saved a sample, recognized a melody, and confirmed the generated track persisted after reload.
 
 ## OPEN
-- No unblocked Phase 0–9 implementation items remain. Phase 5 multisample playback and Phase 6 sampled packs remain deferred until their zone schema and licensed/attributed sample assets are available.
+- No unblocked Phase 0–12 implementation items remain. Current work is Phase 13 platform support and Phase 14 tutorial completion.
 
 ## DONE (continued)
 ### 4. Phase 4: Sound shaping — DONE
@@ -23,13 +23,13 @@ Four screens (Beat, Sound, Library, Song); see `ui-design.md`.
 ## QUEUED (merged with the Sound Library expansion)
 Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 sample editor, §17-24 recognition). All features of the expansion are retained; its three delivery sequences (§24, §25, §28) are replaced by this single list. Execution rule: one focused PR per sub-phase; read this plan and the code first; preserve existing projects and sounds; add migration/backward-compat tests; run tests and production build; report limitations and risks.
 
-### 5. Sound Library architecture — IN PROGRESS (§1, §2, §13-15)
+### 5. Sound Library architecture — DONE (§1, §2, §13-15)
 - [x] Instrument registry foundation: central starter catalog and built-in/custom entries preserve existing sound IDs; duplicate IDs and supplied sample-asset sets can be validated.
 - [x] Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
 - [x] Lazy `SoundSource` abstraction for synth and single-sample assets; on-demand loading with cache, separate preview bus that never modifies the project.
 - [x] Hierarchical picker replacing channel sound selection; Favourites, Recent, search, preview, mobile bottom sheet, and Library reuse.
 - [x] Missing-sound state and project format v2 migration tests; old sound/sample references are preserved.
-- [ ] Multisample source selection and playback; deferred until `SoundDef` can represent multisample zones and licensed assets are available.
+- Multisample source selection and playback is deferred; see the final deferred-scope section.
 ### 6. Instruments and drums — DONE (§4-11; procedural starter catalog)
 - [x] Added a first synthesized drum and percussion expansion while retaining the existing catalog IDs and project format.
 - [x] Added synthesized starter presets in the Keys group.
@@ -49,7 +49,6 @@ Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 s
 - [x] Organized built-in sounds into groups and subgroups, re-categorized legacy Lead presets as Synths, and preserved all existing IDs.
 - [x] Added source, attribution, and license-status records for all built-in procedural sounds.
 - [x] Added Studio, 808, and Percussion kits; kit application maps by channel role, preserves pattern content, asks before replacing assignments, and respects the channel limit.
-- [ ] Sampled packs remain deferred until audio assets with verified licenses and attribution are available; no third-party samples are bundled.
 - Drum-map channels (MIDI-style slots) remain an optional later upgrade.
 ### 7. Guitar chords — DONE (§3)
 - Guitar chord events store a chord root, quality, duration, and articulation separately from note events; playable six-string voicings are generated without silently substituting unsupported chords.
@@ -88,20 +87,26 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Verified tests and production build. Offline PWA caching remains Phase 13.
 ### 13. Platform and community — IN PROGRESS (last)
 - [x] PWA offline app shell and procedural starter-sound bundle caching; user sample audio remains available offline in IndexedDB.
-- [ ] Capacitor builds.
-- [ ] MIDI (optionally drum map).
-- [ ] Accounts/cloud sync (including sample processing and recognition data).
-- [ ] Sample marketplace (reusing asset-licence records).
+- [x] Capacitor Android/iOS projects, native sync workflow, and relative-asset mobile build.
+- [x] MIDI keyboard input: device selection, live monitoring, quantized note recording into the selected pattern, browser Web MIDI, and native iOS/Android bridge.
+- Drum-map MIDI slots remain an optional later upgrade.
 
-### 14. Guided tutorials — IN PROGRESS
+### 14. Guided tutorials — DONE
 - [x] 14a: tutorial data model (tab, group, level, summary, features), per-tab Help hub with Actions/Workflows modes, "Show all tabs", completion persistence (`musicmaker.tutorialDone`) and reset.
 - [x] 14b: overlay Back/Skip step/Show me/Exit, step counter, `aria-live` announcements, missing-target fallbacks, reduced-motion, mobile docking, first-visit nudges for non-Beat tabs.
-- [x] 14c-e: tutorials for tempo/swing, mix, templates, sound picker, drum kits, guitar chords, pitch/time, Sound Designer, effects, import, Sample Editor, recognition, patterns, timeline, arrangement assistance, export options, privacy/offline.
-- [x] 14f: six workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
-- [ ] Some steps (Sample Editor, recognition correction, import) are informational ("Next" is always enabled) until components emit events for them; MIDI tutorial waits for the MIDI phase.
+- [x] 14c-e: tutorials for tempo/swing, mix, templates, sound picker, drum kits, guitar chords, pitch/time, Sound Designer, effects, import, Sample Editor, recognition, patterns, timeline, arrangement assistance, export options, privacy/offline, confidence cues, keyboard navigation, and library search/pads.
+- [x] 14f: seven workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
+- [x] Added actionable sample editing, recognition correction, and library search/pad-view events; added keyboard-navigation, confidence-cue, and library-use tutorials.
+- [x] Added microphone/MIDI capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
+- [x] Rendered-DOM selector coverage includes conditional MIDI connect/record states. Verified the first-beat tutorial and target highlight on desktop and the tutorial menu, target docking, and simulated MIDI-permission-denied guidance on mobile; physical MIDI hardware was unavailable.
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
 - Web Audio API with a single master clock and look-ahead scheduling.
 - Built-in sounds are synthesized by pure DSP (`src/library/sounds.ts`); user samples are stored in IndexedDB and project metadata keeps their IDs.
 - "Note length" is the grid resolution (steps per bar = 4/8/16). Projects auto-save to localStorage; sample audio is stored separately in IndexedDB.
+
+## DEFERRED — NOT IN CURRENT SCOPE
+- Account creation and cloud sync, including synchronization of samples, processing settings, and recognition data.
+- Sample marketplace.
+- Any feature requiring third-party assets without verified licenses and attribution, including sampled packs and multisample playback. No third-party samples are bundled.
