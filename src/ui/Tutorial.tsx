@@ -32,7 +32,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
 
   const tabs: TutorialTab[] = all || !tab ? ['beat', 'sound', 'library', 'song', 'global'] : [tab, 'global'];
   const capabilities = new Set<TutorialCapability>();
-  if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined') {
+  if (typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function' && typeof MediaRecorder !== 'undefined') {
     capabilities.add('microphone');
   }
   const availableTutorials = TUTORIALS.filter((tutorial) => isTutorialAvailable(tutorial, capabilities));
