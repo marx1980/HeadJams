@@ -93,7 +93,7 @@ describe('project model', () => {
     p = setStepEventMetadata(p, 'ch1', 0, { confidence: -1 });
     expect(p.channels[0].notes[0].confidence).toBe(1);
     expect(p.channels[0].notes[0].pitchBend).toEqual([{ time: 0.1, value: 0.2 }]);
-    expect(p.channels[0].stepEventMetadata).toEqual({});
+    expect(p.channels[0].stepEventMetadata).toEqual({ 0: { confidence: 0 } });
     expect(setStepEventMetadata(p, 'ch1', 16, { confidence: 0.5 })).toBe(p);
   });
   it('stores guitar chord symbols as events and keeps them synchronized through editing tools', () => {

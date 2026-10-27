@@ -62,8 +62,11 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] 8c: BPM and pitch detection, fit to beat/bar, and project-tempo-aware processing.
 - [x] 8d: three-band EQ, high-pass filter, and Off/Gentle/Strong compression.
 - [x] 8e: reverb, delay, distortion, chorus, and lo-fi effects.
-### 9. Editor hardening and UX polish — NOT STARTED (§25 Phase 7)
-- Piano roll and Beat grid ready for recognised events (optional `confidence`, `pitchBend`, source take on the existing step-based events); search/favourites/recent polish; remaining instruments.
+### 9. Editor hardening and UX polish — DONE (§25 Phase 7)
+- [x] Note events preserve optional `confidence`, `pitchBend`, and `sourceTakeId`; beat steps preserve confidence and source-take metadata without changing the existing step grid or project format.
+- [x] Piano roll and Beat grid identify low-confidence events and source takes, expose pitch-bend cues, and support arrow-key navigation.
+- [x] Sound picker has family icons and colour accents, loading/empty/missing states, synchronized Favourites/Recent lists, and keyboard-accessible navigation.
+- [x] Checked the procedural catalog: the existing 67 presets cover the specified instrument families; sampled packs remain deferred until licensed assets are available (§6).
 ### 10. Recognition — NOT STARTED (§17-21, §23)
 Keep the step-based project `NoteEvent`; recognition output uses a separate seconds-based type quantised into step events.
 - 10a: recognition adapter and event models; Original/Cleaned/Quantised versions stored with the sample.

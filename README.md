@@ -2,7 +2,7 @@
 
 A simple, beginner-friendly music-making app (web/PWA first). Pick a channel, choose or record a sound, set note length, and build loops.
 
-Phases 0–4 (beat maker, tutorials, sampling, composition, sound shaping), Phase 7 guitar chords, and Phase 8 Sample Editor are complete. Import or record samples, edit them non-destructively with cleanup, tuning, timing, EQ and creative effects, then use the processed sound in your loop; guitar chord tracks support playable voicings and strummed, muted, and power-chord articulations. See `plan.md` for the roadmap, `docs/sound-library-spec.md` for the Sound Library, sample editor and recognition specs, `docs/research.md` for the market research and `docs/architecture.md` for the architecture.
+Phases 0–4 (beat maker, tutorials, sampling, composition, sound shaping), Phase 7 guitar chords, Phase 8 Sample Editor, and Phase 9 editor hardening and UX polish are complete. Import or record samples, edit them non-destructively with cleanup, tuning, timing, EQ and creative effects, then use the processed sound in your loop; guitar chord tracks support playable voicings and strummed, muted, and power-chord articulations. The piano roll and Beat grid are prepared for recognition metadata, and the Sound Library picker supports keyboard navigation and mobile layouts. See `plan.md` for the roadmap, `docs/sound-library-spec.md` for the Sound Library, sample editor and recognition specs, `docs/research.md` for the market research and `docs/architecture.md` for the architecture.
 
 ## Essential Commands
 - Install: `npm install`

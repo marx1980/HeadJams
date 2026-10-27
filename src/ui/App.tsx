@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addSampleSound, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
-  type Project, type SoundDef, type SynthParams,
+  type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
@@ -100,6 +100,9 @@ export function App() {
       ? sounds.filter((sound) => sound.sampleId && !sampleData.has(sound.sampleId)).map((sound) => sound.id)
       : [],
   ), [sounds, sampleData, samplesLoaded]);
+  const loadingSoundIds = useMemo(() => new Set(
+    samplesLoaded ? [] : sounds.filter((sound) => sound.sampleId).map((sound) => sound.id),
+  ), [sounds, samplesLoaded]);
 
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
@@ -162,8 +165,6 @@ export function App() {
     requestAnimationFrame(() => document.getElementById(`tab-${next.id}`)?.focus());
   };
   const togglePiano = (id: string) => setPianoChannels((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-
-  const groupSize = Math.max(1, project.noteLength / 4);
 
   return (
     <main className="app">
@@ -244,6 +245,7 @@ export function App() {
             <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
                 <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
+                  loadingSoundIds={loadingSoundIds}
                   onPreview={(sound) => preview(sound, c.volume)}
                   onSelect={(sound) => {
                     setProject(updateChannel(project, c.id, { soundId: sound.id, name: sound.name }));
@@ -259,22 +261,10 @@ export function App() {
                   onClick={() => togglePiano(c.id)}>{pianoChannels.has(c.id) ? '▦ Grid' : '🎹 Piano roll'}</button>
                 <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => setProject(removeChannel(project, c.id))}>✕</button>
               </div>
-              {pianoChannels.has(c.id) ? <PianoRoll project={project} onChange={setProject} channelId={c.id} /> : (
-              <div className="grid">
-                {Array.from({ length: project.loopBars }, (_, bar) => (
-                  <div className="bar-row" key={bar} style={{ gridTemplateColumns: `repeat(${project.noteLength}, 1fr)` }}>
-                    {c.steps.slice(bar * project.noteLength, (bar + 1) * project.noteLength).map((on, j) => {
-                      const i = bar * project.noteLength + j;
-                      return (
-                        <button key={i} aria-label={`${c.name} step ${i + 1}`} aria-pressed={on}
-                          className={`step${on ? ' on' : ''}${j % groupSize === 0 ? ' group' : ''}${playStep === i ? ' playing' : ''}`}
-                          onClick={() => setProject(toggleStep(project, c.id, i))} />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-              )}
+              {pianoChannels.has(c.id)
+                ? <PianoRoll project={project} onChange={setProject} channelId={c.id} />
+                : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
+                  onToggle={(step) => setProject(toggleStep(project, c.id, step))} />}
             </div>
           );
         })}
@@ -382,5 +372,73 @@ export function App() {
 
       {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep} />}
     </main>
+  );
+}
+
+function BeatGrid({
+  channel, loopBars, noteLength, playStep, onToggle,
+}: {
+  channel: Channel;
+  loopBars: number;
+  noteLength: number;
+  playStep: number | null;
+  onToggle: (step: number) => void;
+}) {
+  const [focusedStep, setFocusedStep] = useState(0);
+  const steps = channel.steps;
+  const activeFocus = Math.min(focusedStep, Math.max(0, steps.length - 1));
+  const moveFocus = (event: React.KeyboardEvent<HTMLButtonElement>, step: number) => {
+    const offsets: Record<string, number> = {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -noteLength,
+      ArrowDown: noteLength,
+    };
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setFocusedStep(0);
+      event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>('[data-step="0"]')?.focus();
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      const last = Math.max(0, steps.length - 1);
+      setFocusedStep(last);
+      event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${last}"]`)?.focus();
+      return;
+    }
+    const offset = offsets[event.key];
+    if (offset === undefined) return;
+    event.preventDefault();
+    const next = Math.max(0, Math.min(steps.length - 1, step + offset));
+    setFocusedStep(next);
+    event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${next}"]`)?.focus();
+  };
+
+  return (
+    <div className="grid" role="grid" aria-label={`${channel.name} beat grid`}>
+      {Array.from({ length: loopBars }, (_, bar) => (
+        <div className="bar-row" role="row" key={bar} style={{ gridTemplateColumns: `repeat(${noteLength}, 1fr)` }}>
+          {steps.slice(bar * noteLength, (bar + 1) * noteLength).map((on, j) => {
+            const step = bar * noteLength + j;
+            const metadata = channel.stepEventMetadata?.[step];
+            const confidence = metadata?.confidence;
+            const details = [
+              confidence === undefined ? '' : `${confidence < 0.7 ? 'low confidence ' : 'confidence '}${Math.round(confidence * 100)}%`,
+              metadata?.sourceTakeId ? `source take ${metadata.sourceTakeId}` : '',
+            ].filter(Boolean).join(', ');
+            return (
+              <button key={step} data-step={step} role="gridcell" tabIndex={activeFocus === step ? 0 : -1}
+                aria-label={`${channel.name} step ${step + 1}${details ? `, ${details}` : ''}`} aria-pressed={on}
+                title={details || undefined}
+                className={`step${on ? ' on' : ''}${j % Math.max(1, noteLength / 4) === 0 ? ' group' : ''}${playStep === step ? ' playing' : ''}${confidence !== undefined ? ' recognized' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}`}
+                onClick={() => onToggle(step)} onKeyDown={(event) => moveFocus(event, step)}>
+                {confidence !== undefined && confidence < 0.7 ? <span className="confidence-indicator" aria-hidden="true">!</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }
