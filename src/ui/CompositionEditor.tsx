@@ -11,22 +11,19 @@ const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
 const LOW_PITCH = 48;
 const PITCH_COUNT = 36;
 
-export function CompositionEditor({ project, onChange }: { project: Project; onChange: (project: Project) => void }) {
-  const [channelId, setChannelId] = useState(project.channels[0]?.id ?? '');
+export function PianoRoll({ project, onChange, channelId }: { project: Project; onChange: (project: Project) => void; channelId: string }) {
   const [snap, setSnap] = useState(true);
   const [duration, setDuration] = useState(1);
   const [chordQuality, setChordQuality] = useState<(typeof CHORDS)[number]>('major');
   const [chordRoot, setChordRoot] = useState(60);
   const [chordStep, setChordStep] = useState(0);
-  const channel = project.channels.find((item) => item.id === channelId) ?? project.channels[0];
+  const channel = project.channels.find((item) => item.id === channelId);
   const scale = SCALES.find((item) => item.id === project.scaleId) ?? SCALES[0];
   const steps = totalSteps(project);
   const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
   const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
-  const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
   const pitches = Array.from({ length: PITCH_COUNT }, (_, index) => LOW_PITCH + PITCH_COUNT - 1 - index);
 
-  const updatePattern = (id: string) => onChange(selectPattern(project, id));
   const addPianoNote = (step: number, pitch: number) => {
     if (!channel) return;
     const existing = channel.notes?.find((note) => note.step === step && note.pitch === pitch);
@@ -51,37 +48,10 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
     }, project);
     onChange(updated);
   };
-  const appendArrangementClip = () => {
-    const patternId = project.currentPatternId ?? project.patterns[0]?.id;
-    if (!patternId) return;
-    onChange(addArrangementClip(project, patternId, arrangementLength(project)));
-  };
-
   return (
-    <section className="composition panel" aria-label="Composition tools">
-      <h2>Composition</h2>
-      <div className="composition-controls">
-        <div className="pattern-controls">
-          <strong>Patterns</strong>
-          {project.patterns.map((pattern) => (
-            <button key={pattern.id} className={pattern.id === project.currentPatternId ? 'on' : 'secondary'}
-              aria-pressed={pattern.id === project.currentPatternId} onClick={() => updatePattern(pattern.id)}>
-              {pattern.name}
-            </button>
-          ))}
-          <button id="new-pattern" onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}>＋ New pattern</button>
-          {project.currentPatternId && (
-            <>
-              <button className="secondary" onClick={() => {
-                const current = project.patterns.find((pattern) => pattern.id === project.currentPatternId);
-                const name = window.prompt('Pattern name', current?.name);
-                if (name !== null && name !== undefined) onChange(renamePattern(project, project.currentPatternId!, name));
-              }}>Rename</button>
-              <button className="secondary" onClick={() => onChange(removePattern(project, project.currentPatternId!))}>Remove current</button>
-            </>
-          )}
-        </div>
-        <div className="scale-controls">
+    <div className="piano-editor">
+      <div className="piano-controls">
+                <div className="scale-controls">
           <label>Root
             <select aria-label="Scale root" value={project.scaleRoot} onChange={(event) => onChange({ ...project, scaleRoot: Number(event.target.value) })}>
               {NOTE_NAMES.map((name, index) => <option key={name} value={index}>{name}</option>)}
@@ -94,14 +64,6 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
           </label>
           <label className="check-label"><input type="checkbox" checked={snap} onChange={(event) => setSnap(event.target.checked)} /> Snap to scale</label>
         </div>
-      </div>
-
-      <div className="piano-controls">
-        <label>Channel
-          <select aria-label="Piano roll channel" value={channel?.id ?? ''} onChange={(event) => setChannelId(event.target.value)}>
-            {project.channels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
         <label>Note duration
           <select value={duration} onChange={(event) => setDuration(Number(event.target.value))}>
             {[1, 2, 4, 8].map((value) => <option key={value} value={value}>{value} step{value > 1 ? 's' : ''}</option>)}
@@ -109,8 +71,8 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
         </label>
       </div>
       {channel && (
-        <div className="pitch-time-controls" aria-label="Pitch and time tools">
-          <strong>Pitch and time tools</strong>
+        <details className="pitch-time-controls" aria-label="Pitch and time tools">
+          <summary>Pitch and time tools</summary>
           <button className="secondary" aria-label="Transpose notes down one semitone"
             onClick={() => onChange(transposeChannelNotes(project, channel.id, -1))}>−1 semitone</button>
           <button className="secondary" aria-label="Transpose notes up one semitone"
@@ -123,7 +85,7 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
             onClick={() => onChange(scaleChannelNoteDurations(project, channel.id, 0.5))}>½ duration</button>
           <button className="secondary" aria-label="Double note durations"
             onClick={() => onChange(scaleChannelNoteDurations(project, channel.id, 2))}>2× duration</button>
-        </div>
+        </details>
       )}
       {channel ? (
         <div className="piano-roll" role="grid" aria-label={`${channel.name} piano roll`}>
@@ -167,6 +129,45 @@ export function CompositionEditor({ project, onChange }: { project: Project; onC
           <button id="add-chord" onClick={addChord}>＋ Add chord</button>
         </div>
       )}
+
+    </div>
+  );
+}
+
+export function SongEditor({ project, onChange }: { project: Project; onChange: (project: Project) => void }) {
+  const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
+  const updatePattern = (id: string) => onChange(selectPattern(project, id));
+  const appendArrangementClip = () => {
+    const patternId = project.currentPatternId ?? project.patterns[0]?.id;
+    if (!patternId) return;
+    onChange(addArrangementClip(project, patternId, arrangementLength(project)));
+  };
+
+  return (
+    <section className="composition panel" aria-label="Song tools">
+      <h2>Song</h2>
+      <div className="composition-controls">
+        <div className="pattern-controls">
+          <strong>Patterns</strong>
+          {project.patterns.map((pattern) => (
+            <button key={pattern.id} className={pattern.id === project.currentPatternId ? 'on' : 'secondary'}
+              aria-pressed={pattern.id === project.currentPatternId} onClick={() => updatePattern(pattern.id)}>
+              {pattern.name}
+            </button>
+          ))}
+          <button id="new-pattern" onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}>＋ New pattern</button>
+          {project.currentPatternId && (
+            <>
+              <button className="secondary" onClick={() => {
+                const current = project.patterns.find((pattern) => pattern.id === project.currentPatternId);
+                const name = window.prompt('Pattern name', current?.name);
+                if (name !== null && name !== undefined) onChange(renamePattern(project, project.currentPatternId!, name));
+              }}>Rename</button>
+              <button className="secondary" onClick={() => onChange(removePattern(project, project.currentPatternId!))}>Remove current</button>
+            </>
+          )}
+        </div>
+      </div>
 
       <div className="arrangement-controls">
         <div className="arrangement-heading">
