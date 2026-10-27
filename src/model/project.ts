@@ -48,6 +48,7 @@ export interface Channel {
   solo: boolean;
   steps: boolean[];
   notes: NoteEvent[];
+  stepEventMetadata?: Record<number, StepEventMetadata>;
   chordEvents?: ChordEvent[];
   kitId?: string;
   role?: DrumRole;
@@ -59,6 +60,19 @@ export interface NoteEvent {
   pitch: number;
   durationSteps: number;
   velocity?: number;
+  confidence?: number;
+  pitchBend?: PitchBendPoint[];
+  sourceTakeId?: string;
+}
+
+export interface PitchBendPoint {
+  time: number;
+  value: number;
+}
+
+export interface StepEventMetadata {
+  confidence?: number;
+  sourceTakeId?: string;
 }
 
 export interface ChordEvent {
@@ -161,7 +175,15 @@ function copyChannels(channels: Channel[]): Channel[] {
   return channels.map((channel) => ({
     ...channel,
     steps: [...channel.steps],
-    notes: (channel.notes ?? []).map((note) => ({ ...note })),
+    notes: (channel.notes ?? []).map((note) => ({
+      ...note,
+      ...(note.pitchBend ? { pitchBend: note.pitchBend.map((point) => ({ ...point })) } : {}),
+    })),
+    ...(channel.stepEventMetadata ? {
+      stepEventMetadata: Object.fromEntries(Object.entries(channel.stepEventMetadata).map(([step, metadata]) => [
+        step, { ...metadata },
+      ])),
+    } : {}),
     ...(channel.chordEvents ? { chordEvents: channel.chordEvents.map((event) => ({ ...event })) } : {}),
   }));
 }
@@ -183,6 +205,9 @@ export function setLoopBars(p: Project, loopBars: LoopBars): Project {
     ...c,
     steps: Array.from({ length: len }, (_, i) => c.steps[i] ?? false),
     notes: (c.notes ?? []).filter((note) => note.step < len),
+    ...(c.stepEventMetadata ? {
+      stepEventMetadata: Object.fromEntries(Object.entries(c.stepEventMetadata).filter(([step]) => Number(step) < len)),
+    } : {}),
     chordEvents: (c.chordEvents ?? []).filter((event) => event.step < len),
   })), len);
   return { ...updated, loopBars };
@@ -203,9 +228,20 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
     notes: (c.notes ?? []).flatMap((note) => {
       const position = (note.step * newLen) / oldLen;
       return Number.isInteger(position)
-        ? [{ ...note, step: position, durationSteps: Math.max(1, Math.round((note.durationSteps * newLen) / oldLen)) }]
+        ? [{
+          ...note,
+          step: position,
+          durationSteps: Math.max(1, Math.round((note.durationSteps * newLen) / oldLen)),
+          ...(note.pitchBend ? { pitchBend: note.pitchBend.map((point) => ({ ...point })) } : {}),
+        }]
         : [];
     }),
+    ...(c.stepEventMetadata ? {
+      stepEventMetadata: Object.fromEntries(Object.entries(c.stepEventMetadata).flatMap(([step, metadata]) => {
+        const position = (Number(step) * newLen) / oldLen;
+        return Number.isInteger(position) ? [[position, { ...metadata }]] : [];
+      })),
+    } : {}),
     chordEvents: (c.chordEvents ?? []).flatMap((event) => {
       const position = (event.step * newLen) / oldLen;
       return Number.isInteger(position)
@@ -266,17 +302,61 @@ export function addNote(p: Project, channelId: string, note: NoteEvent): Project
   const velocity = note.velocity === undefined || !Number.isFinite(note.velocity)
     ? undefined
     : Math.max(0, Math.min(1, note.velocity));
+  const confidence = note.confidence === undefined || !Number.isFinite(note.confidence)
+    ? undefined
+    : Math.max(0, Math.min(1, note.confidence));
+  const pitchBend = Array.isArray(note.pitchBend)
+    ? note.pitchBend.filter((point) => point && Number.isFinite(point.time) && point.time >= 0 && Number.isFinite(point.value))
+      .map((point) => ({ time: point.time, value: point.value }))
+    : undefined;
+  const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0 ? note.sourceTakeId : undefined;
   return syncCurrentPattern(p, p.channels.map((channel) =>
     channel.id === channelId
       ? {
         ...channel,
         notes: [
           ...(channel.notes ?? []).filter((item) => item.id !== note.id),
-          { ...note, pitch, step, durationSteps, ...(velocity === undefined ? {} : { velocity }) },
+          {
+            ...note,
+            pitch,
+            step,
+            durationSteps,
+            ...(velocity === undefined ? {} : { velocity }),
+            ...(confidence === undefined ? {} : { confidence }),
+            ...(pitchBend === undefined ? {} : { pitchBend }),
+            ...(sourceTakeId === undefined ? {} : { sourceTakeId }),
+          },
         ],
       }
       : channel,
   ));
+}
+
+export function setStepEventMetadata(
+  p: Project,
+  channelId: string,
+  step: number,
+  metadata?: StepEventMetadata,
+): Project {
+  const channel = p.channels.find((item) => item.id === channelId);
+  if (!channel || !Number.isInteger(step) || step < 0 || step >= channel.steps.length) return p;
+  const next = { ...(channel.stepEventMetadata ?? {}) };
+  if (!metadata) {
+    delete next[step];
+  } else {
+    const confidence = metadata.confidence === undefined || !Number.isFinite(metadata.confidence)
+      ? undefined
+      : Math.max(0, Math.min(1, metadata.confidence));
+    const sourceTakeId = typeof metadata.sourceTakeId === 'string' && metadata.sourceTakeId.length > 0
+      ? metadata.sourceTakeId
+      : undefined;
+    if (confidence === undefined && sourceTakeId === undefined) delete next[step];
+    else next[step] = {
+      ...(confidence === undefined ? {} : { confidence }),
+      ...(sourceTakeId === undefined ? {} : { sourceTakeId }),
+    };
+  }
+  return updateChannel(p, channelId, { stepEventMetadata: next });
 }
 
 export function addChordEvent(p: Project, channelId: string, event: ChordEvent): Project {
