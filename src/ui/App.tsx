@@ -25,7 +25,7 @@ import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
 import { clearAllSamples } from '../library/sampleStorage';
 import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY } from './preferences';
-import { Popover } from './Popover';
+import { HeaderTile } from './Popover';
 import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
 import './styles.css';
@@ -34,7 +34,7 @@ const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const UNLOCK_KEY = 'musicmaker.unlockedTabs';
-type HeaderMenu = 'file' | 'share' | 'view' | 'settings';
+type HeaderMenu = 'file' | 'share' | 'view' | 'settings' | 'help';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -50,7 +50,6 @@ export function App() {
   const [events, setEvents] = useState<ReadonlySet<string>>(new Set());
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [base, setBase] = useState<Project>(project);
-  const [menu, setMenu] = useState<'all' | 'tab' | null>(null);
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
   const [doneTutorials, setDoneTutorials] = useState<ReadonlySet<string>>(loadDone);
   const [prefs, setPrefs] = useState(loadPreferences);
@@ -98,7 +97,7 @@ export function App() {
     setBase(projectRef.current);
     setEvents(new Set());
     setTutorial(t);
-    setMenu(null);
+    setOpenMenu(null);
     localStorage.setItem(SEEN_KEY, '1');
   };
 
@@ -318,8 +317,21 @@ export function App() {
         <div className="header-menus">
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'view'} aria-label="View menu" title="View" onClick={() => toggleMenu('view')}><Icon name="view" /></button>
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
+          </div>
+          <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
+        </div>
+      </header>
             {openMenu === 'file' && (
-              <Popover label="File" onClose={closeMenu}>
+              <HeaderTile label="File" onClose={closeMenu}>
                 <label>Template
                   <select value="" onChange={(e) => { loadTemplate(e.target.value); closeMenu(); }}>
                     <option value="" disabled>Choose…</option>
@@ -327,13 +339,10 @@ export function App() {
                   </select>
                 </label>
                 <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save</button>
-              </Popover>
+              </HeaderTile>
             )}
-          </div>
-          <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
             {openMenu === 'share' && (
-              <Popover label="Export" onClose={closeMenu}>
+              <HeaderTile label="Export" onClose={closeMenu}>
                 <label>WAV sample rate
                   <select aria-label="WAV sample rate" value={exportSampleRate}
                     onChange={(event) => setExportSampleRate(Number(event.target.value))}>
@@ -352,22 +361,16 @@ export function App() {
                   Normalize to −1 dBFS
                 </label>
                 <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
-              </Popover>
+              </HeaderTile>
             )}
-          </div>
-          <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'view'} aria-label="View menu" title="View" onClick={() => toggleMenu('view')}><Icon name="view" /></button>
             {openMenu === 'view' && (
-              <Popover label="View" onClose={closeMenu}>
+              <HeaderTile label="View" onClose={closeMenu}>
                 <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
                   onChange={() => setUnlocked(true)} /> Show all tabs</label>
-              </Popover>
+              </HeaderTile>
             )}
-          </div>
-          <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
             {openMenu === 'settings' && (
-              <Popover label="Settings" className="settings-popup" onClose={closeMenu}>
+              <HeaderTile label="Settings" className="settings-tile" onClose={closeMenu}>
                 <AppearanceSettings theme={theme} onThemeChange={setTheme} />
                 <h3>Export defaults</h3>
                 <button className="secondary" onClick={() => {
@@ -396,19 +399,15 @@ export function App() {
                   if (!window.confirm('Reset MusicMaker? This deletes your saved project, settings and progress.')) return;
                   void clearAllSamples().catch(() => undefined).finally(() => { clearAppData(); window.location.reload(); });
                 }}>Reset all app data</button>
-              </Popover>
+              </HeaderTile>
             )}
-          </div>
-          <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" onClick={() => { closeMenu(); setMenu('tab'); }}><Icon name="help" /></button>
-        </div>
-      </header>
+      {openMenu === 'help' && (
+        <TutorialMenu tab={view} done={doneTutorials} onPick={startTutorial}
+          onResetProgress={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); }}
+          onClose={closeMenu} />
+      )}
       {message && <div className="toast" role="status">{message}</div>}
 
-      {menu && (
-        <TutorialMenu tab={menu === 'tab' ? view : undefined} done={doneTutorials} onPick={startTutorial}
-          onResetProgress={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); }}
-          onClose={() => setMenu(null)} />
-      )}
 
       <nav className="tabs" role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
         {visibleTabs.map((t) => (
@@ -419,7 +418,7 @@ export function App() {
         ))}
       </nav>
       {nudge === view && !tutorial && (
-        <div className="toast nudge" role="status">New here? <button onClick={() => { setNudge(null); setMenu('tab'); }}>Try a tutorial</button>
+        <div className="toast nudge" role="status">New here? <button onClick={() => { setNudge(null); setOpenMenu('help'); }}>Try a tutorial</button>
           <button className="secondary" onClick={() => setNudge(null)}>Dismiss</button></div>
       )}
 

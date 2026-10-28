@@ -11,6 +11,9 @@ Microphone recording and audio-file import, sample trimming and normalization, s
 Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangement timeline, and composition tutorial.
 Verified in a production browser on 2026-10-27: created and played a beat, imported and saved a sample, recognized a melody, and confirmed the generated track persisted after reload.
 
+### UI: unified header tiles — DONE
+File, Share/Export, View, Settings and Help open as identical tiles below the header; one shared open-menu state makes the header buttons toggle them (opening one closes the others); the Help Close button was removed.
+
 ## OPEN
 - No unblocked Phase 0–12 implementation items remain. Current work is Phase 13 platform support and Phase 14 tutorial completion.
 

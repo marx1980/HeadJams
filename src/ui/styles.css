@@ -312,13 +312,14 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .header-menus .help-btn { margin-left: 0; }
 .icon-btn { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; }
 .icon-btn svg { width: 28px; height: 28px; }
-.menu-popup { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 16px); margin: 0; overflow-y: auto; }
-.settings-popup { width: 300px; }
-.settings-popup h3 { margin: 10px 0 0; }
+.header-tile { box-sizing: border-box; margin: 8px 0; }
+.header-tile.tutorial-menu, .header-tile { max-height: 80vh; overflow: auto; }
+.header-tile:not(.tutorial-menu) { max-width: 420px; margin-left: auto; }
+.settings-tile h3 { margin: 10px 0 0; }
 .theme-preview { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; }
 .theme-preview span { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 50%; }
 .theme-preview p { margin: 0 0 0 4px; font-weight: 700; }
-.settings-popup .hint { color: var(--text-muted); margin: 0; }
+.settings-tile .hint { color: var(--text-muted); margin: 0; }
 .tabs { display: flex; gap: 6px; margin: 8px 0; position: sticky; top: 56px; z-index: 4; background: var(--app-bg); padding: 4px 0; }
 .tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; }
 .tab-label { font-size: 0.85rem; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }

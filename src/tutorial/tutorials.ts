@@ -173,7 +173,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'templates', title: 'Start from a template', tab: 'beat', group: 'Mix & tempo', level: 'beginner', estMinutes: 1,
     summary: 'Load a ready-made beat.', features: ['templates'], doneMessage: 'Templates are a quick way to start.',
     steps: [
-      { menu: 'file', text: 'Open the Template menu and choose one (this replaces your beat, after asking).', target: '.menu-popup select', done: (s) => s.events.has('template') },
+      { menu: 'file', text: 'Open the Template menu and choose one (this replaces your beat, after asking).', target: '.header-tile select', done: (s) => s.events.has('template') },
       { text: 'Press Play to hear it.', target: '#play-btn', done: (s) => s.events.has('play') },
     ],
   },

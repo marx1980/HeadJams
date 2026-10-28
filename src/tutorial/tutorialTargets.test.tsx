@@ -88,7 +88,7 @@ describe('tutorial target selectors', () => {
     if (root) act(() => root?.unmount());
     root = undefined;
     container.replaceChildren();
-    document.querySelectorAll('.menu-popup').forEach((el) => el.remove());
+    document.querySelectorAll('.header-tile').forEach((el) => el.remove());
     localStorage.clear();
     vi.restoreAllMocks();
   });

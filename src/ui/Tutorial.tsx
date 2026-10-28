@@ -3,6 +3,7 @@ import { GROUPS, TUTORIALS, WORKFLOWS, findTutorial, isTutorialAvailable, type T
 import { workflowProgress } from '../tutorial/progress';
 import { supportsMidiInput } from '../platform/midi';
 import { Icon } from './Icon';
+import { HeaderTile } from './Popover';
 
 export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   /** Current screen; the hub lists its tutorials first and "Show all tabs" lists everything. */
@@ -14,24 +15,6 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
 }) {
   const [mode, setMode] = useState<'actions' | 'workflows'>('actions');
   const [all, setAll] = useState(!tab);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    el?.querySelector<HTMLElement>('button')?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
-      if (e.key !== 'Tab' || !el) return;
-      const f = Array.from(el.querySelectorAll<HTMLElement>('button:not([disabled]), input'));
-      if (!f.length) return;
-      const first = f[0], last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const tabs: TutorialTab[] = all || !tab ? ['beat', 'sound', 'library', 'song', 'global'] : [tab, 'global'];
   const capabilities = new Set<TutorialCapability>();
   if (typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function' && typeof MediaRecorder !== 'undefined') {
@@ -52,13 +35,9 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   );
 
   return (
-      <div className="panel tutorial-menu" role="dialog" aria-modal="true" aria-label="Help" ref={ref}>
-        <div className="tutorial-heading">
-          <h2>Help</h2>
-          <div className="row tutorial-actions">
-            <button className="secondary" onClick={() => { if (window.confirm('Reset all tutorial progress?')) onResetProgress(); }}>Reset tutorials</button>
-            <button className="secondary" onClick={onClose}>Close</button>
-          </div>
+      <HeaderTile label="Help" className="tutorial-menu" onClose={onClose}>
+        <div className="row tutorial-actions">
+          <button className="secondary" onClick={() => { if (window.confirm('Reset all tutorial progress?')) onResetProgress(); }}>Reset tutorials</button>
         </div>
         <div className="row" role="group" aria-label="Browse by">
           <button className={mode === 'actions' ? 'on' : 'secondary'} aria-pressed={mode === 'actions'} onClick={() => setMode('actions')}>Actions</button>
@@ -96,7 +75,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
           })}
         </ul>
       )}
-    </div>
+      </HeaderTile>
   );
 }
 

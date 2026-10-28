@@ -23,6 +23,8 @@ Persistent **top bar** (always visible): logo · ▶ Play/■ Stop · BPM · pro
 | 📚 **Library** | Find, record, import sounds | Search/tags, pad view, record mic, import file, trim/normalize, "Use on channel…" |
 | 🎬 **Song** | Arrange the whole track | Pattern list (new/rename/remove), loop launcher, arrangement timeline |
 
+**Header tiles**: File, Share, View, Settings and Help buttons toggle same-style tiles opening below the header (one at a time, no Close button).
+
 **Project menu (⋯)**: Templates, Save, Export WAV, New project, (later: cloud sync, MIDI settings). Removes 4 controls from the header.
 
 ## 4. Screen sketches
