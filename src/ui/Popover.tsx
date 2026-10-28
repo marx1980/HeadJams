@@ -1,5 +1,4 @@
-import { createPortal } from 'react-dom';
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 const MARGIN = 8;
 const MOBILE_MAX = 640;
@@ -31,40 +30,20 @@ export function placePopover(
   return { left, bottom: viewport.height - anchor.top + MARGIN, maxHeight: Math.max(120, above) };
 }
 
-export function Popover({ onClose, className = '', children, label }: {
+/** Header tile: opens in the same place and style as Help; toggled by its header button, closed by Esc or an outside click. */
+export function HeaderTile({ onClose, className = '', children, label }: {
   onClose: () => void;
   className?: string;
   children: ReactNode;
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const marker = useRef<HTMLSpanElement>(null);
-  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const anchor = marker.current?.parentElement;
-    if (!el || !anchor) return;
-    const update = () => {
-      const viewport = window.visualViewport;
-      const p = placePopover(anchor.getBoundingClientRect(), { width: el.offsetWidth, height: el.scrollHeight },
-        { width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight });
-      setStyle({ left: p.left, top: p.top, bottom: p.bottom, width: p.width, maxHeight: p.maxHeight });
-    };
-    update();
-    window.addEventListener('resize', update);
-    window.visualViewport?.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('resize', update);
-      window.visualViewport?.removeEventListener('resize', update);
-    };
-  }, []);
 
   useEffect(() => {
-    const anchor = marker.current?.parentElement;
     const onDown = (e: Event) => {
-      const t = e.target as Node;
-      if (anchor && !anchor.contains(t) && !ref.current?.contains(t)) onClose();
+      const t = e.target as Element | null;
+      // Header buttons toggle their own tile, so presses there are not "outside".
+      if (t && !ref.current?.contains(t) && !t.closest?.('.bar, [role="dialog"]')) onClose();
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('mousedown', onDown);
@@ -78,9 +57,9 @@ export function Popover({ onClose, className = '', children, label }: {
   }, [onClose]);
 
   return (
-    <>
-      <span ref={marker} hidden />
-      {createPortal(<div ref={ref} role="group" aria-label={label} className={`panel menu-popup ${className}`} style={style}>{children}</div>, document.body)}
-    </>
+    <div ref={ref} role="group" aria-label={label} className={`panel header-tile ${className}`}>
+      <div className="tutorial-heading"><h2>{label}</h2></div>
+      {children}
+    </div>
   );
 }
