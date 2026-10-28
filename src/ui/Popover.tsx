@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 const MARGIN = 8;
@@ -37,11 +38,12 @@ export function Popover({ onClose, className = '', children, label }: {
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const marker = useRef<HTMLSpanElement>(null);
   const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
 
   useLayoutEffect(() => {
     const el = ref.current;
-    const anchor = el?.parentElement;
+    const anchor = marker.current?.parentElement;
     if (!el || !anchor) return;
     const update = () => {
       const viewport = window.visualViewport;
@@ -59,8 +61,11 @@ export function Popover({ onClose, className = '', children, label }: {
   }, []);
 
   useEffect(() => {
-    const anchor = ref.current?.parentElement;
-    const onDown = (e: Event) => { if (anchor && !anchor.contains(e.target as Node)) onClose(); };
+    const anchor = marker.current?.parentElement;
+    const onDown = (e: Event) => {
+      const t = e.target as Node;
+      if (anchor && !anchor.contains(t) && !ref.current?.contains(t)) onClose();
+    };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('touchstart', onDown);
@@ -72,5 +77,10 @@ export function Popover({ onClose, className = '', children, label }: {
     };
   }, [onClose]);
 
-  return <div ref={ref} role="group" aria-label={label} className={`panel menu-popup ${className}`} style={style}>{children}</div>;
+  return (
+    <>
+      <span ref={marker} hidden />
+      {createPortal(<div ref={ref} role="group" aria-label={label} className={`panel menu-popup ${className}`} style={style}>{children}</div>, document.body)}
+    </>
+  );
 }

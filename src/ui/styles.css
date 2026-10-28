@@ -312,7 +312,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .header-menus .help-btn { margin-left: 0; }
 .icon-btn { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; }
 .icon-btn svg { width: 28px; height: 28px; }
-.menu-popup { position: fixed; z-index: 20; width: 260px; max-width: calc(100vw - 16px); margin: 0; overflow-y: auto; }
+.menu-popup { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 16px); margin: 0; overflow-y: auto; }
 .settings-popup { width: 300px; }
 .settings-popup h3 { margin: 10px 0 0; }
 .theme-preview { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; }
@@ -376,3 +376,5 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .app[data-large-icons] .icon-btn { width: 52px; height: 52px; }
 .app[data-large-icons] .icon-btn svg { width: 34px; height: 34px; }
 .app[data-reduce-motion] *, .app[data-reduce-motion] *::before, .app[data-reduce-motion] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
+.icon-btn[aria-expanded='true'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-contrast) inset; }
