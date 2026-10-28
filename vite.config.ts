@@ -17,7 +17,7 @@ function offlineWorkerPlugin(): Plugin {
         type: 'asset',
         fileName: 'service-worker.js',
         source: createOfflineWorkerSource(
-          ['index.html', ...files, 'manifest.webmanifest', 'icon.svg'],
+          ['index.html', ...files, 'manifest.webmanifest', 'icon.png'],
           `musicmaker-shell-${hash}`,
         ),
       });
