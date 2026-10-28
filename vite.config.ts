@@ -10,7 +10,7 @@ function offlineWorkerPlugin(): Plugin {
     apply: 'build',
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).filter((file) => !file.endsWith('.map') && file !== 'service-worker.js');
-      const iconBytes = readFileSync(new URL('./app/public/icon.png', import.meta.url)).toString('base64');
+      const iconBytes = readFileSync(new URL('./app/public/icon-v2.png', import.meta.url)).toString('base64');
       const hash = [...files].sort().join('\n').concat(iconBytes).split('').reduce(
         (value, character) => Math.imul(value ^ character.charCodeAt(0), 16777619) >>> 0,
         2166136261,
@@ -19,7 +19,7 @@ function offlineWorkerPlugin(): Plugin {
         type: 'asset',
         fileName: 'service-worker.js',
         source: createOfflineWorkerSource(
-          ['index.html', ...files, 'manifest.webmanifest', 'icon.png'],
+          ['index.html', ...files, 'manifest.webmanifest', 'icon-v2.png'],
           `musicmaker-shell-${hash}`,
         ),
       });
