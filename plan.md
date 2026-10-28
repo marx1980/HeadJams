@@ -138,7 +138,8 @@ Problems: the "..." (Project) menu still opens partly off-screen; it is one long
 - [ ] 17f. Tests and verification: update tutorial selectors that target the old menu/Settings button; add tests for popover positioning logic and inline skin selection; check screenshots on desktop and narrow mobile (including a simulated notch/curved insets) for all eight skins; run `npm test` and `npm run build`; update README and `docs/ui-visual-plan.md`.
 - Done in code: shared `Popover` (viewport clamp/flip/scroll, bottom sheet ≤640px, outside click/Escape); File, Share, View, Settings (gear) and Help icon buttons; inline skins; persisted export defaults; tutorial steps target the right menu; icon-over-label tab bar with safe-area padding and `viewport-fit=cover`.
 - Done: redesigned bass, guitar and strings icons (violin with bow) with more detail; all family, tab and header icons enlarged (plus a "Larger icons" setting); Settings groups: Skins, Export defaults, Interface (larger icons, reduce motion), Tutorials (first-visit hints, reset), Audio and MIDI (remembered input), Data and privacy (clear samples, reset app data).
-- Not done yet: redesign of the remaining icons (drums, percussion, keys, brass, synth, etc.) to the same detail level; screenshot review across all skins and on a real device.
+- Done: remaining family icons (drums, percussion, keys, brass/winds, synth, and FX) refined to match the detail level of bass, guitar, and strings.
+- Not done yet: screenshot review across all skins and on a real device.
 
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
