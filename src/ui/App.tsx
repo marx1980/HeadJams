@@ -20,10 +20,12 @@ import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { MidiInput } from './MidiInput';
+import { AppearanceSettings } from './AppearanceSettings';
+import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
 import './styles.css';
 
-const COLORS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5', '#f15bb5', '#fb8500', '#8ecae6'];
+const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const UNLOCK_KEY = 'musicmaker.unlockedTabs';
@@ -42,6 +44,8 @@ export function App() {
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [base, setBase] = useState<Project>(project);
   const [menu, setMenu] = useState<'all' | 'tab' | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>(loadTheme);
   const [doneTutorials, setDoneTutorials] = useState<ReadonlySet<string>>(loadDone);
   const [nudge, setNudge] = useState<View | null>(null);
   const [designer, setDesigner] = useState(false);
@@ -89,6 +93,10 @@ export function App() {
   };
 
   useEffect(() => { saveProject(project); }, [project]);
+  useEffect(() => {
+    saveTheme(theme);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
   useEffect(() => { if (unlocked) localStorage.setItem(UNLOCK_KEY, '1'); }, [unlocked]);
   useEffect(() => { if (events.has('play')) setUnlocked(true); }, [events]);
@@ -288,7 +296,7 @@ export function App() {
   const togglePiano = (id: string) => setPianoChannels((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   return (
-    <main className="app">
+    <main className="app" data-theme={theme}>
       <header className="bar">
         <h1>🎵 MusicMaker</h1>
         <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
@@ -328,6 +336,7 @@ export function App() {
               <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
               <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
                 onChange={() => setUnlocked(true)} /> Show all tabs</label>
+              <button className="secondary" onClick={() => { setProjectMenu(false); setSettingsOpen(true); }}>Settings</button>
               <button className="secondary" onClick={() => setProjectMenu(false)}>Close</button>
             </div>
           )}
@@ -595,6 +604,7 @@ export function App() {
 
       {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep}
         onComplete={(t) => setDoneTutorials((d) => { const n = new Set(d).add(t.id); saveDone(n); return n; })} />}
+      {settingsOpen && <AppearanceSettings theme={theme} onThemeChange={setTheme} onClose={() => setSettingsOpen(false)} />}
     </main>
   );
 }
