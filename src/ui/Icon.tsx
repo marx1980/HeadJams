@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
+
 export type IconName =
   | 'beat' | 'sound' | 'library' | 'song'
   | 'drums' | 'percussion' | 'keys' | 'strings' | 'guitar' | 'bass'
   | 'brass' | 'synth' | 'fx' | 'sample' | 'custom' | 'favorite' | 'recent';
 
-const paths: Record<IconName, React.ReactNode> = {
+const paths: Record<IconName, ReactNode> = {
   beat: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v11c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 11c0 1.7 3.6 3 8 3s8-1.3 8-3" /><path d="m8 4 2-2m6 2-2-2" /></>,
   sound: <><path d="M5 4v16M12 4v16M19 4v16" /><path d="M3 9h4m3 7h4m3-8h4" /></>,
   library: <><path d="M4 5h4v15H4zM10 4h4v16h-4zM16 6h4v14h-4z" /><path d="M5.5 8h1m5-1h1m5 2h1" /></>,

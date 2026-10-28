@@ -355,7 +355,7 @@ export function App() {
       <nav className="tabs" role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
         {visibleTabs.map((t) => (
           <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={view === t.id} aria-controls={`pane-${t.id}`}
-            tabIndex={view === t.id ? 0 : -1} className={view === t.id ? 'on' : 'secondary'} onClick={() => goTab(t.id)}>
+            tabIndex={view === t.id ? 0 : -1} className={`tab-${t.id} ${view === t.id ? 'on' : 'secondary'}`} onClick={() => goTab(t.id)}>
             <Icon name={t.icon} className="tab-icon" /> {t.label}
           </button>
         ))}
