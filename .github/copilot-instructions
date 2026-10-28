@@ -21,6 +21,12 @@ Do not automatically:
 
 If the relevant files can be identified directly, open those files rather than exploring the repository broadly.
 
+## Plan and implement in one session
+
+If a request asks for a plan and the user has not said to wait for approval, write the plan into PLAN.md and then implement it in the same session, so the user does not need a second session. Stop after the plan only when the user explicitly asks to approve it first, or when the plan has open questions that change the design.
+
+Always state clearly in the final report whether code was changed or only a plan was written.
+
 ## Implementation
 
 Work on one PLAN.md task at a time.

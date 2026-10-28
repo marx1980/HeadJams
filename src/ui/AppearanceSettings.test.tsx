@@ -24,7 +24,7 @@ describe('AppearanceSettings', () => {
     act(() => {
       root = createRoot(container);
       root.render(createElement(AppearanceSettings, {
-        theme: 'midnight-studio', onThemeChange, onClose: () => undefined,
+        theme: "midnight-studio", onThemeChange,
       }));
     });
 

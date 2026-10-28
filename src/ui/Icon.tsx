@@ -3,9 +3,15 @@ import type { ReactNode } from 'react';
 export type IconName =
   | 'beat' | 'sound' | 'library' | 'song'
   | 'drums' | 'percussion' | 'keys' | 'strings' | 'guitar' | 'bass'
+  | 'file' | 'share' | 'view' | 'settings' | 'help'
   | 'brass' | 'synth' | 'fx' | 'sample' | 'custom' | 'favorite' | 'recent';
 
 const paths: Record<IconName, ReactNode> = {
+  file: <><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4M9 12h6m-6 4h6" /></>,
+  share: <><path d="M12 15V3m0 0L8 7m4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" /></>,
+  view: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>,
+  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3m0 13v3M2.5 12h3m13 0h3M5.3 5.3l2.1 2.1m9.2 9.2 2.1 2.1m0-13.4-2.1 2.1M7.4 16.6l-2.1 2.1" /><circle cx="12" cy="12" r="6.5" /></>,
+  help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17h.01" /></>,
   beat: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v11c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 11c0 1.7 3.6 3 8 3s8-1.3 8-3" /><path d="m8 4 2-2m6 2-2-2" /></>,
   sound: <><path d="M5 4v16M12 4v16M19 4v16" /><path d="M3 9h4m3 7h4m3-8h4" /></>,
   library: <><path d="M4 5h4v15H4zM10 4h4v16h-4zM16 6h4v14h-4z" /><path d="M5.5 8h1m5-1h1m5 2h1" /></>,

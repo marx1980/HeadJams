@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
@@ -6,7 +6,7 @@ import {
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
-import { allSounds, findSound, SAMPLE_RATE, STARTER_SOUNDS } from '../library/sounds';
+import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
@@ -23,6 +23,8 @@ import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
+import { Popover } from './Popover';
+import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
 import './styles.css';
 
@@ -30,6 +32,8 @@ const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const UNLOCK_KEY = 'musicmaker.unlockedTabs';
+type HeaderMenu = 'file' | 'share' | 'view' | 'settings';
+
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
   { id: 'sound', icon: 'sound', label: 'Sound' },
@@ -45,7 +49,6 @@ export function App() {
   const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const [base, setBase] = useState<Project>(project);
   const [menu, setMenu] = useState<'all' | 'tab' | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
   const [doneTutorials, setDoneTutorials] = useState<ReadonlySet<string>>(loadDone);
   const [nudge, setNudge] = useState<View | null>(null);
@@ -56,7 +59,9 @@ export function App() {
   });
   // Sound and Song tabs unlock after the first play (or immediately for returning users / "Show all").
   const [unlocked, setUnlocked] = useState(() => localStorage.getItem(UNLOCK_KEY) === '1' || localStorage.getItem(SEEN_KEY) !== null);
-  const [projectMenu, setProjectMenu] = useState(false);
+  const [openMenu, setOpenMenu] = useState<HeaderMenu | null>(null);
+  const closeMenu = useCallback(() => setOpenMenu(null), []);
+  const toggleMenu = (m: HeaderMenu) => setOpenMenu((cur) => (cur === m ? null : m));
   const [pianoChannels, setPianoChannels] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState('');
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
@@ -64,9 +69,9 @@ export function App() {
   const [drumKitId, setDrumKitId] = useState('');
   const [midiRecording, setMidiRecording] = useState(false);
   const [midiTargetChannelId, setMidiTargetChannelId] = useState(project.channels[0]?.id ?? '');
-  const [exportSampleRate, setExportSampleRate] = useState(SAMPLE_RATE);
-  const [exportBitDepth, setExportBitDepth] = useState<16 | 24>(16);
-  const [normalizeExport, setNormalizeExport] = useState(false);
+  const [exportSampleRate, setExportSampleRate] = useState(() => loadExportDefaults().sampleRate);
+  const [exportBitDepth, setExportBitDepth] = useState<16 | 24>(() => loadExportDefaults().bitDepth);
+  const [normalizeExport, setNormalizeExport] = useState(() => loadExportDefaults().normalize);
   const [exporting, setExporting] = useState(false);
   const recognitionPlaybackRef = useRef(false);
   const recognitionPlaybackTimerRef = useRef<number | undefined>(undefined);
@@ -281,7 +286,7 @@ export function App() {
   };
   const onTutorialStep = (step: TutorialStep) => {
     if (step.view) goTab(step.view);
-    if (step.menu) setProjectMenu(true);
+    if (step.menu) setOpenMenu(step.menu);
     const first = projectRef.current.channels[0];
     if (step.pianoRoll && first) setPianoChannels((s) => new Set(s).add(first.id));
   };
@@ -306,43 +311,72 @@ export function App() {
         <label>BPM
           <input type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
         </label>
-        <div className="project-menu">
-          <button className="secondary" aria-haspopup="true" aria-expanded={projectMenu} aria-label="Project menu" onClick={() => setProjectMenu(!projectMenu)}>⋯</button>
-          {projectMenu && (
-            <div className="panel menu-popup">
-              <label>Template
-                <select value="" onChange={(e) => { loadTemplate(e.target.value); setProjectMenu(false); }}>
-                  <option value="" disabled>Choose…</option>
-                  {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-              </label>
-              <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); }}>Save</button>
-              <label>WAV sample rate
-                <select aria-label="WAV sample rate" value={exportSampleRate}
-                  onChange={(event) => setExportSampleRate(Number(event.target.value))}>
-                  {[44100, 48000, 96000].map((rate) => <option key={rate} value={rate}>{(rate / 1000).toFixed(rate % 1000 ? 1 : 0)} kHz</option>)}
-                </select>
-              </label>
-              <label>WAV bit depth
-                <select aria-label="WAV bit depth" value={exportBitDepth}
-                  onChange={(event) => setExportBitDepth(Number(event.target.value) as 16 | 24)}>
-                  <option value={16}>16-bit PCM</option>
-                  <option value={24}>24-bit PCM</option>
-                </select>
-              </label>
-              <label className="check-label">
-                <input type="checkbox" checked={normalizeExport} onChange={(event) => setNormalizeExport(event.target.checked)} />
-                Normalize to −1 dBFS
-              </label>
-              <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
-              <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
-                onChange={() => setUnlocked(true)} /> Show all tabs</label>
-              <button className="secondary" onClick={() => { setProjectMenu(false); setSettingsOpen(true); }}>Settings</button>
-              <button className="secondary" onClick={() => setProjectMenu(false)}>Close</button>
-            </div>
-          )}
+        <div className="header-menus">
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
+            {openMenu === 'file' && (
+              <Popover label="File" onClose={closeMenu}>
+                <label>Template
+                  <select value="" onChange={(e) => { loadTemplate(e.target.value); closeMenu(); }}>
+                    <option value="" disabled>Choose…</option>
+                    {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </label>
+                <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save</button>
+              </Popover>
+            )}
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
+            {openMenu === 'share' && (
+              <Popover label="Export" onClose={closeMenu}>
+                <label>WAV sample rate
+                  <select aria-label="WAV sample rate" value={exportSampleRate}
+                    onChange={(event) => setExportSampleRate(Number(event.target.value))}>
+                    {[44100, 48000, 96000].map((rate) => <option key={rate} value={rate}>{(rate / 1000).toFixed(rate % 1000 ? 1 : 0)} kHz</option>)}
+                  </select>
+                </label>
+                <label>WAV bit depth
+                  <select aria-label="WAV bit depth" value={exportBitDepth}
+                    onChange={(event) => setExportBitDepth(Number(event.target.value) as 16 | 24)}>
+                    <option value={16}>16-bit PCM</option>
+                    <option value={24}>24-bit PCM</option>
+                  </select>
+                </label>
+                <label className="check-label">
+                  <input type="checkbox" checked={normalizeExport} onChange={(event) => setNormalizeExport(event.target.checked)} />
+                  Normalize to −1 dBFS
+                </label>
+                <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
+              </Popover>
+            )}
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'view'} aria-label="View menu" title="View" onClick={() => toggleMenu('view')}><Icon name="view" /></button>
+            {openMenu === 'view' && (
+              <Popover label="View" onClose={closeMenu}>
+                <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
+                  onChange={() => setUnlocked(true)} /> Show all tabs</label>
+              </Popover>
+            )}
+          </div>
+          <div className="project-menu">
+            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
+            {openMenu === 'settings' && (
+              <Popover label="Settings" className="settings-popup" onClose={closeMenu}>
+                <AppearanceSettings theme={theme} onThemeChange={setTheme} />
+                <h3>Export defaults</h3>
+                <button className="secondary" onClick={() => {
+                  saveExportDefaults({ sampleRate: exportSampleRate, bitDepth: exportBitDepth, normalize: normalizeExport });
+                  flash('Export defaults saved ✓');
+                }}>Use current export options as default</button>
+                <h3>Tutorials</h3>
+                <button className="secondary" onClick={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); flash('Tutorial progress reset'); }}>Reset tutorial progress</button>
+              </Popover>
+            )}
+          </div>
+          <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" onClick={() => { closeMenu(); setMenu('tab'); }}><Icon name="help" /></button>
         </div>
-        <button className="secondary help-btn" onClick={() => setMenu('tab')}>Help</button>
       </header>
       {message && <div className="toast" role="status">{message}</div>}
 
@@ -356,7 +390,7 @@ export function App() {
         {visibleTabs.map((t) => (
           <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={view === t.id} aria-controls={`pane-${t.id}`}
             tabIndex={view === t.id ? 0 : -1} className={`tab-${t.id} ${view === t.id ? 'on' : 'secondary'}`} onClick={() => goTab(t.id)}>
-            <Icon name={t.icon} className="tab-icon" /> {t.label}
+            <Icon name={t.icon} className="tab-icon" /><span className="tab-label">{t.label}</span>
           </button>
         ))}
       </nav>
@@ -604,7 +638,6 @@ export function App() {
 
       {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep}
         onComplete={(t) => setDoneTutorials((d) => { const n = new Set(d).add(t.id); saveDone(n); return n; })} />}
-      {settingsOpen && <AppearanceSettings theme={theme} onThemeChange={setTheme} onClose={() => setSettingsOpen(false)} />}
     </main>
   );
 }
