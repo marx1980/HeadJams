@@ -106,6 +106,40 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Skin preference is stored separately from project data, restored on web and Capacitor builds, and safely defaults for unsupported or unavailable storage.
 - [x] Added theme persistence and selector tests; documented the setting in the README.
 
+### 16. App icon, UI visual plan, and Help/icon refresh — DONE (PRs #27–33)
+- [x] #27: `mm icon.jpeg` adopted as the app icon for web/PWA (favicon, touch icon, manifest, offline precache) and Android/iOS launcher and store assets.
+- [x] #28: service-worker cache name now hashes the icon bytes so icon changes rotate the cache; root build gets icon links and `icon.png`; old `icon.svg` removed.
+- [x] #29: web icon renamed to `icon-v2.png` (manifest, `app/index.html`, precache list, cache hash) to bust iOS home-screen icon caching. Unconfirmed on device; users may need to re-add the bookmark. Native Capacitor icons untouched.
+- [x] #30: `docs/ui-visual-plan.md` (findings and seven-phase plan: tokens/sticky shell, viewport-aware popover/bottom sheet, SVG icon set, palettes, compact Beat card, Sound/Library/Song redesign, polish) and eight static theme mockups in `docs/mockups/`. Proposed grouped menus: per-channel Tools and More; header Project and Help; Library card More.
+- [x] #31: GitHub Pages gallery of the mockups at `/mockups/`.
+- [x] #32: eight selectable skins (Midnight Studio, Paper & Ink, Neon Pulse, Forest Studio, Ocean Light, High Contrast, Candy Pop, Vintage Amber) via Project menu → Settings → Appearance; stored under `musicmaker.theme`, default Midnight Studio. Shared design tokens.
+- [x] #33: single contextual "Help" button (tutorial reset/close moved into the panel); themed SVG screen and instrument-family icons, with distinct bass and guitar art.
+
+### 17. UI polish round 2 — IN PROGRESS
+Problems: the "..." (Project) menu still opens partly off-screen; it is one long mixed menu; Settings is a labeled button that only opens skin selection; many icons look poor; mobile bottom tab bar is clipped by rounded screen corners and icon/label may not fit on one row.
+- [x] 17a. Viewport-aware popovers (implements #30 phase 2). Replace the fixed `.menu-popup { right:0; top:46px }` with a shared popover that measures its trigger and the viewport (including `visualViewport` and safe-area insets), flips/clamps horizontally and vertically, caps `max-height` with internal scroll, and closes on outside click/Escape/resize. On widths ≤640px render as a bottom sheet. Reuse for Help, per-channel and Library menus.
+- [x] 17b. Replace the single "..." menu with separate icon-only buttons (each with tooltip and accessible name, own popover), using conventional, instantly recognizable symbols. Grouping is based on the actual current menu (Template, Save, WAV sample rate, WAV bit depth, Normalize, Export WAV, Show all tabs, Settings, Close):
+  - **File** (document/folder icon): Template picker (new from template), Save. Later home for project rename, load and import if added.
+  - **Share/Export** (standard share icon: box with up arrow): Export WAV, plus the export options (sample rate, bit depth, normalize) shown right with the action so they are not buried in Settings.
+  - **View** (eye icon): Show all tabs, plus other display toggles (e.g. compact channel cards, show confidence cues, piano-roll default) if/when added.
+  - **Settings** (gear icon): see 17c.
+  - **Help** (question-mark circle icon): unchanged behavior, now icon plus accessible label.
+  - The "Close" item goes away: popovers close on outside click or Escape. Header buttons share one flex row with no stray gap.
+- [x] 17c. Settings (gear, icon only) holds preferences that persist and are not per-action, not just skins:
+  - **Appearance / Skins:** inline swatch list (no click-through), stored under `musicmaker.theme`.
+  - **Export defaults:** default WAV sample rate, bit depth and normalize, remembered across sessions (today they reset on reload); the Share menu uses these as starting values.
+  - **Tutorials:** reset tutorial progress and toggle first-visit hints (moved from the Help panel; Help keeps just reading/starting tutorials).
+  - **Interface:** reduce motion override, larger touch targets / icon size.
+  - **Audio and MIDI:** default MIDI input device and recording quantize, microphone preference.
+  - **Data and privacy:** note on browser-local storage, clear saved sample audio / reset app data (with confirmation).
+  - Any labeled entry for skins alone says "Skins". Update `AppearanceSettings` and tests; new settings stored under separate `musicmaker.*` keys, kept out of project data.
+- [ ] 17d. New icon set (implements #30 phase 3): one SVG sprite/component set on a shared 24px grid with consistent stroke width, rounded joins, `currentColor` and theme tokens, rendered slightly larger (about 22–24px, 44px touch targets). Cover Project, Export, View, gear, Help, tabs (Beat, Sound, Library, Song), per-channel actions, transport, and instrument families. Review in a rendered preview in all eight skins and at small sizes before replacing the existing icons; no emoji or glyph characters remain.
+- [x] 17e. Bottom tab bar: add safe-area and extra curved-corner padding (`env(safe-area-inset-*)` plus a minimum side/bottom buffer, `viewport-fit=cover`), replace the guessed `.app { padding-bottom: 200px }` with a value derived from tab bar height. Each tab button becomes a two-row stack (icon on top, label below) so it never has to share a row; verify it with long labels and at 320–430px widths.
+- [ ] 17f. Tests and verification: update tutorial selectors that target the old menu/Settings button; add tests for popover positioning logic and inline skin selection; check screenshots on desktop and narrow mobile (including a simulated notch/curved insets) for all eight skins; run `npm test` and `npm run build`; update README and `docs/ui-visual-plan.md`.
+- Done in code: shared `Popover` (viewport clamp/flip/scroll, bottom sheet ≤640px, outside click/Escape); File, Share, View, Settings (gear) and Help icon buttons; inline skins; persisted export defaults; tutorial steps target the right menu; icon-over-label tab bar with safe-area padding and `viewport-fit=cover`.
+- Done: redesigned bass, guitar and strings icons (violin with bow) with more detail; all family, tab and header icons enlarged (plus a "Larger icons" setting); Settings groups: Skins, Export defaults, Interface (larger icons, reduce motion), Tutorials (first-visit hints, reset), Audio and MIDI (remembered input), Data and privacy (clear samples, reset app data).
+- Not done yet: redesign of the remaining icons (drums, percussion, keys, brass, synth, etc.) to the same detail level; screenshot review across all skins and on a real device.
+
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
 - Web Audio API with a single master clock and look-ahead scheduling.

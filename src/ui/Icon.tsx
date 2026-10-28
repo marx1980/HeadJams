@@ -3,9 +3,15 @@ import type { ReactNode } from 'react';
 export type IconName =
   | 'beat' | 'sound' | 'library' | 'song'
   | 'drums' | 'percussion' | 'keys' | 'strings' | 'guitar' | 'bass'
+  | 'file' | 'share' | 'view' | 'settings' | 'help'
   | 'brass' | 'synth' | 'fx' | 'sample' | 'custom' | 'favorite' | 'recent';
 
 const paths: Record<IconName, ReactNode> = {
+  file: <><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4M9 12h6m-6 4h6" /></>,
+  share: <><path d="M12 15V3m0 0L8 7m4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" /></>,
+  view: <><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>,
+  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3m0 13v3M2.5 12h3m13 0h3M5.3 5.3l2.1 2.1m9.2 9.2 2.1 2.1m0-13.4-2.1 2.1M7.4 16.6l-2.1 2.1" /><circle cx="12" cy="12" r="6.5" /></>,
+  help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 17h.01" /></>,
   beat: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v11c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 11c0 1.7 3.6 3 8 3s8-1.3 8-3" /><path d="m8 4 2-2m6 2-2-2" /></>,
   sound: <><path d="M5 4v16M12 4v16M19 4v16" /><path d="M3 9h4m3 7h4m3-8h4" /></>,
   library: <><path d="M4 5h4v15H4zM10 4h4v16h-4zM16 6h4v14h-4z" /><path d="M5.5 8h1m5-1h1m5 2h1" /></>,
@@ -13,9 +19,9 @@ const paths: Record<IconName, ReactNode> = {
   drums: <><ellipse cx="12" cy="7" rx="8" ry="3" /><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
   percussion: <><path d="M7 5c0-1.7 10-1.7 10 0v12c0 2.7-10 2.7-10 0V5Z" /><path d="M7 5c0 1.7 10 1.7 10 0M9 10h6m-6 4h6M5 3l2 2m12-2-2 2" /></>,
   keys: <><path d="M3 5h18v14H3z" /><path d="M7 5v8m4-8v8m4-8v8m4-8v8M7 13v6m4-6v6m4-6v6m4-6v6" /><path d="M5.5 5v5m4-5v5m4-5v5m4-5v5" /></>,
-  strings: <><path d="M12 3 9 6l2 3-4 5c-1 1.3-.5 3.5 1 4.5s3.7 1 4.8-.4l3.7-5-2-3 2-3-2.5-2.5" /><path d="m9 6 6 5m-8 3 7 4m-5-8 4 3m-6 3 4 3" /></>,
-  guitar: <><path d="M14 5 19 2l3 3-3 5-2-1-3 3a5 5 0 1 1-3-3l3-3-1-2Z" /><path d="m9 14 2 2m2-8 4 4m-8-1 2 2" /></>,
-  bass: <><path d="M12 3h2v8a5 5 0 1 1-4-1V3h2v8" /><path d="M11 5h5m-5 3h5m-5 3h5m-5 3h5" /><circle cx="12" cy="16" r="1" /></>,
+  strings: <><g transform="translate(-2.5 0) rotate(-25 12 12)"><path d="M12 7.5c2.2 0 3.3 1.2 3.3 2.8 0 1.2-.9 1.6-.9 2.4s1.2 1.3 1.2 3.1c0 2.3-1.8 3.7-3.6 3.7s-3.6-1.4-3.6-3.7c0-1.8 1.2-2.3 1.2-3.1s-.9-1.2-.9-2.4c0-1.6 1.1-2.8 3.3-2.8Z" /><path d="M12 7.5V3" /><circle cx="12" cy="2.3" r="1.2" /><path d="M10.2 12.2c-.3 1-.3 2 0 3m3.6-3c.3 1 .3 2 0 3M10.8 17.2h2.4M12 17.8v2.4" /></g><path d="M16.5 21.5 21 3.5M16 20.4l1.9.5" /></>,
+  guitar: <><g transform="rotate(38 12 12)"><path d="M12 9c2 0 3.2 1 3.2 2.6 0 1.4-1 1.9-1 2.9 0 .9 1.8 1.5 1.8 3.7 0 2-2.2 3.3-4 3.3s-4-1.3-4-3.3c0-2.2 1.8-2.8 1.8-3.7 0-1-1-1.5-1-2.9C8.8 10 10 9 12 9Z" /><circle cx="12" cy="15.6" r="1.7" /><path d="M10 19.6h4M11 9V4m2 5V4M11 6h2M11 8h2" /><rect x="10.4" y="0.8" width="3.2" height="3.2" rx=".7" /></g></>,
+  bass: <><g transform="rotate(-40 12 12)"><path d="M8.2 14.6c.2-1.6 1.2-2.4 2.6-2.6h2.4c1.4.2 2.4 1 2.6 2.6.1 1-.6 1.5-.6 2.4 0 .9 1.2 1.6 1.2 2.9 0 1.6-2 2.6-4.4 2.6S7.6 21.5 7.6 19.9c0-1.3 1.2-2 1.2-2.9 0-.9-.7-1.4-.6-2.4Z" /><path d="M9.8 16.2h4.4m-4.4 2.3h4.4M10.6 21h2.8" /><path d="M11.4 12V4.5m1.2 7.5V4.5M11.4 7h1.2m-1.2 2.5h1.2" /><path d="M10.4 1h3.2v3.5h-3.2zM9 2h1.4M9 3.5h1.4M13.6 2H15M13.6 3.5H15" /></g></>,
   brass: <><path d="M4 10h9l5-4v12l-5-4H4zM4 10v4m14-5 3-2v10l-3-2" /><path d="M7 10v4m3-4v4" /></>,
   synth: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 9h2m3 0h2m3 0h2M7 13h2m3 0h2m3 0h2M8 16h8" /></>,
   fx: <><path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7L12 2Z" /><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15ZM5 2l.7 2.3L8 5l-2.3.7L5 8l-.7-2.3L2 5l2.3-.7L5 2Z" /></>,

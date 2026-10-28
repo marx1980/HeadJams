@@ -22,8 +22,8 @@ export interface TutorialStep {
   requires?: TutorialCapability[];
   /** Screen that must be showing for this step. */
   view?: View;
-  /** Open the project menu (Save / Export). */
-  menu?: boolean;
+  /** Open a header menu (File: Template/Save; Share: Export). */
+  menu?: 'file' | 'share';
   /** Switch the first channel to piano-roll mode. */
   pianoRoll?: boolean;
   /** CSS selector of the element to highlight ("tap here"). */
@@ -129,8 +129,8 @@ export const TUTORIALS: Tutorial[] = [
     id: 'save-export', title: '5. Save and export', tab: 'global', group: 'Export', level: 'beginner', estMinutes: 1,
     summary: 'Save your project and download it as a WAV file.', features: ['save-export'], doneMessage: 'Saved and exported!',
     steps: [
-      { text: 'Your work saves automatically. Tap Save to be sure.', menu: true, target: '#save-btn', done: (s) => s.events.has('save') },
-      { menu: true, text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
+      { text: 'Your work saves automatically. Tap Save to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
+      { menu: 'share', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {
@@ -173,7 +173,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'templates', title: 'Start from a template', tab: 'beat', group: 'Mix & tempo', level: 'beginner', estMinutes: 1,
     summary: 'Load a ready-made beat.', features: ['templates'], doneMessage: 'Templates are a quick way to start.',
     steps: [
-      { menu: true, text: 'Open the Template menu and choose one (this replaces your beat, after asking).', target: '.menu-popup select', done: (s) => s.events.has('template') },
+      { menu: 'file', text: 'Open the Template menu and choose one (this replaces your beat, after asking).', target: '.menu-popup select', done: (s) => s.events.has('template') },
       { text: 'Press Play to hear it.', target: '#play-btn', done: (s) => s.events.has('play') },
     ],
   },
@@ -292,8 +292,8 @@ export const TUTORIALS: Tutorial[] = [
     id: 'export-options', title: 'Choose export quality', tab: 'global', group: 'Export', level: 'intermediate', estMinutes: 1,
     summary: 'Sample rate, bit depth and normalization.', features: ['export-options'], doneMessage: 'Exported with your chosen settings.',
     steps: [
-      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: true, target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
-      { menu: true, text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
+      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: 'share', target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
+      { menu: 'share', text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {

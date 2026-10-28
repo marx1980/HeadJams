@@ -112,7 +112,6 @@ describe('tutorial target selectors', () => {
       container.querySelector<HTMLButtonElement>('.sample-edit-list button')?.click();
       container.querySelector<HTMLButtonElement>('.sound-picker-trigger')?.click();
       container.querySelector<HTMLButtonElement>('#make-sound')?.click();
-      container.querySelector<HTMLButtonElement>('[aria-label="Project menu"]')?.click();
     });
     await act(async () => {
       const arrangementPart = container.querySelector<HTMLSelectElement>('[aria-label="Arrangement part"]');
@@ -124,19 +123,24 @@ describe('tutorial target selectors', () => {
 
     const selectors = new Set(TUTORIALS.flatMap((tutorial) =>
       tutorial.steps.flatMap((step) => step.target ? [step.target] : [])));
-    const findMissing = () => {
+    const findMissing = async () => {
+      const found = new Set<string>();
+      for (const label of [undefined, 'File menu', 'Share and export menu']) {
+        if (label) await act(async () => { container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click(); });
+        for (const selector of selectors) {
+          try { if (container.querySelector(selector)) found.add(selector); } catch { /* reported below */ }
+        }
+        if (label) await act(async () => { container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click(); });
+      }
       const missing: string[] = [];
       for (const selector of selectors) {
-        try {
-          if (!container.querySelector(selector)) missing.push(selector);
-        } catch {
-          missing.push(`${selector} (invalid selector)`);
-        }
+        try { container.querySelector(selector); } catch { missing.push(`${selector} (invalid selector)`); continue; }
+        if (!found.has(selector)) missing.push(selector);
       }
       return missing;
     };
     expect(container.querySelector<HTMLButtonElement>('#midi-connect')?.disabled).toBe(false);
-    expect(findMissing()).toEqual(['#midi-record']);
+    expect(await findMissing()).toEqual(['#midi-record']);
     await act(async () => {
       container.querySelector<HTMLButtonElement>('#midi-connect')?.click();
       await requestMidiAccess.mock.results[0]?.value;
@@ -144,6 +148,6 @@ describe('tutorial target selectors', () => {
     });
     expect(requestMidiAccess).toHaveBeenCalled();
     expect(container.querySelector('#midi-record')).toBeTruthy();
-    expect(findMissing()).toEqual(['#midi-connect']);
+    expect(await findMissing()).toEqual(['#midi-connect']);
   });
 });
