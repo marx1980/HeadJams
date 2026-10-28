@@ -5,6 +5,7 @@ import {
   detectSampleTrim, processSample, type SampleProcessingSettings,
 } from '../library/sampleProcessing';
 import type { SoundDef } from '../model/project';
+import { Icon } from './Icon';
 
 interface DraftSample {
   name: string;
@@ -339,8 +340,8 @@ export function SampleEditor({
           }} />
         </label>
         {!recording && !countingIn
-          ? <button id="record-sample" className="secondary" onClick={() => void startRecording()}>● Record from mic</button>
-          : <button onClick={stopRecording}>{countingIn ? 'Cancel count-in' : '■ Stop recording'}</button>}
+          ? <button id="record-sample" className="secondary" onClick={() => void startRecording()}><Icon name="record" className="inline-icon" /> Record from mic</button>
+          : <button onClick={stopRecording}>{countingIn ? 'Cancel count-in' : <><Icon name="stop" className="inline-icon" /> Stop recording</>}</button>}
         <label>Count-in
           <select aria-label="Recording count-in" value={countInBars} disabled={recording || countingIn}
             onChange={(event) => setCountInBars(Number(event.target.value))}>

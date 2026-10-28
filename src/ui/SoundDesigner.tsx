@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SynthParams, Wave } from '../model/project';
+import { Icon } from './Icon';
 
 const PRESETS: Record<string, SynthParams> = {
   Kick: { wave: 'sine', freq: 150, freqEnd: 45, decay: 0.35, cutoff: 8000 },
@@ -41,7 +42,7 @@ export function SoundDesigner({ onPreview, onSave, onClose }: {
       {slider('Length (s)', 'decay', 0.03, 1, 0.01)}
       {slider('Brightness (Hz)', 'cutoff', 200, 20000, 100)}
       <div className="row">
-        <button onClick={() => onPreview(name, p)}>🔊 Preview</button>
+        <button onClick={() => onPreview(name, p)}><Icon name="audio" className="inline-icon" /> Preview</button>
         <button onClick={() => onSave(name, p)}>Save to my library</button>
         <button className="secondary" onClick={onClose}>Close</button>
       </div>

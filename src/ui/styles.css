@@ -141,6 +141,10 @@ body { margin: 0; background: var(--app-bg); color: var(--text); }
 .app { max-width: 1000px; margin: 0 auto; padding: 12px 12px 140px; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .bar h1 { font-size: 1.3rem; margin: 0 8px 0 0; align-self: center; }
+.bar h1.app-brand { display: flex; align-items: center; gap: 8px; }
+.app-logo { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
+.inline-icon { display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: middle; }
+.is-favorite { color: var(--warning); fill: currentColor; }
 label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
 input, select, button { font: inherit; min-height: 40px; border-radius: var(--control-radius); border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); padding: 4px 10px; }
 input[type='number'] { width: 70px; }
@@ -274,7 +278,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .piano-cell.has-pitch-bend { position: relative; }
 .pitch-bend-indicator { color: var(--accent-contrast); font-size: .75rem; font-weight: 800; line-height: 1; }
 .step.recognized { border-style: dashed; }
-.confidence-indicator { color: var(--danger-contrast); font-size: .7rem; font-weight: 800; text-shadow: 0 1px 2px #000; }
+.confidence-indicator { display: inline-block; width: 14px; height: 14px; color: var(--danger); }
 .chord-controls { align-items: end; }
 .arrangement-heading { justify-content: space-between; align-items: center; }
 .timeline { display: grid; grid-auto-rows: minmax(32px, auto); gap: 4px; margin-top: 8px; overflow-x: auto; }
@@ -319,10 +323,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; }
 .tab-label { font-size: 0.85rem; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }
 .tab-icon { width: 30px; height: 30px; flex: none; }
-.tabs .tab-beat .tab-icon { color: var(--channel-1); }
-.tabs .tab-sound .tab-icon { color: var(--channel-4); }
-.tabs .tab-library .tab-icon { color: var(--channel-5); }
-.tabs .tab-song .tab-icon { color: var(--channel-3); }
+.tabs .tab-icon { color: var(--text); }
+.tabs button.on .tab-icon { color: var(--accent-contrast); }
 .pane { display: none; }
 .pane.active { display: block; }
 .pitch-time-controls summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }

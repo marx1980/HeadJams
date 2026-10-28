@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GROUPS, TUTORIALS, WORKFLOWS, findTutorial, isTutorialAvailable, type Tutorial as T, type TutorialCapability, type TutorialState, type TutorialStep, type TutorialTab } from '../tutorial/tutorials';
 import { workflowProgress } from '../tutorial/progress';
 import { supportsMidiInput } from '../platform/midi';
+import { Icon } from './Icon';
 
 export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   /** Current screen; the hub lists its tutorials first and "Show all tabs" lists everything. */
@@ -42,7 +43,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   const tutorialRow = (t: T) => (
     <li key={t.id}>
       <button className="tut-item" onClick={() => onPick(t)}>
-        <span aria-hidden="true">{done.has(t.id) ? '✅' : '▫️'}</span>{' '}
+        <Icon name={done.has(t.id) ? 'check' : 'step'} className="inline-icon" />
         <strong>{t.title}</strong>
         <small> · {t.estMinutes} min · {t.level}{done.has(t.id) ? ' · done' : ''}</small>
         <span className="tut-summary">{t.summary}</span>
@@ -88,7 +89,7 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
                 <strong>{w.title}</strong>
                 <span className="tut-summary">{w.outcome}</span>
                 <progress max={p.total} value={p.completed} aria-label={`${w.title} progress`} />
-                <small>Step {Math.min(p.completed + 1, p.total)} of {p.total}: {next ? next.title : 'complete ✅'}</small>
+                <small>Step {Math.min(p.completed + 1, p.total)} of {p.total}: {next ? next.title : 'complete'}</small>
                 <button disabled={!next} onClick={() => next && onPick(next, w.id)}>{p.completed === 0 ? 'Start' : next ? 'Continue' : 'Done'}</button>
               </li>
             );
@@ -159,7 +160,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
   if (finished) {
     return (
       <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label={tutorial.title} tabIndex={-1} ref={dialogRef}>
-        <p role="status">🎉 {tutorial.doneMessage}</p>
+        <p role="status"><Icon name="check" className="inline-icon" /> {tutorial.doneMessage}</p>
         <div className="row"><button onClick={onExit}>Close</button></div>
       </div>
     );
@@ -168,7 +169,7 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
   return (
     <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label={tutorial.title} tabIndex={-1} ref={dialogRef}>
       <div className="tut-title">{tutorial.title} (step {index + 1} of {tutorial.steps.length})</div>
-      <p aria-live="polite">{done ? '✅ ' : '👉 '}{step.text}</p>
+      <p aria-live="polite"><Icon name={done ? 'check' : 'step'} className="inline-icon" /> {step.text}</p>
       {missing && step.fallback && <p className="tut-fallback" role="note">{step.fallback}</p>}
       <div className="row">
         <button className="secondary" disabled={index === 0} onClick={() => setIndex(index - 1)}>Back</button>
