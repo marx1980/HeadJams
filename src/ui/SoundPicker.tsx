@@ -170,8 +170,8 @@ export function SoundPicker({
         aria-expanded={open} aria-invalid={selectedUnavailable}
         aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
         onClick={() => { setGroup(''); setSubgroup(''); setQuery(''); setOpen(true); }}>
-        {selectedUnavailable ? '⚠ ' : selectedFamily ? <Icon name={selectedFamily.icon} className={`family-icon family-${selectedFamily.className}`} /> : null}
-        {selectedUnavailable ? `${title} · Replace` : `${title} ▾`}
+        {selectedUnavailable ? <Icon name="warning" className="inline-icon" /> : selectedFamily ? <Icon name={selectedFamily.icon} className={`family-icon family-${selectedFamily.className}`} /> : null}
+        {selectedUnavailable ? `${title} · Replace` : <>{title} <Icon name="chevron" className="inline-icon" /></>}
       </button>
       {open && (
         <div className="sound-picker-backdrop" onMouseDown={(event) => {
@@ -180,7 +180,7 @@ export function SoundPicker({
           <section className="sound-picker panel" role="dialog" aria-modal="true" aria-label="Choose a sound" onKeyDown={onDialogKeyDown}>
             <div className="sound-picker-heading">
               <h2>{[group, subgroup].filter(Boolean).join(' · ') || 'Sound Library'}</h2>
-              <button ref={closeButton} className="secondary" aria-label="Close sound picker" onClick={() => setOpen(false)}>✕</button>
+              <button ref={closeButton} className="secondary" aria-label="Close sound picker" onClick={() => setOpen(false)}><Icon name="close" className="inline-icon" /></button>
             </div>
             {loadingSoundIds.size > 0 && (
               <p className="picker-status" role="status">Loading sample audio… Sounds will be available as soon as they finish loading.</p>
@@ -195,7 +195,7 @@ export function SoundPicker({
               if (subgroup) setSubgroup('');
               else setGroup('');
               setQuery('');
-            }}>{subgroup ? `← ${group}` : '← Groups'}</button>}
+            }}><Icon name="back" className="inline-icon" /> {subgroup ? group : 'Groups'}</button>}
             <label>Search sounds
               <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, category, or tag" />
             </label>
@@ -234,18 +234,18 @@ export function SoundPicker({
                     <div className="sound-picker-actions">
                       <button className="secondary" aria-label={`${favorites.includes(sound.id) ? 'Remove' : 'Add'} ${sound.name} ${favorites.includes(sound.id) ? 'from' : 'to'} favorites`}
                         aria-pressed={favorites.includes(sound.id)} onClick={() => toggleFavorite(sound.id)}>
-                        {favorites.includes(sound.id) ? '★' : '☆'}
+                        <Icon name="favorite" className={`inline-icon${favorites.includes(sound.id) ? ' is-favorite' : ''}`} />
                       </button>
-                      <button className="secondary" disabled={unavailableSoundIds.has(sound.id) || loadingSoundIds.has(sound.id)} onClick={() => onPreview(sound)}>▶ Preview</button>
+                      <button className="secondary" disabled={unavailableSoundIds.has(sound.id) || loadingSoundIds.has(sound.id)} onClick={() => onPreview(sound)}><Icon name="play" className="inline-icon" /> Preview</button>
                       <button disabled={unavailableSoundIds.has(sound.id) || loadingSoundIds.has(sound.id)} onClick={() => chooseSound(sound)}>{sound.id === soundId ? 'Selected' : 'Select'}</button>
                     </div>
                   </div>
                 ))}
                 {!matchingSounds.length && (
                   <p className="picker-empty" role="status">
-                    {group === 'Favorites' && !query.trim() ? '☆ No favorites yet. Add sounds with the star button.' :
-                      group === 'Recent' && !query.trim() ? '◷ No recent sounds yet. Selected sounds will appear here.' :
-                        '⌕ No sounds match this search. Try another name, category, or tag.'}
+                    {group === 'Favorites' && !query.trim() ? <><Icon name="favorite" className="inline-icon" /> No favorites yet. Add sounds with the favorite button.</> :
+                      group === 'Recent' && !query.trim() ? <><Icon name="clock" className="inline-icon" /> No recent sounds yet. Selected sounds will appear here.</> :
+                        <><Icon name="search" className="inline-icon" /> No sounds match this search. Try another name, category, or tag.</>}
                   </p>
                 )}
               </div>

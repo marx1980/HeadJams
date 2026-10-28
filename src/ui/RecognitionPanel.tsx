@@ -9,6 +9,7 @@ import type {
 } from '../model/recognition';
 import type { SampleData } from '../library/sampleStorage';
 import { localRecognitionAdapter, type RecognitionProgress } from '../library/recognitionAdapter';
+import { Icon } from './Icon';
 
 const MODES: Array<{ value: RecognitionMode; label: string }> = [
   { value: 'melody', label: 'Melody' },
@@ -370,7 +371,9 @@ export function RecognitionPanel({
               <div className="row">
                 <button className="secondary" onClick={() => transpose(-12)}>Octave down</button>
                 <button className="secondary" onClick={() => transpose(-1)}>−1 semitone</button>
-                <button className="secondary" onClick={() => transpose(1)}>＋1 semitone</button>
+                <button className="secondary" aria-label="Transpose up one semitone" onClick={() => transpose(1)}>
+                  <Icon name="transpose-up" className="inline-icon" /> 1 semitone
+                </button>
                 <button className="secondary" onClick={() => transpose(12)}>Octave up</button>
               </div>
               {activeTake.quantisedEvents.map((event) => 'pitch' in event ? (

@@ -3,6 +3,7 @@ import type { Channel, SoundDef } from '../model/project';
 import type { SampleData } from '../library/sampleStorage';
 import { SampleEditor } from './SampleEditor';
 import { RecognitionPanel } from './RecognitionPanel';
+import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
 
@@ -81,7 +82,7 @@ export function SampleLibrary({
             <span className="sound-title">{sound.name}</span>
             {!padView && <span className="sound-meta">{sound.category}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</span>}
             <div className="sound-actions">
-              <button aria-label={`Preview ${sound.name}`} onClick={() => onPreview(sound)}>▶</button>
+              <button aria-label={`Preview ${sound.name}`} onClick={() => onPreview(sound)}><Icon name="play" className="inline-icon" /></button>
               <button disabled={!channelId} onClick={() => onUse(sound.id, channelId)}>Use</button>
             </div>
           </div>

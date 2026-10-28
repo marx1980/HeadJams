@@ -308,9 +308,9 @@ export function App() {
   return (
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
-        <h1>🎵 MusicMaker</h1>
+        <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" />MusicMaker</h1>
         <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
-          {playStep === null ? '▶ Play' : '■ Stop'}
+          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
         </button>
         <label>BPM
           <input type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
@@ -486,7 +486,7 @@ export function App() {
                     preview(sound, c.volume);
                     emit('sound-change');
                   }} />
-                <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}>🔊</button>
+                <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}><Icon name="audio" className="inline-icon" /></button>
                 <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
                 <input type="range" aria-label={`Volume ${c.name}`} min={0} max={1} step={0.05} value={c.volume}
@@ -494,14 +494,14 @@ export function App() {
                 <input type="range" aria-label={`Pan ${c.name}`} min={-1} max={1} step={0.1} value={c.pan}
                   onChange={(e) => setProject(updateChannel(project, c.id, { pan: Number(e.target.value) }))} />
                 <button className="secondary" aria-label={`Duplicate ${c.name}`} disabled={project.channels.length >= MAX_CHANNELS}
-                  onClick={() => setProject(duplicateChannel(project, c.id))}>⧉</button>
+                  onClick={() => setProject(duplicateChannel(project, c.id))}><Icon name="duplicate" className="inline-icon" /></button>
                 <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
-                  onClick={() => togglePiano(c.id)}>{pianoChannels.has(c.id) ? '▦ Grid' : '🎹 Piano roll'}</button>
+                  onClick={() => togglePiano(c.id)}><Icon name={pianoChannels.has(c.id) ? 'grid' : 'piano'} className="inline-icon" /> {pianoChannels.has(c.id) ? 'Grid' : 'Piano roll'}</button>
                 <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => {
                   const take = project.recognitionTakes.find((item) =>
                     item.channelIds.includes(c.id) || item.originalChannelId === c.id);
                   setProject(take ? removeRecognitionTake(project, take.id) : removeChannel(project, c.id));
-                }}>✕</button>
+                }}><Icon name="close" className="inline-icon" /></button>
               </div>
               {pianoChannels.has(c.id)
                 ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
@@ -515,7 +515,7 @@ export function App() {
           </section>
           <div className="row">
             <button id="add-channel" disabled={project.channels.length >= MAX_CHANNELS}
-              onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}>＋ Add channel</button>
+              onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}><Icon name="add" className="inline-icon" /> Add channel</button>
           </div>
         </div>
 
@@ -558,7 +558,7 @@ export function App() {
         </div>
           </section>
           <div className="row">
-            <button id="make-sound" className="secondary" onClick={() => { if (!designer) emit('designer-open'); setDesigner(!designer); }}>🎛 Make a sound</button>
+            <button id="make-sound" className="secondary" onClick={() => { if (!designer) emit('designer-open'); setDesigner(!designer); }}><Icon name="sound" className="inline-icon" /> Make a sound</button>
           </div>
       {designer && (
         <SoundDesigner

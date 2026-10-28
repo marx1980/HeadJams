@@ -17,6 +17,7 @@ import {
   replaceGeneratedArrangementChannel, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from '../model/arrangement';
 import { ARRANGEMENT_STYLES, generateChordAccompaniment, generateHarmonyFromMelody } from '../library/arrangementStyles';
+import { Icon } from './Icon';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
@@ -130,11 +131,11 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
           <button className="secondary" aria-label="Transpose notes down one semitone"
             onClick={() => onChange(transposeChannelNotes(project, channel.id, -1))}>−1 semitone</button>
           <button className="secondary" aria-label="Transpose notes up one semitone"
-            onClick={() => onChange(transposeChannelNotes(project, channel.id, 1))}>＋1 semitone</button>
+            onClick={() => onChange(transposeChannelNotes(project, channel.id, 1))}><Icon name="transpose-up" className="inline-icon" /> 1 semitone</button>
           <button className="secondary" aria-label="Shift notes one step earlier"
-            onClick={() => onChange(shiftChannelNotes(project, channel.id, -1))}>← Shift 1 step</button>
+            onClick={() => onChange(shiftChannelNotes(project, channel.id, -1))}><Icon name="back" className="inline-icon" /> Shift 1 step</button>
           <button className="secondary" aria-label="Shift notes one step later"
-            onClick={() => onChange(shiftChannelNotes(project, channel.id, 1))}>Shift 1 step →</button>
+            onClick={() => onChange(shiftChannelNotes(project, channel.id, 1))}>Shift 1 step <Icon name="forward" className="inline-icon" /></button>
           <button className="secondary" aria-label="Halve note durations"
             onClick={() => onChange(scaleChannelNoteDurations(project, channel.id, 0.5))}>½ duration</button>
           <button className="secondary" aria-label="Double note durations"
@@ -166,8 +167,8 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
                     id={pitch === pitches[0] && step === 0 ? 'piano-roll-cell' : undefined}
                     onClick={() => addPianoNote(step, pitch)}
                     onKeyDown={(event) => movePianoFocus(event, step, pitch)}>
-                    {confidence !== undefined && confidence < 0.7 ? <span className="confidence-indicator" aria-hidden="true">!</span> : null}
-                    {activeNote?.pitchBend?.length ? <span className="pitch-bend-indicator" aria-hidden="true">↝</span> : null}
+                    {confidence !== undefined && confidence < 0.7 ? <Icon name="warning" className="confidence-indicator" /> : null}
+                    {activeNote?.pitchBend?.length ? <Icon name="bend" className="pitch-bend-indicator" /> : null}
                   </button>
                 );
               })}
@@ -202,13 +203,13 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
               {Array.from({ length: steps }, (_, step) => <option key={step} value={step}>{step + 1}</option>)}
             </select>
           </label>
-          <button onClick={addGuitarChord}>＋ Add guitar chord</button>
+          <button onClick={addGuitarChord}><Icon name="add" className="inline-icon" /> Add guitar chord</button>
           <div className="chord-event-list" aria-label="Guitar chord events">
             {(channel.chordEvents ?? []).map((event) => (
               <button key={event.id} className="secondary"
                 aria-label={`Remove ${formatChordSymbol(event.root, event.quality, event.articulation)} ${event.articulation} at step ${event.step + 1}`}
                 onClick={() => onChange(removeChordEvent(project, channel.id, event.id))}>
-                {formatChordSymbol(event.root, event.quality, event.articulation)} · {event.articulation} · step {event.step + 1} ×
+                {formatChordSymbol(event.root, event.quality, event.articulation)} · {event.articulation} · step {event.step + 1} <Icon name="close" className="inline-icon" />
               </button>
             ))}
           </div>
@@ -233,7 +234,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
               {Array.from({ length: steps }, (_, step) => <option key={step} value={step}>{step + 1}</option>)}
             </select>
           </label>
-          <button id="add-chord" onClick={addChord}>＋ Add chord</button>
+          <button id="add-chord" onClick={addChord}><Icon name="add" className="inline-icon" /> Add chord</button>
         </div>
       )}
 
@@ -365,7 +366,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               {pattern.name}
             </button>
           ))}
-          <button id="new-pattern" onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}>＋ New pattern</button>
+          <button id="new-pattern" onClick={() => onChange(addPattern(project, `Pattern ${project.patterns.length + 1}`))}><Icon name="add" className="inline-icon" /> New pattern</button>
           {project.currentPatternId && (
             <>
               <button className="secondary" onClick={() => {
@@ -382,7 +383,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
       <div className="arrangement-controls">
         <div className="arrangement-heading">
           <strong>Arrangement timeline</strong>
-          <button disabled={!project.patterns.length} onClick={appendArrangementClip}>＋ Add selected pattern</button>
+          <button disabled={!project.patterns.length} onClick={appendArrangementClip}><Icon name="add" className="inline-icon" /> Add selected pattern</button>
         </div>
         {project.arrangement.length ? (
           <div className="timeline" style={{ gridTemplateColumns: `repeat(${bars}, minmax(110px, 1fr))` }}>
@@ -393,7 +394,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
                 <div className="timeline-clip" key={clip.id}
                   style={{ gridColumn: `${Math.floor(clip.startStep / project.noteLength) + 1} / span ${Math.max(1, Math.ceil(clip.lengthSteps / project.noteLength))}` }}>
                   {pattern?.name ?? 'Missing pattern'}
-                  <button aria-label={`Remove ${pattern?.name ?? 'pattern'} clip`} onClick={() => onChange(removeArrangementClip(project, clip.id))}>×</button>
+                  <button aria-label={`Remove ${pattern?.name ?? 'pattern'} clip`} onClick={() => onChange(removeArrangementClip(project, clip.id))}><Icon name="close" className="inline-icon" /></button>
                 </div>
               );
             })}
@@ -429,7 +430,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
             </label>
           )}
           <button className="secondary" disabled={!sourceChannel || !inputNotes.length} onClick={generateSuggestions}>
-            ✨ Suggest chords
+            <Icon name="sparkle" className="inline-icon" /> Suggest chords
           </button>
         </div>
         {suggestions && (
@@ -460,7 +461,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
             }) : <p className="hint">No melody notes were found in this loop.</p>}
             {!!suggestions.length && (
               <div className="arrangement-assistant-actions">
-                <button disabled={project.channels.length >= MAX_CHANNELS} onClick={addSuggestions}>＋ Add as a separate track</button>
+                <button disabled={project.channels.length >= MAX_CHANNELS} onClick={addSuggestions}><Icon name="add" className="inline-icon" /> Add as a separate track</button>
                 {!!generatedChannels.length && (
                   <>
                     <label>Replace generated track
@@ -510,7 +511,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               )}
               <div className="arrangement-assistant-actions">
                 <button disabled={!bassPreview.length || project.channels.length >= MAX_CHANNELS} onClick={addBassTrack}>
-                  ＋ Add bass track
+                  <Icon name="add" className="inline-icon" /> Add bass track
                 </button>
                 {!!generatedBassChannels.length && (
                   <>
@@ -566,7 +567,7 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               </p>
               <div className="arrangement-assistant-actions">
                 <button disabled={!arrangementPreview.length || project.channels.length >= MAX_CHANNELS}
-                  onClick={addArrangementTrack}>＋ Add {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'} track</button>
+                  onClick={addArrangementTrack}><Icon name="add" className="inline-icon" /> Add {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'} track</button>
                 {!!replaceableArrangementChannels.length && (
                   <>
                     <label>Replace generated track
