@@ -128,13 +128,13 @@ describe('tutorial target selectors', () => {
       for (const label of [undefined, 'File menu', 'Share and export menu']) {
         if (label) await act(async () => { container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click(); });
         for (const selector of selectors) {
-          try { if (container.querySelector(selector)) found.add(selector); } catch { /* reported below */ }
+          try { if (document.body.querySelector(selector)) found.add(selector); } catch { /* reported below */ }
         }
         if (label) await act(async () => { container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click(); });
       }
       const missing: string[] = [];
       for (const selector of selectors) {
-        try { container.querySelector(selector); } catch { missing.push(`${selector} (invalid selector)`); continue; }
+        try { document.body.querySelector(selector); } catch { missing.push(`${selector} (invalid selector)`); continue; }
         if (!found.has(selector)) missing.push(selector);
       }
       return missing;
