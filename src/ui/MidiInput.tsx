@@ -1,3 +1,4 @@
+import { MIDI_INPUT_KEY } from './preferences';
 import { useEffect, useRef, useState } from 'react';
 import { parseMidiMessage, supportsMidiInput, type MidiMessage } from '../platform/midi';
 import type { Channel } from '../model/project';
@@ -41,7 +42,7 @@ export function MidiInput({
   const [connected, setConnected] = useState(false);
   const [inputs, setInputs] = useState<MidiInputLike[]>([]);
   const [nativeDevices, setNativeDevices] = useState<string[]>([]);
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(() => localStorage.getItem(MIDI_INPUT_KEY) ?? '');
   const [error, setError] = useState('');
   const [opening, setOpening] = useState(false);
   const nativeListeners = useRef<PluginListenerHandle[]>([]);
@@ -163,7 +164,7 @@ export function MidiInput({
       ) : (
         <>
           <label>MIDI input
-            <select aria-label="MIDI input" value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+            <select aria-label="MIDI input" value={selectedId} onChange={(event) => { setSelectedId(event.target.value); try { localStorage.setItem(MIDI_INPUT_KEY, event.target.value); } catch { /* storage unavailable */ } }}>
               {nativePlatform
                 ? nativeDevices.map((name, index) => <option key={`${name}-${index}`} value={String(index)}>{name}</option>)
                 : inputs.map((input) => <option key={input.id} value={input.id}>{input.name || 'MIDI device'}{input.state === 'connected' ? '' : ' · disconnected'}</option>)}

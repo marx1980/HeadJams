@@ -23,6 +23,8 @@ import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
+import { clearAllSamples } from '../library/sampleStorage';
+import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY } from './preferences';
 import { Popover } from './Popover';
 import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
@@ -51,6 +53,8 @@ export function App() {
   const [menu, setMenu] = useState<'all' | 'tab' | null>(null);
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
   const [doneTutorials, setDoneTutorials] = useState<ReadonlySet<string>>(loadDone);
+  const [prefs, setPrefs] = useState(loadPreferences);
+  const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
   const [designer, setDesigner] = useState(false);
   const [view, setView] = useState<View>(() => {
@@ -278,7 +282,7 @@ export function App() {
 
   const goTab = (v: View) => {
     if (v !== 'beat' && v !== 'library') setUnlocked(true);
-    if (v !== 'beat' && !tutorial && !localStorage.getItem(`musicmaker.nudge.${v}`)) {
+    if (v !== 'beat' && prefs.hints && !tutorial && !localStorage.getItem(`musicmaker.nudge.${v}`)) {
       localStorage.setItem(`musicmaker.nudge.${v}`, '1');
       setNudge(v);
     }
@@ -302,7 +306,7 @@ export function App() {
   const togglePiano = (id: string) => setPianoChannels((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   return (
-    <main className="app" data-theme={theme}>
+    <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
         <h1>🎵 MusicMaker</h1>
         <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
@@ -370,8 +374,28 @@ export function App() {
                   saveExportDefaults({ sampleRate: exportSampleRate, bitDepth: exportBitDepth, normalize: normalizeExport });
                   flash('Export defaults saved ✓');
                 }}>Use current export options as default</button>
+                <h3>Interface</h3>
+                <label className="check-label"><input type="checkbox" checked={prefs.largeIcons}
+                  onChange={(e) => updatePrefs({ largeIcons: e.target.checked })} /> Larger icons</label>
+                <label className="check-label"><input type="checkbox" checked={prefs.reduceMotion}
+                  onChange={(e) => updatePrefs({ reduceMotion: e.target.checked })} /> Reduce motion</label>
                 <h3>Tutorials</h3>
+                <label className="check-label"><input type="checkbox" checked={prefs.hints}
+                  onChange={(e) => updatePrefs({ hints: e.target.checked })} /> Show first-visit hints</label>
                 <button className="secondary" onClick={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); flash('Tutorial progress reset'); }}>Reset tutorial progress</button>
+                <h3>Audio and MIDI</h3>
+                <p className="hint">The last MIDI input you pick is remembered on this device.</p>
+                <button className="secondary" onClick={() => { localStorage.removeItem(MIDI_INPUT_KEY); flash('MIDI input forgotten'); }}>Forget MIDI input</button>
+                <h3>Data and privacy</h3>
+                <p className="hint">Projects, settings and recordings stay in this browser; nothing is uploaded.</p>
+                <button className="secondary" onClick={() => {
+                  if (!window.confirm('Delete all saved sample audio? Projects keep their sound settings but samples will be missing.')) return;
+                  void clearAllSamples().then(() => flash('Saved samples cleared'), () => flash('Could not clear samples'));
+                }}>Clear saved samples</button>
+                <button className="secondary" onClick={() => {
+                  if (!window.confirm('Reset MusicMaker? This deletes your saved project, settings and progress.')) return;
+                  void clearAllSamples().catch(() => undefined).finally(() => { clearAppData(); window.location.reload(); });
+                }}>Reset all app data</button>
               </Popover>
             )}
           </div>

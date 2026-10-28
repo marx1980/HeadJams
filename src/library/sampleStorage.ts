@@ -123,3 +123,14 @@ export async function getSample(id: string): Promise<SampleData | undefined> {
     tx.onerror = () => { db.close(); reject(tx.error ?? new Error('Could not load sample.')); };
   });
 }
+
+export async function clearAllSamples(): Promise<void> {
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('Could not clear samples.'));
+    tx.onabort = () => reject(tx.error ?? new Error('Clearing samples was cancelled.'));
+  }).finally(() => db.close());
+}
