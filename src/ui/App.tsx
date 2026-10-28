@@ -23,17 +23,18 @@ import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
+import { Icon, type IconName } from './Icon';
 import './styles.css';
 
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const UNLOCK_KEY = 'musicmaker.unlockedTabs';
-const TABS: { id: View; icon: string; label: string }[] = [
-  { id: 'beat', icon: '🥁', label: 'Beat' },
-  { id: 'sound', icon: '🎚', label: 'Sound' },
-  { id: 'library', icon: '📚', label: 'Library' },
-  { id: 'song', icon: '🎬', label: 'Song' },
+const TABS: { id: View; icon: IconName; label: string }[] = [
+  { id: 'beat', icon: 'beat', label: 'Beat' },
+  { id: 'sound', icon: 'sound', label: 'Sound' },
+  { id: 'library', icon: 'library', label: 'Library' },
+  { id: 'song', icon: 'song', label: 'Song' },
 ];
 const isView = (v: string | null): v is View => TABS.some((t) => t.id === v);
 
@@ -341,7 +342,7 @@ export function App() {
             </div>
           )}
         </div>
-        <button className="secondary" onClick={() => setMenu('all')}>? Tutorials</button>
+        <button className="secondary help-btn" onClick={() => setMenu('tab')}>Help</button>
       </header>
       {message && <div className="toast" role="status">{message}</div>}
 
@@ -354,12 +355,11 @@ export function App() {
       <nav className="tabs" role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
         {visibleTabs.map((t) => (
           <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={view === t.id} aria-controls={`pane-${t.id}`}
-            tabIndex={view === t.id ? 0 : -1} className={view === t.id ? 'on' : 'secondary'} onClick={() => goTab(t.id)}>
-            <span aria-hidden="true">{t.icon}</span> {t.label}
+            tabIndex={view === t.id ? 0 : -1} className={`tab-${t.id} ${view === t.id ? 'on' : 'secondary'}`} onClick={() => goTab(t.id)}>
+            <Icon name={t.icon} className="tab-icon" /> {t.label}
           </button>
         ))}
       </nav>
-      <div className="row"><button className="secondary help-btn" onClick={() => setMenu('tab')}>? Help for this screen</button></div>
       {nudge === view && !tutorial && (
         <div className="toast nudge" role="status">New here? <button onClick={() => { setNudge(null); setMenu('tab'); }}>Try a tutorial</button>
           <button className="secondary" onClick={() => setNudge(null)}>Dismiss</button></div>

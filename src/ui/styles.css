@@ -187,7 +187,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .sound-picker-groups, .sound-picker-list { display: grid; gap: 6px; }
 .sound-picker-groups { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .sound-picker-groups button { text-align: left; }
-.family-icon { display: inline-block; min-width: 1.3em; margin-right: 4px; text-align: center; }
+.family-icon { display: inline-block; width: 1.25em; height: 1.25em; margin-right: 4px; vertical-align: middle; color: var(--family-color, var(--text-muted)); }
 .family-drums { --family-color: var(--family-drums); }
 .family-percussion { --family-color: var(--family-percussion); }
 .family-keys { --family-color: var(--family-keys); }
@@ -307,6 +307,11 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .menu-popup { position: absolute; right: 0; top: 46px; z-index: 6; min-width: 200px; margin: 0; }
 .tabs { display: flex; gap: 6px; margin: 8px 0; position: sticky; top: 56px; z-index: 4; background: var(--app-bg); padding: 4px 0; }
 .tabs button { flex: 1; }
+.tab-icon { width: 1.1em; height: 1.1em; margin-right: 3px; vertical-align: -0.2em; }
+.tabs .tab-beat .tab-icon { color: var(--channel-1); }
+.tabs .tab-sound .tab-icon { color: var(--channel-4); }
+.tabs .tab-library .tab-icon { color: var(--channel-5); }
+.tabs .tab-song .tab-icon { color: var(--channel-3); }
 .pane { display: none; }
 .pane.active { display: block; }
 .pitch-time-controls summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
@@ -333,6 +338,9 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 }
 
 .tutorial-menu { max-height: 80vh; overflow: auto; }
+.tutorial-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tutorial-heading h2 { margin: 0; }
+.tutorial-actions { margin: 0; }
 .tut-list { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 6px; }
 .tut-item { width: 100%; text-align: left; display: block; }
 .tut-summary { display: block; font-size: 0.85rem; opacity: 0.85; }

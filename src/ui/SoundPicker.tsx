@@ -1,26 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SoundDef } from '../model/project';
 import { soundLibraryGroup } from '../library/instrumentRegistry';
+import { Icon, type IconName } from './Icon';
 
 const FAVORITES_KEY = 'musicmaker.favoriteSounds';
 const RECENT_KEY = 'musicmaker.recentSounds';
 const LISTS_CHANGE_EVENT = 'musicmaker:sound-lists-change';
-const FAMILIES: Record<string, { icon: string; className: string }> = {
-  Drums: { icon: '🥁', className: 'drums' },
-  Percussion: { icon: '🪘', className: 'percussion' },
-  Keys: { icon: '🎹', className: 'keys' },
-  Strings: { icon: '🎻', className: 'strings' },
-  Guitars: { icon: '🎸', className: 'guitars' },
-  Bass: { icon: '🎸', className: 'bass' },
-  'Brass & Winds': { icon: '🎺', className: 'brass' },
-  Synths: { icon: '🎛️', className: 'synths' },
-  'FX & Other': { icon: '✨', className: 'fx' },
-  Samples: { icon: '🎙️', className: 'samples' },
-  Mine: { icon: '🎚️', className: 'custom' },
+const FAMILIES: Record<string, { icon: IconName; className: string }> = {
+  Drums: { icon: 'drums', className: 'drums' },
+  Percussion: { icon: 'percussion', className: 'percussion' },
+  Keys: { icon: 'keys', className: 'keys' },
+  Strings: { icon: 'strings', className: 'strings' },
+  Guitars: { icon: 'guitar', className: 'guitars' },
+  Bass: { icon: 'bass', className: 'bass' },
+  'Brass & Winds': { icon: 'brass', className: 'brass' },
+  Synths: { icon: 'synth', className: 'synths' },
+  'FX & Other': { icon: 'fx', className: 'fx' },
+  Samples: { icon: 'sample', className: 'samples' },
+  Mine: { icon: 'custom', className: 'custom' },
 };
 
 function familyInfo(name: string) {
-  return FAMILIES[name] ?? { icon: '🎵', className: 'other' };
+  return FAMILIES[name] ?? { icon: 'sound', className: 'other' };
 }
 
 function readIds(key: string): string[] {
@@ -169,7 +170,7 @@ export function SoundPicker({
         aria-expanded={open} aria-invalid={selectedUnavailable}
         aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
         onClick={() => { setGroup(''); setSubgroup(''); setQuery(''); setOpen(true); }}>
-        {selectedUnavailable ? '⚠ ' : selectedFamily ? <span className={`family-icon family-${selectedFamily.className}`} aria-hidden="true">{selectedFamily.icon}</span> : null}
+        {selectedUnavailable ? '⚠ ' : selectedFamily ? <Icon name={selectedFamily.icon} className={`family-icon family-${selectedFamily.className}`} /> : null}
         {selectedUnavailable ? `${title} · Replace` : `${title} ▾`}
       </button>
       {open && (
@@ -202,13 +203,13 @@ export function SoundPicker({
               <div className="sound-picker-groups">
                 {['Favorites', 'Recent'].map((name) => (
                   <button key={name} onClick={() => { setGroup(name); setSubgroup(''); }}>
-                    <span className="family-icon" aria-hidden="true">{name === 'Favorites' ? '★' : '◷'}</span>{name}
+                    <Icon name={name === 'Favorites' ? 'favorite' : 'recent'} className="family-icon" />{name}
                   </button>
                 ))}
                 {groups.map((name) => (
                   <button key={name} className={`family-${familyInfo(name).className}`}
                     onClick={() => { setGroup(name); setSubgroup(''); }}>
-                    <span className="family-icon" aria-hidden="true">{familyInfo(name).icon}</span>{name}
+                    <Icon name={familyInfo(name).icon} className={`family-icon family-${familyInfo(name).className}`} />{name}
                   </button>
                 ))}
               </div>
@@ -223,7 +224,7 @@ export function SoundPicker({
                 {matchingSounds.map((sound) => (
                   <div className={`sound-picker-item family-${familyInfo(soundLibraryGroup(sound)).className}${sound.id === soundId ? ' current' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}${loadingSoundIds.has(sound.id) ? ' loading' : ''}`} key={sound.id}>
                     <span>
-                      <strong><span className="family-icon" aria-hidden="true">{familyInfo(soundLibraryGroup(sound)).icon}</span> {sound.name}</strong>
+                      <strong><Icon name={familyInfo(soundLibraryGroup(sound)).icon} className={`family-icon family-${familyInfo(soundLibraryGroup(sound)).className}`} /> {sound.name}</strong>
                       <small>
                         {loadingSoundIds.has(sound.id) ? 'Loading sample… · ' : unavailableSoundIds.has(sound.id) ? 'Sample unavailable · ' : ''}
                         {[soundLibraryGroup(sound), sound.subcategory, ...(sound.tags ?? [])].filter(Boolean).join(' · ')}

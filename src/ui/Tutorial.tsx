@@ -51,15 +51,21 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
   );
 
   return (
-    <div className="panel tutorial-menu" role="dialog" aria-modal="true" aria-label="Tutorials" ref={ref}>
-      <h2>Tutorials</h2>
-      <div className="row" role="group" aria-label="Browse by">
-        <button className={mode === 'actions' ? 'on' : 'secondary'} aria-pressed={mode === 'actions'} onClick={() => setMode('actions')}>Actions</button>
-        <button className={mode === 'workflows' ? 'on' : 'secondary'} aria-pressed={mode === 'workflows'} onClick={() => setMode('workflows')}>Workflows</button>
-        {tab && mode === 'actions' && (
-          <label className="check-label"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Show all tabs</label>
-        )}
-      </div>
+      <div className="panel tutorial-menu" role="dialog" aria-modal="true" aria-label="Help" ref={ref}>
+        <div className="tutorial-heading">
+          <h2>Help</h2>
+          <div className="row tutorial-actions">
+            <button className="secondary" onClick={() => { if (window.confirm('Reset all tutorial progress?')) onResetProgress(); }}>Reset tutorials</button>
+            <button className="secondary" onClick={onClose}>Close</button>
+          </div>
+        </div>
+        <div className="row" role="group" aria-label="Browse by">
+          <button className={mode === 'actions' ? 'on' : 'secondary'} aria-pressed={mode === 'actions'} onClick={() => setMode('actions')}>Actions</button>
+          <button className={mode === 'workflows' ? 'on' : 'secondary'} aria-pressed={mode === 'workflows'} onClick={() => setMode('workflows')}>Workflows</button>
+          {tab && mode === 'actions' && (
+            <label className="check-label"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Show all tabs</label>
+          )}
+        </div>
       {mode === 'actions' && tabs.map((tb) => (
         GROUPS[tb].map((group) => {
           const items = availableTutorials.filter((t) => t.tab === tb && t.group === group);
@@ -89,10 +95,6 @@ export function TutorialMenu({ tab, done, onPick, onResetProgress, onClose }: {
           })}
         </ul>
       )}
-      <div className="row">
-        <button className="secondary" onClick={() => { if (window.confirm('Reset all tutorial progress?')) onResetProgress(); }}>Reset tutorials</button>
-        <button className="secondary" onClick={onClose}>Close</button>
-      </div>
     </div>
   );
 }
