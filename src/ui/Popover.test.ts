@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { placePopover } from './Popover';
 
-const anchor = { left: 300, right: 344, top: 10, bottom: 54 };
+const anchor = { left: 640, right: 684, top: 10, bottom: 54 };
 
 describe('placePopover', () => {
   it('clamps horizontally inside the viewport', () => {
-    const p = placePopover(anchor, { width: 260, height: 200 }, { width: 360, height: 800 });
+    const p = placePopover(anchor, { width: 260, height: 200 }, { width: 700, height: 800 });
     expect(p.left).toBeGreaterThanOrEqual(8);
-    expect(p.left + 260).toBeLessThanOrEqual(352);
+    expect(p.left + 260).toBeLessThanOrEqual(692);
     expect(p.top).toBe(62);
   });
   it('limits height and scrolls instead of overflowing', () => {
