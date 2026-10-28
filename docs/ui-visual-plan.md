@@ -32,21 +32,32 @@ Scope: layout, overlap/clipping, original icons, new palette, general UX. Based 
 7. **Polish and QA.** Replace the help row with a header `?` icon; skeleton/empty states; `prefers-reduced-motion` and `prefers-color-scheme` (if light theme chosen); visual checks at 360, 390, 768, 1280 widths, with the menu/sheet clipping cases as explicit test scenarios (Playwright screenshots); keep existing tutorials' selectors (`#play-btn`, `#apply-kit`, `#make-sound`, tab IDs) working or update the tutorial steps.
 
 ## 3. Mockups (4 tabs each: Beat, Sound, Library, Song)
+Eight themes in total: A-C (original) plus D-H below. Every mockup's Beat tab now shows the split channel menus from section 5 (sliders icon = Tools, three dots = More).
 | File | Direction | Palette | Layout |
 |---|---|---|---|
 | `mockups/A-midnight-studio.html` | Refined evolution of current look | Deep navy surfaces, mint `#2ee6a6` primary, coral/amber/yellow/cyan/violet channel colours | Rounded cards, bottom tab bar with icon + label, sticky header |
 | `mockups/B-paper-and-ink.html` | Friendly, playful, light theme | Warm cream `#f6f1e7`, ink `#2a2438`, indigo `#5b5bd6`, coral `#ff7a59` | Bold outlines + offset shadows, left tab rail on desktop, bottom bar on mobile |
 | `mockups/C-neon-pulse.html` | Hardware / performance feel | Near-black `#07060d`, neon magenta/orange/mint, mono BPM display | Segmented top tabs (icons only on mobile), glowing steps and square pads |
+| `mockups/D-forest-studio.html` | Calm, organic | Deep green surfaces, lime `#b8e35a` accent | Same shell as A |
+| `mockups/E-ocean-light.html` | Clean light theme | White/pale blue, blue `#0a7fe0` accent | Same shell as A |
+| `mockups/F-high-contrast.html` | Accessibility-first | Black, white borders, yellow `#ffe600` accent, 6px radius | Same shell as A, heavy outlines |
+| `mockups/G-candy-pop.html` | Playful pastel | Pink-tinted white, pink `#ff4f9a` accent, 22px radius | Same shell as A |
+| `mockups/H-vintage-amber.html` | Analog tape-deck feel | Warm brown-black, amber `#ffa726` accent | Same shell as A |
 
-All three share the same original SVG icon set and the same information architecture; only tokens and layout chrome differ, so the choice is mostly a theme decision and the implementation plan above applies to any of them.
+Themes D-H reuse A's layout and differ only in tokens, which shows the token system (phase 1) can deliver all of them: ship a theme picker in the project menu (stored in localStorage, default follows `prefers-color-scheme`) with at least one dark, one light and the high-contrast theme at launch; the rest can be added later at near-zero cost.
+
+All eight share the same original SVG icon set and the same information architecture; only tokens and layout chrome differ, so the choice is mostly a theme decision and the implementation plan above applies to any of them.
 
 ## 4. Decisions needed
 - Which direction (A/B/C), or dark default with optional light theme (A + B tokens)?
 - Is moving per-channel secondary actions into an overflow menu acceptable for discoverability (tutorials need updating)? See section 5.
 
-## 5. Overflow menu explained
-An overflow menu is a small button (usually three dots, drawn as an SVG icon) that opens a short list of less-frequent actions, so the main row stays uncluttered. Today each channel shows ~9 buttons at once. Proposed split:
-- **Always visible on the channel card:** sound button, Mute, Solo, volume (the things used while playing).
-- **In the overflow menu (three dots):** Preview, Duplicate, Switch to piano roll / grid, Remove (shown last, in the danger colour, with the existing confirmation).
+## 5. Overflow menus, split into groups
+Instead of one "everything else" menu, each channel gets two small icon menus (one more for generated/chord tracks is optional), so related actions sit together and names are self-explanatory:
+- **Always visible:** sound button, Mute, Solo, volume.
+- **Tools menu (sliders icon):** Preview, Switch between step grid and piano roll, Chords (guitar channels only), Pitch/time tools.
+- **More menu (three-dot icon):** Duplicate, Move up/down, Replace sound, Remove (last, danger colour, existing confirmation).
 
-Benefits: one tidy row on phones, fewer accidental taps on Remove, more room for the step grid. Cost: one extra tap for those actions, and tutorial steps that point at them must open the menu first. The menu uses the viewport-aware popover from phase 2 (flips/shifts, becomes a bottom sheet under 640px), so it cannot render off-screen. The project menu in the header already works this way. If you prefer, keep Duplicate or Remove visible and move only the rest.
+The same grouping applies elsewhere: the header keeps Play, BPM and volume visible, with a **Project menu** (new/open/save, export WAV, templates, theme) and a **Help menu** (tutorials, help for this screen, about). The Library card uses Use / Preview visible plus one More menu (Edit, Rename, Delete).
+
+An overflow menu is a small icon button that opens a short list of less-frequent actions so the main row stays tidy. Benefits: one tidy row on phones, fewer accidental Remove taps, room for the step grid. Cost: one extra tap and tutorial steps that must open the menu first. Menus use the viewport-aware popover from phase 2 (flip/shift, bottom sheet under 640px). Each menu has an accessible label ("Tools for Kick", "More for Kick"), and tooltips name the contents.
