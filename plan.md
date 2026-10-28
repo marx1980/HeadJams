@@ -100,6 +100,12 @@ Distinct from Phase 4 note transpose/duration tools. The Library editor retains 
 - [x] Added microphone/MIDI capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
 - [x] Rendered-DOM selector coverage includes conditional MIDI connect/record states. Verified the first-beat tutorial and target highlight on desktop and the tutorial menu, target docking, and simulated MIDI-permission-denied guidance on mobile; physical MIDI hardware was unavailable.
 
+### 15. UI redesign and appearance skins — DONE
+- [x] Added eight mockup-inspired visual skins selectable from Project menu → Settings → Appearance.
+- [x] Shared design tokens cover app surfaces, controls, active states, focus, and semantic feedback across Beat, Sound, Library, and Song.
+- [x] Skin preference is stored separately from project data, restored on web and Capacitor builds, and safely defaults for unsupported or unavailable storage.
+- [x] Added theme persistence and selector tests; documented the setting in the README.
+
 ## Decisions / Important Context
 - Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
 - Web Audio API with a single master clock and look-ahead scheduling.
