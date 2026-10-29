@@ -1,5 +1,7 @@
 # Tutorial Plan
 
+> **Historical document.** Kept for reference; parts are out of date. Current plan: `plan.md`. Current UI rules: `skill.md`.
+
 Goal: every feature has a short, interactive, user-friendly tutorial, organised both by feature (per tab) and by workflow (use case).
 
 ## Audit (original state)

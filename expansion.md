@@ -1,6 +1,6 @@
 # MusicMaker Expansion v2: Sampled Instruments and Guitar Performance
 
-Status: **Proposed, awaiting Marko's approval.** This revises the original `expansion.md` (2026-10-29). Once approved, its phases get added to `plan.md` as Phase 18 onwards. Until then, `plan.md` stays the source of truth.
+Status: **Approved 2026-10-30.** This revises the original `expansion.md` (2026-10-29). Its phases E0–E8 are tracked in `plan.md`.
 
 Goal (unchanged): stop relying on synthesised, MIDI-like instrument sounds. Play real recorded samples through one reusable sampler, and give guitar its own performance logic.
 

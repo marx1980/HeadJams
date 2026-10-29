@@ -1,5 +1,7 @@
 # MusicMaker Sound Library Expansion Plan
 
+> **Historical document.** Kept for reference; parts are out of date. Current plan: `plan.md`. Current UI rules: `skill.md`.
+
 ## Objective
 
 Expand MusicMaker's Sound Library with a broader range of melodic instruments, guitar note and chord modes, drum sounds, percussion, and ready-made kits. Replace flat sound dropdowns with a hierarchical picker that remains easy to navigate as the library grows.

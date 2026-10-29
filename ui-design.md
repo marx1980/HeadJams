@@ -1,5 +1,7 @@
 # UI Design Proposal: Splitting the Single Long Screen
 
+> **Historical document.** Kept for reference; parts are out of date. Current plan: `plan.md`. Current UI rules: `skill.md`.
+
 Status: **implemented** (4 tabs). Decisions from review are folded into the sections below; deviations are listed in section 9.
 
 ## 1. Problem (user's view)

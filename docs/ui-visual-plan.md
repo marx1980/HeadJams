@@ -1,5 +1,7 @@
 # UI Visual & UX Improvement Plan
 
+> **Historical document.** Kept for reference; parts are out of date. Current plan: `plan.md`. Current UI rules: `skill.md`.
+
 Scope: layout, overlap/clipping, original icons, new palette, general UX. Based on `plan.md`, `README.md`, `ui-design.md`, `src/ui/App.tsx`, `src/ui/styles.css`. Static mockups: `docs/mockups/` (open in a browser; tabs are clickable).
 
 ## 1. Findings
