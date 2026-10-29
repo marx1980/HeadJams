@@ -1,160 +1,77 @@
 # Build Plan
-This is the source of truth for what should be built next. Research: `docs/research.md`. Architecture: `docs/architecture.md`.
 
-## COMPLETED
-### 0. Phase 0: Foundations — DONE
-### 1. Phase 1: Simple, fully functional MVP — DONE
-Channels with sound picker, note-length grid (1/4, 1/8, 1/16), 1/2/4-bar loops with playhead, 30 synthesized starter sounds + sound designer, BPM/volume/mute/solo, localStorage auto-save, WAV export, 3 templates, interactive tutorials (first one auto-starts on first run; now 28, see Phase 14).
-### 2. Phase 2: Sound library and sampling — DONE
-Microphone recording and audio-file import, sample trimming and normalization, searchable/tagged library, pad view, IndexedDB sample storage, sample playback and WAV export, recording tutorial.
-### 3. Phase 3: Richer composition — DONE
-Piano roll with scale/chord assist, multiple patterns, loop launcher, arrangement timeline, and composition tutorial.
-Verified in a production browser on 2026-10-27: created and played a beat, imported and saved a sample, recognized a melody, and confirmed the generated track persisted after reload.
+Source of truth for what to build next. Updated 2026-10-30.
 
-### UI: unified header tiles — DONE
-File, Share/Export, View, Settings and Help open as identical tiles below the header; one shared open-menu state makes the header buttons toggle them (opening one closes the others); the Help Close button was removed.
+- Detailed design for the current work: `expansion.md` (approved 2026-10-30).
+- How to work in this repo (git setup, PRs, preview, checks): `CLAUDE.md`.
+- UI layout rules: `skill.md`. Architecture: `docs/architecture.md`.
+- Older planning docs (`ui-design.md`, `tutorial_plan.md`, `docs/ui-visual-plan.md`, `docs/sound-library-spec.md`) are kept for history. Where they disagree with this file or `skill.md`, this file wins.
 
-## OPEN
-- No unblocked Phase 0–12 implementation items remain. Current work is Phase 13 platform support and Phase 14 tutorial completion.
+Execution rules: one focused PR per step, merged through the API. Existing projects must keep opening and sounding the same. Add migration tests for any project-format change. Run `npx tsc --noEmit`, `npm test` and `npx vite build` before merging, and check UI changes at 320, 390 and 430px.
 
-## DONE (continued)
-### 4. Phase 4: Sound shaping — DONE
-Effects chain (reverb, delay, filter, EQ); pitch/time tools (transpose, shift, duration scaling); swing templates.
-### 4b. UI reorganization — DONE
-Four screens (Beat, Sound, Library, Song); see `ui-design.md`.
+---
 
-## QUEUED (merged with the Sound Library expansion)
-Detailed specs: `docs/sound-library-spec.md` (sections referenced as §n; §16 sample editor, §17-24 recognition). All features of the expansion are retained; its three delivery sequences (§24, §25, §28) are replaced by this single list. Execution rule: one focused PR per sub-phase; read this plan and the code first; preserve existing projects and sounds; add migration/backward-compat tests; run tests and production build; report limitations and risks.
+## NOW: Sampled instruments (`expansion.md`)
 
-### 5. Sound Library architecture — DONE (§1, §2, §13-15)
-- [x] Instrument registry foundation: central starter catalog and built-in/custom entries preserve existing sound IDs; duplicate IDs and supplied sample-asset sets can be validated.
-- [x] Central instrument registry wrapping/extending `SoundDef`; stable IDs; existing IDs (`kick-1`, `custom-*`, sample sounds) kept as stable IDs with a mapping; validation of duplicates and missing assets.
-- [x] Lazy `SoundSource` abstraction for synth and single-sample assets; on-demand loading with cache, separate preview bus that never modifies the project.
-- [x] Hierarchical picker replacing channel sound selection; Favourites, Recent, search, preview, mobile bottom sheet, and Library reuse.
-- [x] Missing-sound state and project format v2 migration tests; old sound/sample references are preserved.
-- Multisample source selection and playback is deferred; see the final deferred-scope section.
-### 6. Instruments and drums — DONE (§4-11; procedural starter catalog)
-- [x] Added a first synthesized drum and percussion expansion while retaining the existing catalog IDs and project format.
-- [x] Added synthesized starter presets in the Keys group.
-- [x] Added synthesized starter presets in the Strings group.
-- [x] Added synthesized starter presets in the Brass & Winds group.
-- [x] Added Bass Finger.
-- [x] Added Bass Pick.
-- [x] Added Bass Slap.
-- [x] Added Analog Lead.
-- [x] Added Digital Lead.
-- [x] Added Warm Pad.
-- [x] Added Soft Pluck.
-- [x] Added Kick 808.
-- [x] Added Snare Rimshot.
-- [x] Added Maraca percussion.
-- [x] Added five synthesized guitar-note presets, with playable note-mode metadata.
-- [x] Organized built-in sounds into groups and subgroups, re-categorized legacy Lead presets as Synths, and preserved all existing IDs.
-- [x] Added source, attribution, and license-status records for all built-in procedural sounds.
-- [x] Added Studio, 808, and Percussion kits; kit application maps by channel role, preserves pattern content, asks before replacing assignments, and respects the channel limit.
-- Drum-map channels (MIDI-style slots) remain an optional later upgrade.
-### 7. Guitar chords — DONE (§3)
-- Guitar chord events store a chord root, quality, duration, and articulation separately from note events; playable six-string voicings are generated without silently substituting unsupported chords.
-- Added major, minor, diminished, augmented, suspended, dominant seventh, major seventh, and minor seventh chords, plus sustained, down/up strum, muted, and power-chord articulations.
-- Added synthesized acoustic, clean electric, crunch, and power chord presets; chord events play in real time and offline WAV export, and survive project storage and pattern editing.
-### 8. Sample Editor — DONE (§16)
-Distinct from Phase 4 note transpose/duration tools. The Library editor retains original audio and processing settings in IndexedDB, previews original/processed samples without changing the project, and caches the processed playback audio.
-- [x] 8a: versioned sample metadata and migration; non-destructive trim, auto silence trim, normalization, gain, noise reduction, gate, de-click, fades, compare, undo/redo, and reset.
-- [x] 8b: pitch shift, fine tune, detected-pitch tune-to-note, linked speed, pitch-preserving stretch, and reverse.
-- [x] 8c: BPM and pitch detection, fit to beat/bar, and project-tempo-aware processing.
-- [x] 8d: three-band EQ, high-pass filter, and Off/Gentle/Strong compression.
-- [x] 8e: reverb, delay, distortion, chorus, and lo-fi effects.
-### 9. Editor hardening and UX polish — DONE (§25 Phase 7)
-- [x] Note events preserve optional `confidence`, `pitchBend`, and `sourceTakeId`; beat steps preserve confidence and source-take metadata without changing the existing step grid or project format.
-- [x] Piano roll and Beat grid identify low-confidence events and source takes, expose pitch-bend cues, and support arrow-key navigation.
-- [x] Sound picker has family icons and colour accents, loading/empty/missing states, synchronized Favourites/Recent lists, and keyboard-accessible navigation.
-- [x] Checked the procedural catalog: the existing 67 presets cover the specified instrument families; sampled packs remain deferred until licensed assets are available (§6).
-### 10. Recognition — DONE (§17-21, §23)
-- [x] 10a: replaceable recognition adapter, seconds-based melody/percussion events, versioned project migration, and Original/Cleaned/Quantised provenance.
-- [x] 10b: local YIN melody/bass pitch tracking with confidence and bend points; scale-aware pitch correction, transpose, split/join/move/resize/delete, undo, and restore controls.
-- [x] 10c: local onset detection and broad percussion classification; per-event class/sound correction, confidence display, and playable unknown events.
-- [x] 10d: BPM estimates and half/double alternatives, count-in/metronome, loop-length recording with position display, adjustable track/selection quantisation, and layered editable tracks.
-- [x] Original audio is retained in IndexedDB and added as a muted, independently controllable playback track; generated events retain stable source-take and confidence metadata.
-- Privacy: all shipped recognition runs on-device. A third-party pitch engine can be supplied through the adapter, but Basic Pitch is not bundled; pitch and percussion classifications are best-effort and should be manually reviewed.
-### 11. Arrangement assistance — IN PROGRESS (§22)
-- [x] 11a: scale-aware chord suggestions from a selected melody, with confidence, editable alternatives, original-performance-only input, and separate generated tracks that can be added, replaced, or removed.
-- [x] 11b: previewable bass generation following reviewed chord suggestions or melody notes; generated bass tracks can be added, replaced, removed, and edited separately from their source.
-- [x] 11c: scale-aware melody harmony and chord accompaniment are previewable; generated tracks can be edited, replaced, muted, and removed independently of their sources.
-- [x] 11d: Acoustic, Pop, Electronic, and Orchestral arrangement styles select accompaniment instruments and rhythmic patterns.
-- [x] 11e: offline WAV export supports 44.1/48/96 kHz, 16/24-bit PCM, and optional stereo peak normalization; all rendering remains local.
-### 12. Hardening — DONE
-- [x] Accessible keyboard navigation and sound-picker focus handling retained; reduced-motion preferences disable animation.
-- [x] WAV rendering and encoding run in a Web Worker; export reports progress state and failures without blocking the interface.
-- [x] WAV tests cover 44.1/48/96 kHz, stereo PCM, 16/24-bit output, normalization, and invalid input.
-- [x] Documented browser-local storage, privacy limits, and GitHub Pages release checks; added CI test/build validation.
-- [x] Verified tests and production build. Offline PWA caching remains Phase 13.
-### 13. Platform and community — IN PROGRESS (last)
-- [x] PWA offline app shell and procedural starter-sound bundle caching; user sample audio remains available offline in IndexedDB.
-- [x] Capacitor Android/iOS projects, native sync workflow, and relative-asset mobile build.
-- [x] MIDI keyboard input: device selection, live monitoring, quantized note recording into the selected pattern, browser Web MIDI, and native iOS/Android bridge.
-- Drum-map MIDI slots remain an optional later upgrade.
+Goal: replace synthesised, MIDI-like instrument sounds with real samples. Guitar gets its own performance logic. Decisions: nylon guitar first, about 150 MB of on-demand downloads, CC-BY credits in Settings › About, bundled samples redistributable only (the repo is public), personal recording optional.
 
-### 14. Guided tutorials — DONE
-- [x] 14a: tutorial data model (tab, group, level, summary, features), per-tab Help hub with Actions/Workflows modes, "Show all tabs", completion persistence (`musicmaker.tutorialDone`) and reset.
-- [x] 14b: overlay Back/Skip step/Show me/Exit, step counter, `aria-live` announcements, missing-target fallbacks, reduced-motion, mobile docking, first-visit nudges for non-Beat tabs.
-- [x] 14c-e: tutorials for tempo/swing, mix, templates, sound picker, drum kits, guitar chords, pitch/time, Sound Designer, effects, import, Sample Editor, recognition, patterns, timeline, arrangement assistance, export options, privacy/offline, confidence cues, keyboard navigation, and library search/pads.
-- [x] 14f: seven workflows and a coverage test (`src/tutorial/tutorials.test.ts`).
-- [x] Added actionable sample editing, recognition correction, and library search/pad-view events; added keyboard-navigation, confidence-cue, and library-use tutorials.
-- [x] Added microphone/MIDI capability gating, tutorial overlay focus management, and tutorial predicate/capability tests.
-- [x] Rendered-DOM selector coverage includes conditional MIDI connect/record states. Verified the first-beat tutorial and target highlight on desktop and the tutorial menu, target docking, and simulated MIDI-permission-denied guidance on mobile; physical MIDI hardware was unavailable.
+- [ ] **E0 Performance compiler.** One pure module turns the project into voice events, used by both live playback (`engine.ts`) and WAV export (`render.ts`). Adds a project seed, manifest types and validator, and a tiny CC0 test instrument. No audible change; exports stay identical.
+- [ ] **E1 Sampler core.** Region selection (note, velocity, round robin), pitch-shift limits, envelopes, voice cap and choke groups, lazy loading with a ready state, sampled voices in WAV export, and memory budgets.
+- [ ] **E2 Sampled drum kit.** A CC0 or CC-BY acoustic kit mapped onto the existing drum roles, with velocity layers, round robin and hi-hat choke. The synth kits stay.
+- [ ] **E3 Real nylon guitar.** FreePats nylon (CC0), a data-driven chord-voicing dictionary with movement scoring, string-by-string strums with seeded humanise, and tight/natural chord changes. Synth guitars stay as Classic.
+- [ ] **E4 Guitar patterns and chord row.** Strum pattern presets, a chord row on guitar channels, and basic controls; advanced fretboard controls hidden.
+- [ ] **E5 More instruments.** Salamander piano subset (credit in About), bass, strings and brass (VCSL or Iowa MIS), electric piano, then optional steel-string or electric guitar. Loudness matching against Classic sounds.
+- [ ] **E6 Personal instruments (optional feature).** Make a multi-root instrument from saved samples. Personal guitar coverage grid that inherits missing notes from the factory guitar.
+- [ ] **E7 Recorded chords (optional feature).** Whole-chord samples from your own recordings or a local pack, with fallback to the constructed guitar.
+- [ ] **E8 Hardening.** Measure on your phone and laptop, set final budgets, add regression projects with reference WAV hashes, write clear error messages, and document asset provenance.
 
-### 15. UI redesign and appearance skins — DONE
-- [x] Added eight mockup-inspired visual skins selectable from Project menu → Settings → Appearance.
-- [x] Shared design tokens cover app surfaces, controls, active states, focus, and semantic feedback across Beat, Sound, Library, and Song.
-- [x] Skin preference is stored separately from project data, restored on web and Capacitor builds, and safely defaults for unsupported or unavailable storage.
-- [x] Added theme persistence and selector tests; documented the setting in the README.
+## OPEN (carried over)
+- UI check across all eight skins at small widths, and on a real iPhone.
+- Confirm that the iOS home-screen icon refresh (`icon-v2.png`) works on a device.
+- Tutorials: broader tests for `done()` predicates, a dedicated permission-denied step, and a generic per-step optional/selector fallback.
+- `npm run dev` does not load the app (the `app/` root cannot resolve `../src/main.tsx`). Use build + preview until this is fixed.
+- Optional: drum-map MIDI slots.
 
-### 16. App icon, UI visual plan, and Help/icon refresh — DONE (PRs #27–33)
-- [x] #27: `mm icon.jpeg` adopted as the app icon for web/PWA (favicon, touch icon, manifest, offline precache) and Android/iOS launcher and store assets.
-- [x] #28: service-worker cache name now hashes the icon bytes so icon changes rotate the cache; root build gets icon links and `icon.png`; old `icon.svg` removed.
-- [x] #29: web icon renamed to `icon-v2.png` (manifest, `app/index.html`, precache list, cache hash) to bust iOS home-screen icon caching. Unconfirmed on device; users may need to re-add the bookmark. Native Capacitor icons untouched.
-- [x] #30: `docs/ui-visual-plan.md` (findings and seven-phase plan: tokens/sticky shell, viewport-aware popover/bottom sheet, SVG icon set, palettes, compact Beat card, Sound/Library/Song redesign, polish) and eight static theme mockups in `docs/mockups/`. Proposed grouped menus: per-channel Tools and More; header Project and Help; Library card More.
-- [x] #31: GitHub Pages gallery of the mockups at `/mockups/`.
-- [x] #32: eight selectable skins (Midnight Studio, Paper & Ink, Neon Pulse, Forest Studio, Ocean Light, High Contrast, Candy Pop, Vintage Amber) via Project menu → Settings → Appearance; stored under `musicmaker.theme`, default Midnight Studio. Shared design tokens.
-- [x] #33: single contextual "Help" button (tutorial reset/close moved into the panel); themed SVG screen and instrument-family icons, with distinct bass and guitar art.
+## CURRENT STATE (what the app does today)
+- **Shell:** React + Vite + TypeScript PWA on GitHub Pages; Capacitor Android/iOS projects. The header has the app icon, name and Play/Stop, then File (save, WAV export and its options), Settings and Help tiles. There are four tabs (Beat, Sound, Library, Song) and eight skins.
+- **Beat:** an options row (Template, BPM, Note length, Loop, Pattern, Drum kit, Apply kit). Channel strips have a sound picker, solo, mute, preview, volume, pan, duplicate, piano roll and remove. The step grid supports 1/4, 1/8 and 1/16 steps over 1, 2 or 4 bars. The piano roll has scale, chord assist, guitar chords and pitch/time tools. MIDI keyboard input sits in a collapsed section.
+- **Sound:** "Shape a sound" (swing, master reverb, delay, filter, EQ) and "Make a sound" (a synth designer).
+- **Library:** Sounds (search, tag, use on channel; tiles grouped in an exclusive category accordion), Sample editor (import or record, then non-destructive trim, clean, tune, time, tone and effects with the original kept), and Recognition (melody, bass and beatbox to editable tracks, on-device).
+- **Song:** patterns, the arrangement timeline, chord suggestions, and bass, harmony and accompaniment generation as separate tracks.
+- **Sounds:** 67 built-in sounds, all synthesised by DSP; user samples are stored in IndexedDB. Three synth drum kits and four templates.
+- **Audio:** a Web Audio look-ahead step scheduler and a master effects chain. WAV export (44.1, 48 or 96 kHz; 16 or 24-bit; optional normalise) runs in a Web Worker through a separate renderer.
+- **Tutorials:** 29 tutorials and 7 workflows; each screen's Help opens a hub, and tutorials open any collapsed section they need.
+- **Storage:** the project is saved to localStorage (versioned format with migrations); sample audio and preferences are stored separately. There is no cloud sync.
 
-### 17. UI polish round 2 — IN PROGRESS
-Problems: the "..." (Project) menu still opens partly off-screen; it is one long mixed menu; Settings is a labeled button that only opens skin selection; many icons look poor; mobile bottom tab bar is clipped by rounded screen corners and icon/label may not fit on one row.
-- [x] 17a. Viewport-aware popovers (implements #30 phase 2). Replace the fixed `.menu-popup { right:0; top:46px }` with a shared popover that measures its trigger and the viewport (including `visualViewport` and safe-area insets), flips/clamps horizontally and vertically, caps `max-height` with internal scroll, and closes on outside click/Escape/resize. On widths ≤640px render as a bottom sheet. Reuse for Help, per-channel and Library menus.
-- [x] 17b. Replace the single "..." menu with separate icon-only buttons (each with tooltip and accessible name, own popover), using conventional, instantly recognizable symbols. Grouping is based on the actual current menu (Template, Save, WAV sample rate, WAV bit depth, Normalize, Export WAV, Show all tabs, Settings, Close):
-  - **File** (document/folder icon): Template picker (new from template), Save. Later home for project rename, load and import if added.
-  - **Share/Export** (standard share icon: box with up arrow): Export WAV, plus the export options (sample rate, bit depth, normalize) shown right with the action so they are not buried in Settings.
-  - **View** (eye icon): Show all tabs, plus other display toggles (e.g. compact channel cards, show confidence cues, piano-roll default) if/when added.
-  - **Settings** (gear icon): see 17c.
-  - **Help** (question-mark circle icon): unchanged behavior, now icon plus accessible label.
-  - The "Close" item goes away: popovers close on outside click or Escape. Header buttons share one flex row with no stray gap.
-- [x] 17c. Settings (gear, icon only) holds preferences that persist and are not per-action, not just skins:
-  - **Appearance / Skins:** inline swatch list (no click-through), stored under `musicmaker.theme`.
-  - **Export defaults:** default WAV sample rate, bit depth and normalize, remembered across sessions (today they reset on reload); the Share menu uses these as starting values.
-  - **Tutorials:** reset tutorial progress and toggle first-visit hints (moved from the Help panel; Help keeps just reading/starting tutorials).
-  - **Interface:** reduce motion override, larger touch targets / icon size.
-  - **Audio and MIDI:** default MIDI input device and recording quantize, microphone preference.
-  - **Data and privacy:** note on browser-local storage, clear saved sample audio / reset app data (with confirmation).
-  - Any labeled entry for skins alone says "Skins". Update `AppearanceSettings` and tests; new settings stored under separate `musicmaker.*` keys, kept out of project data.
-- [x] 17d. Shared 24px SVG icon set with consistent strokes, rounded joins, `currentColor`, and theme-aware styling covers Project, Export, View, Settings, Help, tabs, instrument families, transport, channel and sound actions, recording, piano-roll controls, and tutorial/arrangement actions. The app header uses the web app icon asset.
-- [x] 17e. Bottom tab bar: add safe-area and extra curved-corner padding (`env(safe-area-inset-*)` plus a minimum side/bottom buffer, `viewport-fit=cover`), replace the guessed `.app { padding-bottom: 200px }` with a value derived from tab bar height. Each tab button becomes a two-row stack (icon on top, label below) so it never has to share a row; verify it with long labels and at 320–430px widths.
-- [ ] 17f. Tests and verification: update tutorial selectors that target the old menu/Settings button; add tests for popover positioning logic and inline skin selection; check screenshots on desktop and narrow mobile (including a simulated notch/curved insets) for all eight skins; run `npm test` and `npm run build`; update README and `docs/ui-visual-plan.md`.
-- Done in code: shared `Popover` (viewport clamp/flip/scroll, bottom sheet ≤640px, outside click/Escape); File, Share, View, Settings (gear) and Help icon buttons; inline skins; persisted export defaults; tutorial steps target the right menu; icon-over-label tab bar with safe-area padding and `viewport-fit=cover`.
-- Done: redesigned bass, guitar and strings icons (violin with bow) with more detail; all family, tab and header icons enlarged (plus a "Larger icons" setting); Settings groups: Skins, Export defaults, Interface (larger icons, reduce motion), Tutorials (first-visit hints, reset), Audio and MIDI (remembered input), Data and privacy (clear samples, reset app data).
-- Done: remaining family icons (drums, percussion, keys, brass/winds, synth, and FX) refined to match the detail level of bass, guitar, and strings.
-- Done (layout pass): Play moved to the app icon/name row; File and Share merged into one File tile (Save Project + Export); Template moved next to Apply kit and BPM into the Beat options row; MIDI moved to a collapsible section at the bottom of Beat with clearer unsupported-browser text; "Show all tabs" removed (tabs always shown); Library pad view removed, tiles smaller with Play and Use on one row, Tag filter disabled when no tags exist.
-- Done: Beat options row controls (Template, BPM, Note length, Loop, Pattern, Drum kit, Apply kit) share one explicit height and font size (`--option-control-height`); measured equal across all eight skins at desktop and 390px widths in Chromium.
-- Done: Library reorganised into Sounds / Sample editor / Recognition accordion sections; two-column sound tiles (Play above Use, no inner scroll, grouped by category); 40px two-column grids for record/import, recognition, Song assistants and Sound shaping; explanatory paragraphs removed from Library and Song; tutorials auto-open collapsed sections.
-- Done: Library sound groups are an exclusive accordion (all collapsed by default); Sound tab top tile renamed "Shape a sound" and the designer is always shown (no "Make a sound" toggle or Close).
-- Not done yet: rendered screenshot review across all eight skins and small screens, plus testing on a real device.
+## DECISIONS
+- Web/PWA first; Capacitor for native shells.
+- One Web Audio clock with look-ahead scheduling. Live playback and export must use the same performance logic (from E0).
+- Old sound IDs are permanent. Synth presets remain available as Classic sounds.
+- Bundled third-party audio must be redistributable (CC0, CC-BY, or similar) and ship with provenance and licence files. Everything else is local-only.
+- On-screen text is limited to labels and values (`skill.md`).
+- PRs are merged through the REST API (`CLAUDE.md`).
 
-## Decisions / Important Context
-- Web/PWA first (React + Vite + TypeScript); native wrapping later via Capacitor.
-- Web Audio API with a single master clock and look-ahead scheduling.
-- Built-in sounds are synthesized by pure DSP (`src/library/sounds.ts`); user samples are stored in IndexedDB and project metadata keeps their IDs.
-- "Note length" is the grid resolution (steps per bar = 4/8/16). Projects auto-save to localStorage; sample audio is stored separately in IndexedDB.
+## DEFERRED
+- Accounts and cloud sync, a sample marketplace, and public sharing.
+- Tempo map and automation, seek, AudioWorklet, and Tone.js.
+- Stem separation and song-to-MIDI transcription.
+- Project-level undo (only the Sample editor and Recognition have undo).
 
-## DEFERRED — NOT IN CURRENT SCOPE
-- Account creation and cloud sync, including synchronization of samples, processing settings, and recognition data.
-- Sample marketplace.
-- Any feature requiring third-party assets without verified licenses and attribution, including sampled packs and multisample playback. No third-party samples are bundled.
+## HISTORY (condensed)
+| Phase | Delivered |
+|---|---|
+| 0–1 | Beat-maker MVP: channels, step grid, loops, synth starter sounds and designer, mixer, auto-save, WAV export, templates, tutorials |
+| 2 | Mic recording and import, trimming and normalising, tagged library, IndexedDB samples |
+| 3 | Piano roll with scale and chord assist, patterns, launcher, arrangement timeline |
+| 4 | Effects chain, pitch/time tools, swing; four-tab UI |
+| 5–6 | Instrument registry with stable IDs, lazy `SoundSource`, hierarchical picker, project format v2, a 67-sound procedural catalog, drum kits |
+| 7 | Guitar chord events: qualities, strums, mutes, power chords |
+| 8 | Non-destructive Sample editor (8a–8e) |
+| 9 | Editor hardening: confidence and take metadata, keyboard navigation, picker states |
+| 10 | On-device recognition: melody, bass, beatbox; quantise; layered takes |
+| 11 | Arrangement assistance: chords, bass, harmony, accompaniment, styles; export options |
+| 12 | Hardening: accessibility, worker export, WAV tests, CI |
+| 13 | PWA offline shell, Capacitor projects, MIDI input |
+| 14 | Guided tutorials and workflows |
+| 15–16 | Skins, app icon, SVG icon set |
+| 17 | UI polish: header tiles, settings, safe areas, Beat row heights, iOS select heights, channel strip rows, Library/Song/Sound layout and accordions (PRs #42–#46) |
