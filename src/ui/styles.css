@@ -148,6 +148,7 @@ body { margin: 0; background: var(--app-bg); color: var(--text); }
 .is-favorite { color: var(--warning); fill: currentColor; }
 label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
 input, select, button { font: inherit; min-height: 40px; border-radius: var(--control-radius); border: 1px solid var(--border); background: var(--surface-raised); color: var(--text); padding: 4px 10px; }
+select { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
 input[type='number'] { width: 70px; }
 input[type='range'] { padding: 0; min-height: 24px; }
 button { cursor: pointer; }
@@ -159,8 +160,11 @@ button.play { margin-left: auto; background: var(--accent); color: var(--accent-
 button.secondary { background: transparent; }
 button.on { background: var(--color, var(--accent)); color: var(--accent-contrast); }
 .channel { margin: 14px 0; padding: 8px; border-left: 6px solid var(--color); background: var(--surface); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
-.strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+.strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: end; margin-bottom: 6px; }
 .strip > label { min-width: 100px; }
+.strip > :is(button, input, select) { box-sizing: border-box; height: 40px; min-height: 40px; }
+.strip > label > input { box-sizing: border-box; height: 40px; min-height: 40px; }
+.strip > input[type='range'] { padding: 0; margin: 0; }
 .bar-row { display: grid; gap: 3px; margin-bottom: 3px; }
 .step { min-height: 40px; padding: 0; background: var(--surface-muted); border-radius: var(--control-radius); }
 .step.group { background: color-mix(in srgb, var(--surface-muted) 70%, var(--border)); }
