@@ -304,11 +304,11 @@ export function App() {
   return (
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
-        <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" />MusicMaker</h1>
-        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
+        <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" /><img className="app-wordmark" src={`${import.meta.env.BASE_URL}wordmark.svg`} alt="MusicMaker" /></h1>
+        <div className="header-menus">
+          <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
           <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
         </button>
-        <div className="header-menus">
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
           </div>
@@ -398,6 +398,12 @@ export function App() {
       <div className={`workspace view-${view}${openMenu ? ' covered' : ''}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
           <div className="row beat-options">
+            <label>Template
+              <select id="template-select" value="" onChange={(e) => loadTemplate(e.target.value)}>
+                <option value="" disabled>Choose…</option>
+                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </label>
             <label>BPM
               <input id="bpm-input" type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
             </label>
@@ -425,12 +431,6 @@ export function App() {
               </select>
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
-            <label>Template
-              <select id="template-select" value="" onChange={(e) => loadTemplate(e.target.value)}>
-                <option value="" disabled>Choose…</option>
-                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-              </select>
-            </label>
           </div>
           <section className="channels">
         {project.channels.map((c, ci) => {
