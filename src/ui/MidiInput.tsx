@@ -123,8 +123,8 @@ export function MidiInput({
       return;
     }
     const request = (navigator as MidiNavigator).requestMIDIAccess;
-    if (!request) {
-      setError('MIDI input is not supported in this browser. Try a recent desktop browser over HTTPS.');
+    if (!request || !supportsMidiInput()) {
+      setError('MIDI input is not supported here. Use a Web MIDI browser (e.g. Chrome or Edge) over HTTPS, or the Android app.');
       return;
     }
     setOpening(true);
@@ -158,7 +158,7 @@ export function MidiInput({
     <section className="panel midi-panel" aria-label="MIDI keyboard">
       <h2>MIDI keyboard</h2>
       {!connected ? (
-        <button id="midi-connect" className="secondary" disabled={!supportsMidiInput() || opening} onClick={() => void enable()}>
+        <button id="midi-connect" className="secondary" disabled={opening} onClick={() => void enable()}>
           {opening ? 'Connecting…' : 'Connect MIDI keyboard'}
         </button>
       ) : (
@@ -183,7 +183,7 @@ export function MidiInput({
           <button className="secondary" onClick={() => { onRecordingChange(false); disconnect(); }}>Disconnect</button>
         </>
       )}
-      {!supportsMidiInput() && <p className="hint">This browser or native WebView does not expose Web MIDI. MIDI input requires a supported browser and a secure context.</p>}
+      {!connected && !supportsMidiInput() && !!error && <p className="hint">This browser or native WebView does not expose Web MIDI. MIDI input requires a supported browser and a secure context.</p>}
       {connected && !(nativePlatform ? nativeDevices.length : inputs.length) && <p className="hint">Connect a MIDI keyboard, then choose its input above.</p>}
       {error && <p className="error" role="alert">{error}</p>}
     </section>

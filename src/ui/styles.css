@@ -379,3 +379,4 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .app[data-reduce-motion] *, .app[data-reduce-motion] *::before, .app[data-reduce-motion] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
 .icon-btn[aria-expanded='true'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-contrast) inset; }
+.covered { display: none !important; }
