@@ -214,8 +214,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'sound-designer', title: 'Design your own sound', tab: 'sound', group: 'Designer', level: 'intermediate', estMinutes: 2,
     summary: 'Shape a synth sound and save it.', features: ['sound-designer'], doneMessage: 'Your sound is saved and ready to use.',
     steps: [
-      { view: 'sound', text: 'Tap "Make a sound".', target: '#make-sound', done: (s) => s.events.has('designer-open') },
-      info('Move the sliders and preview until it sounds right.', { target: '.designer' }),
+      info('Move the sliders and preview until it sounds right.', { view: 'sound', target: '.designer' }),
       { text: 'Save it to your library.', target: '.designer', done: (s) => s.project.customSounds.length > s.base.customSounds.length },
     ],
   },

@@ -55,7 +55,6 @@ export function App() {
   const [prefs, setPrefs] = useState(loadPreferences);
   const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
-  const [designer, setDesigner] = useState(false);
   const [midiOpen, setMidiOpen] = useState(false);
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem(VIEW_KEY);
@@ -504,8 +503,8 @@ export function App() {
         </div>
 
         <div id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" className={`pane pane-sound${view === 'sound' ? ' active' : ''}`}>
-          <section className="panel effects-panel" aria-label="Sound shaping">
-            <h2>Sound shaping</h2>
+          <section className="panel effects-panel" aria-label="Shape a sound">
+            <h2>Shape a sound</h2>
         <div className="effect-controls">
           <label>Swing
             <select aria-label="Swing template" value={project.swingTemplate}
@@ -541,16 +540,10 @@ export function App() {
           ))}
         </div>
           </section>
-          <div className="row">
-            <button id="make-sound" className="secondary" onClick={() => { if (!designer) emit('designer-open'); setDesigner(!designer); }}><Icon name="sound" className="inline-icon" /> Make a sound</button>
-          </div>
-      {designer && (
         <SoundDesigner
           onPreview={(name, params: SynthParams) => void engine.preview({ id: 'preview', name, category: 'Mine', params })}
           onSave={(name, params) => { setProject(addCustomSound(project, name, params).project); flash('Saved to your library ✓'); }}
-          onClose={() => setDesigner(false)}
         />
-      )}
 
         </div>
 

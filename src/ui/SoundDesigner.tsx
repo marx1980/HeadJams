@@ -10,10 +10,9 @@ const PRESETS: Record<string, SynthParams> = {
   Lead: { wave: 'square', freq: 440, freqEnd: 440, decay: 0.35, cutoff: 5000 },
 };
 
-export function SoundDesigner({ onPreview, onSave, onClose }: {
+export function SoundDesigner({ onPreview, onSave }: {
   onPreview: (name: string, p: SynthParams) => void;
   onSave: (name: string, p: SynthParams) => void;
-  onClose: () => void;
 }) {
   const [name, setName] = useState('My sound');
   const [p, setP] = useState<SynthParams>(PRESETS.Kick);
@@ -44,7 +43,6 @@ export function SoundDesigner({ onPreview, onSave, onClose }: {
       <div className="row">
         <button onClick={() => onPreview(name, p)}><Icon name="audio" className="inline-icon" /> Preview</button>
         <button onClick={() => onSave(name, p)}>Save to my library</button>
-        <button className="secondary" onClick={onClose}>Close</button>
       </div>
     </div>
   );
