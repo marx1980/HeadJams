@@ -34,7 +34,7 @@ const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const UNLOCK_KEY = 'musicmaker.unlockedTabs';
-type HeaderMenu = 'file' | 'share' | 'view' | 'settings' | 'help';
+type HeaderMenu = 'file' | 'share' | 'settings' | 'help';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -308,9 +308,6 @@ export function App() {
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
         <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" />MusicMaker</h1>
-        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
-          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
-        </button>
         <label>BPM
           <input type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
         </label>
@@ -322,13 +319,13 @@ export function App() {
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
           </div>
           <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'view'} aria-label="View menu" title="View" onClick={() => toggleMenu('view')}><Icon name="view" /></button>
-          </div>
-          <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
           </div>
           <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
         </div>
+        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
+          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
+        </button>
       </header>
             {openMenu === 'file' && (
               <HeaderTile label="File" onClose={closeMenu}>
@@ -363,12 +360,6 @@ export function App() {
                 <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
               </HeaderTile>
             )}
-            {openMenu === 'view' && (
-              <HeaderTile label="View" onClose={closeMenu}>
-                <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
-                  onChange={() => setUnlocked(true)} /> Show all tabs</label>
-              </HeaderTile>
-            )}
             {openMenu === 'settings' && (
               <HeaderTile label="Settings" className="settings-tile" onClose={closeMenu}>
                 <AppearanceSettings theme={theme} onThemeChange={setTheme} />
@@ -380,6 +371,8 @@ export function App() {
                 <h3>Interface</h3>
                 <label className="check-label"><input type="checkbox" checked={prefs.largeIcons}
                   onChange={(e) => updatePrefs({ largeIcons: e.target.checked })} /> Larger icons</label>
+                <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
+                  onChange={() => setUnlocked(true)} /> Show all tabs</label>
                 <label className="check-label"><input type="checkbox" checked={prefs.reduceMotion}
                   onChange={(e) => updatePrefs({ reduceMotion: e.target.checked })} /> Reduce motion</label>
                 <h3>Tutorials</h3>
@@ -409,7 +402,7 @@ export function App() {
       {message && <div className="toast" role="status">{message}</div>}
 
 
-      <nav className="tabs" role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
+      <nav className={`tabs${openMenu ? ' covered' : ''}`} role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
         {visibleTabs.map((t) => (
           <button key={t.id} id={`tab-${t.id}`} role="tab" aria-selected={view === t.id} aria-controls={`pane-${t.id}`}
             tabIndex={view === t.id ? 0 : -1} className={`tab-${t.id} ${view === t.id ? 'on' : 'secondary'}`} onClick={() => goTab(t.id)}>
@@ -422,7 +415,7 @@ export function App() {
           <button className="secondary" onClick={() => setNudge(null)}>Dismiss</button></div>
       )}
 
-      <div className={`workspace view-${view}`}>
+      <div className={`workspace view-${view}${openMenu ? ' covered' : ''}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
           <div className="row beat-options">
             <label>Note length
