@@ -1,6 +1,6 @@
 # MusicMaker Expansion v2: Sampled Instruments and Guitar Performance
 
-Status: **Approved 2026-10-30.** This revises the original `expansion.md` (2026-10-29). Its phases E0–E8 are tracked in `plan.md`.
+Status: **Approved 2026-10-30.** This revises the original `expansion.md` (2026-10-29). It is the sound engine for the product goal in `hum.md`; the combined E/H build order is tracked in `plan.md`.
 
 Goal (unchanged): stop relying on synthesised, MIDI-like instrument sounds. Play real recorded samples through one reusable sampler, and give guitar its own performance logic.
 
@@ -104,6 +104,7 @@ Each phase is one or two focused PRs. Every phase must:
 ### E2. First sampled pack: drums and percussion
 - One CC0 or CC-BY acoustic kit, plus a few percussion one-shots, mapped onto the existing drum-kit roles (kick, snare, hats, toms, cymbals, percussion). Exact library chosen and licence verified during this phase.
 - A "Sampled kit" option in drum kits. The synth Studio, 808 and Percussion kits stay as they are.
+- One **kit channel with lanes** (a drum map: kick, snare, closed/pedal/open hat, toms, crash, ride, clap, percussion), so a whole kit uses one channel. Beatbox takes (`hum.md` H4) write into these lanes instead of one channel per drum class. Existing per-role kit channels keep working.
 - 2–3 velocity layers where available, and round robin on snare and hats.
 - Hi-hat choke: closed or pedal hat chokes the open hat.
 - Acceptance: the kit loads in under 2 s on Wi-Fi, a 4-bar loop has no machine-gun repetition at 16ths, and export matches playback.
@@ -123,6 +124,7 @@ Each phase is one or two focused PRs. Every phase must:
 - Acceptance: a full accompaniment from four chord symbols and one preset at 320–430px width; tempo changes keep patterns aligned.
 
 ### E5. More sampled instruments
+Split in two by `hum.md`: **E5a** (piano, bass, strings) comes right after E3, because "Hear as" (H2) needs them. **E5b** (brass, electric piano, optional steel-string or electric guitar) comes later.
 - Priority: piano (a Salamander Grand subset, CC-BY 3.0, with attribution shown in Settings › About), bass guitar (source still to be found, see section 5), strings and brass (VCSL, CC0, or University of Iowa MIS, which allows use "for any projects, without restrictions"), then electric piano and an electric guitar.
 - Each instrument goes through a proof set first (one octave, or a few notes) to check noise floor, looping, level and size.
 - Loudness matching: each manifest has a gain offset so sampled and Classic sounds sit at similar perceived levels.
