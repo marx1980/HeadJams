@@ -1,6 +1,7 @@
 export function createOfflineWorkerSource(precacheFiles: readonly string[], cacheName: string): string {
   return `
 const CACHE_NAME = ${JSON.stringify(cacheName)};
+const INSTRUMENT_CACHE = 'musicmaker-instruments-v1';
 const PRECACHE_URLS = ${JSON.stringify(precacheFiles)}.map((file) => new URL(file, self.registration.scope).href);
 
 self.addEventListener('install', (event) => {
@@ -22,6 +23,27 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(request.url);
   if (request.method !== 'GET' || requestUrl.origin !== self.location.origin
     || !requestUrl.href.startsWith(self.registration.scope)) return;
+
+  // Sampled instruments: audio files are versioned (?v=) and served cache-first from their own cache,
+  // which survives app updates; manifests are network-first so new versions are picked up.
+  if (requestUrl.href.startsWith(new URL('instruments/', self.registration.scope).href)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(INSTRUMENT_CACHE);
+      const isManifest = requestUrl.pathname.endsWith('/manifest.json');
+      if (!isManifest) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+      }
+      try {
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch {
+        return await cache.match(request) ?? Response.error();
+      }
+    })());
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {

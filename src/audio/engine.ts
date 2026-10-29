@@ -6,7 +6,12 @@ import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
 import { pitchToFrequency } from '../model/music';
-import { compileStep } from './performance';
+import { compileStep, type HitVoice, type PitchedVoice, type VoiceEvent } from './performance';
+import type { InstrumentStore } from './sampler/instrumentStore';
+import { instrumentNeeds } from './sampler/instrumentStore';
+import { planSampledVoice, sanitizeBends, type DecodedRegion, type SampledVoicePlan } from './sampler/sampledVoice';
+import { RoundRobin } from './sampler/selectRegion';
+import { CUT_FADE_SEC, VoiceTracker } from './sampler/voices';
 
 export class Engine {
   private ctx?: AudioContext;
@@ -28,9 +33,91 @@ export class Engine {
   private reverbWet?: GainNode;
   private reverbDry?: GainNode;
   private convolver?: ConvolverNode;
+  private roundRobin = new RoundRobin(1);
+  private tracker = new VoiceTracker();
+  private sampledVoices = new Map<number, { source: AudioBufferSourceNode; cut: GainNode }>();
+  private nextVoiceId = 0;
+  private regionBuffers = new WeakMap<Float32Array, AudioBuffer>();
   playing = false;
 
-  constructor(private getProject: () => Project, private onStep: (step: number | null) => void, private getSample: (id: string) => SampleData | undefined = () => undefined) {}
+  constructor(
+    private getProject: () => Project,
+    private onStep: (step: number | null) => void,
+    private getSample: (id: string) => SampleData | undefined = () => undefined,
+    private instruments?: InstrumentStore,
+  ) {}
+
+  private regionBuffer(audio: DecodedRegion): AudioBuffer {
+    if (audio.buffer) return audio.buffer;
+    let buffer = this.regionBuffers.get(audio.data);
+    if (!buffer) {
+      buffer = this.ctx!.createBuffer(1, audio.data.length, audio.sampleRate);
+      buffer.copyToChannel(audio.data as Float32Array<ArrayBuffer>, 0);
+      this.regionBuffers.set(audio.data, buffer);
+    }
+    return buffer;
+  }
+
+  private planSampled(voice: VoiceEvent, roundRobin?: RoundRobin): SampledVoicePlan | undefined {
+    const store = this.instruments;
+    const manifest = store?.manifest(voice.sound.instrumentId!);
+    if (!store || !manifest) return undefined;
+    return planSampledVoice(voice, manifest, (region) => store.audio(manifest, region), roundRobin);
+  }
+
+  /** Build source -> envelope gain -> cut gain -> panner -> destination for a sampled voice. */
+  private startSampledNodes(plan: SampledVoicePlan, start: number, pan: number, destination: AudioNode, sustainUntilStopped = false) {
+    const ctx = this.ctx!;
+    const source = ctx.createBufferSource();
+    source.buffer = this.regionBuffer(plan.audio);
+    const bends = sanitizeBends(plan.pitchBend);
+    source.playbackRate.setValueAtTime(plan.rate, start);
+    let previous = start;
+    for (const point of bends) {
+      const at = start + point.time;
+      if (at <= previous) continue;
+      source.playbackRate.linearRampToValueAtTime(plan.rate * 2 ** (point.value / 12), at);
+      previous = at;
+    }
+    const envelope = ctx.createGain();
+    envelope.gain.setValueAtTime(0, start);
+    envelope.gain.linearRampToValueAtTime(plan.level, start + plan.attackSec);
+    if (plan.mode === 'sustain' && !sustainUntilStopped) {
+      envelope.gain.setValueAtTime(plan.level, start + Math.max(plan.attackSec, plan.durationSec));
+      envelope.gain.linearRampToValueAtTime(0, start + plan.durationSec + plan.releaseSec);
+    }
+    const cut = ctx.createGain();
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    source.connect(envelope).connect(cut).connect(panner).connect(destination);
+    source.start(start);
+    if (!sustainUntilStopped) source.stop(start + plan.endSec + 0.005);
+    return { source, envelope, cut };
+  }
+
+  private playSampled(voice: VoiceEvent, time: number) {
+    const plan = this.planSampled(voice, this.roundRobin);
+    if (!plan) return;
+    const ctx = this.ctx!;
+    const start = Math.max(time, ctx.currentTime);
+    const manifest = this.instruments!.manifest(voice.sound.instrumentId!)!;
+    const id = this.nextVoiceId++;
+    const cuts = this.tracker.add({
+      id, start, noteEnd: start + plan.noteEndSec, end: start + plan.endSec, level: plan.level,
+      polyKey: `${voice.channelId}:${manifest.id}`, chokeKey: plan.chokeKey,
+    }, manifest.maxPolyphony);
+    for (const cut of cuts) {
+      const victim = this.sampledVoices.get(cut.id);
+      if (!victim) continue;
+      victim.cut.gain.setValueAtTime(1, cut.at);
+      victim.cut.gain.linearRampToValueAtTime(0, cut.at + CUT_FADE_SEC);
+      try { victim.source.stop(cut.at + CUT_FADE_SEC + 0.002); } catch { /* already stopped */ }
+      this.sampledVoices.delete(cut.id);
+    }
+    const nodes = this.startSampledNodes(plan, start, voice.pan, this.master!);
+    nodes.source.onended = () => this.sampledVoices.delete(id);
+    this.sampledVoices.set(id, { source: nodes.source, cut: nodes.cut });
+  }
 
   private buffer(def: SoundDef): AudioBuffer | undefined {
     const source = createSoundSource(def);
@@ -203,6 +290,22 @@ export class Engine {
   async preview(def: SoundDef, volume = 0.8) {
     const ctx = await this.ensureCtx();
     this.stopPreview();
+    if (def.instrumentId) {
+      if (!await this.instruments?.ensure(def.instrumentId, new Set([def.instrumentNote ?? 60]))) return;
+      const voice: HitVoice = { kind: 'hit', sound: def, channelId: 'preview', offsetSec: 0, volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.8, pan: 0 };
+      const plan = this.planSampled(voice);
+      if (!plan) return;
+      const nodes = this.startSampledNodes(plan, ctx.currentTime, 0, this.previewBus!);
+      this.previewSource = nodes.source;
+      this.previewGain = nodes.cut;
+      nodes.source.onended = () => {
+        if (this.previewSource === nodes.source) {
+          this.previewSource = undefined;
+          this.previewGain = undefined;
+        }
+      };
+      return;
+    }
     const buffer = this.buffer(def);
     if (!buffer) return;
     const source = ctx.createBufferSource();
@@ -248,6 +351,23 @@ export class Engine {
     const ctx = await this.ensureCtx();
     this.stopLiveNote(voiceId);
     const now = ctx.currentTime;
+    if (def.instrumentId) {
+      const voice: PitchedVoice = {
+        kind: 'pitched', origin: 'note', sound: def, channelId: 'live', offsetSec: 0, pitch, durationSec: 30,
+        velocity, volume: Math.max(0, Math.min(1, volume)), pan,
+      };
+      const plan = this.planSampled(voice);
+      if (!plan) {
+        void this.instruments?.ensure(def.instrumentId, new Set([Math.round(pitch)]));
+        return;
+      }
+      const nodes = this.startSampledNodes(plan, now, pan, this.master!, plan.mode === 'sustain');
+      nodes.source.onended = () => {
+        if (this.liveNotes.get(voiceId)?.source === nodes.source) this.liveNotes.delete(voiceId);
+      };
+      this.liveNotes.set(voiceId, { source: nodes.source, gain: nodes.cut });
+      return;
+    }
     const gain = ctx.createGain();
     const panner = ctx.createStereoPanner();
     const level = Math.max(0, Math.min(1, velocity * volume));
@@ -301,7 +421,12 @@ export class Engine {
   async start() {
     if (this.playing) return;
     const ctx = await this.ensureCtx();
+    if (this.instruments) await this.instruments.prepare(instrumentNeeds(this.getProject()));
+    if (this.playing) return;
     this.playing = true;
+    this.roundRobin = new RoundRobin(this.getProject().seed);
+    this.tracker = new VoiceTracker();
+    this.sampledVoices.clear();
     this.sched = new Scheduler({
       now: () => ctx.currentTime,
       bpm: () => this.getProject().bpm,
@@ -314,7 +439,8 @@ export class Engine {
         this.updateEffects();
         const stepLen = stepDuration(p.bpm, p.noteLength);
         for (const voice of compileStep(p, step, (steps) => stepLen * steps)) {
-          if (voice.kind === 'hit') this.play(voice.sound, time, voice.volume, voice.pan);
+          if (voice.sound.instrumentId) this.playSampled(voice, time + voice.offsetSec);
+          else if (voice.kind === 'hit') this.play(voice.sound, time, voice.volume, voice.pan);
           else {
             this.playPitch(voice.sound, voice.pitch, time + voice.offsetSec, voice.durationSec, voice.volume, voice.pan,
               voice.velocity, voice.pitchBend);

@@ -17,3 +17,8 @@ The sandbox clone tracks only `main`, so after a branch is pushed there is no `o
 
 ## UI rules
 Follow `skill.md` (layout rules) and keep on-screen text to labels and values, with no explanatory paragraphs. `plan.md` is the roadmap.
+
+## Sampled instruments
+- Bundled instruments go in `app/public/instruments/<id>/` with `manifest.json`, audio files and `LICENCE.txt`. Only redistributable licences (the repo is public); see `expansion.md` §5.
+- `npm test` validates every bundled manifest and checks the download budget. Regenerate the test instrument with `node scripts/make-test-instrument.mjs`.
+- Existing projects must keep rendering identically: compare WAV render hashes before and after any change to `performance.ts`, `render.ts` or `engine.ts`.

@@ -74,6 +74,7 @@ export function SoundPicker({
       : matches;
   }, [sounds, group, subgroup, favorites, recent, query]);
   const selectedUnavailable = !selected || unavailableSoundIds.has(soundId);
+  const selectedLoading = !selectedUnavailable && loadingSoundIds.has(soundId);
 
   useEffect(() => {
     if (!open) return;
@@ -166,12 +167,12 @@ export function SoundPicker({
 
   return (
     <>
-      <button className={`sound-picker-trigger${selectedUnavailable ? ' missing' : ''}`} aria-haspopup="dialog"
+      <button className={`sound-picker-trigger${selectedUnavailable ? ' missing' : ''}${selectedLoading ? ' loading' : ''}`} aria-haspopup="dialog"
         aria-expanded={open} aria-invalid={selectedUnavailable}
         aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
         onClick={() => { setGroup(''); setSubgroup(''); setQuery(''); setOpen(true); }}>
         {selectedUnavailable ? <Icon name="warning" className="inline-icon" /> : selectedFamily ? <Icon name={selectedFamily.icon} className={`family-icon family-${selectedFamily.className}`} /> : null}
-        {selectedUnavailable ? `${title} · Replace` : <>{title} <Icon name="chevron" className="inline-icon" /></>}
+        {selectedUnavailable ? `${title} · Replace` : <>{selectedLoading ? `${title} · Loading` : title} <Icon name="chevron" className="inline-icon" /></>}
       </button>
       {open && (
         <div className="sound-picker-backdrop" onMouseDown={(event) => {

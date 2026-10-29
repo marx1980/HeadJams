@@ -2,7 +2,7 @@
 // Usage: node scripts/make-test-instrument.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const dir = new URL('../src/test-fixtures/instruments/test-sine/', import.meta.url);
+const dir = new URL('../app/public/instruments/test-sine/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const rate = 22050;
 const seconds = 0.15;

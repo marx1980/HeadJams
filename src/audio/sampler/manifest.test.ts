@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { validateManifest, type InstrumentManifest } from './manifest';
 
-const dir = new URL('../../test-fixtures/instruments/test-sine/', import.meta.url);
+const dir = new URL('../../../app/public/instruments/test-sine/', import.meta.url);
 const fixture = JSON.parse(readFileSync(new URL('manifest.json', dir), 'utf8')) as InstrumentManifest;
 const files = new Set(readdirSync(dir));
 const clone = (): InstrumentManifest => JSON.parse(JSON.stringify(fixture)) as InstrumentManifest;

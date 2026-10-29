@@ -38,6 +38,12 @@ export interface SoundDef {
   assetSource?: 'procedural' | 'user-sample';
   assetAttribution?: string;
   assetLicense?: string;
+  /** Sampled instrument (manifest id under public/instruments). Takes precedence over params. */
+  instrumentId?: string;
+  /** MIDI note a grid hit plays on a sampled instrument (default 60). */
+  instrumentNote?: number;
+  /** Preferred articulation on a sampled instrument. */
+  instrumentArticulation?: string;
 }
 
 export interface Channel {
