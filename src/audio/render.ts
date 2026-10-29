@@ -1,10 +1,9 @@
-import {
-  arrangementLength, audibleChannels, channelsForPlaybackStep, totalSteps, type Project,
-} from '../model/project';
-import { findSound, renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
+import { arrangementLength, totalSteps, type Project } from '../model/project';
+import { renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration, stepDurationWithSwing } from './scheduler';
-import { guitarChordPitches, pitchToFrequency } from '../model/music';
+import { pitchToFrequency } from '../model/music';
+import { compileStep } from './performance';
 
 interface BiquadCoefficients {
   b0: number;
@@ -192,54 +191,32 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
   };
   for (let step = 0; step < songSteps; step++) {
     const start = stepStarts[step];
-    for (const source of channelsForPlaybackStep(p, step)) {
-      for (const c of audibleChannels({ ...p, channels: source.channels })) {
-        const def = findSound(p, c.soundId);
-        if (!def) continue;
-        const [gl, gr] = panGains(c.volume, c.pan);
-        if (c.steps[source.localStep]) {
-          let data = cache.get(def.id);
-          if (!data) {
-            const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
-            const audio = def.sampleVersion === 'original' ? sample?.originalSamples ?? sample?.samples : sample?.samples;
-            data = sample && audio
-              ? resampleSample(audio, sample.sampleRate, sr)
-              : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
-            cache.set(def.id, data);
-          }
-          mix(data, start, gl, gr);
+    for (const voice of compileStep(p, step, (steps) => steps * stepLen / sr)) {
+      const def = voice.sound;
+      const [gl, gr] = panGains(voice.volume, voice.pan);
+      if (voice.kind === 'hit') {
+        let data = cache.get(def.id);
+        if (!data) {
+          const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
+          const audio = def.sampleVersion === 'original' ? sample?.originalSamples ?? sample?.samples : sample?.samples;
+          data = sample && audio
+            ? resampleSample(audio, sample.sampleRate, sr)
+            : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
+          cache.set(def.id, data);
         }
-        for (const note of c.notes ?? []) {
-          if (note.step === source.localStep) {
-            const duration = note.durationSteps * stepLen / sr;
-            const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
-            if (sample) {
-              const audio = def.sampleVersion === 'original'
-                ? { ...sample, samples: sample.originalSamples ?? sample.samples }
-                : sample;
-              mix(renderSampleNote(audio, def.params.freq, note.pitch, duration, note.velocity, note.pitchBend), start, gl, gr);
-            }
-            else if (!def.sampleId) mix(renderPitchedNote(def.params, note.pitch, duration, note.velocity, sr, note.pitchBend), start, gl, gr);
-          }
+        mix(data, start, gl, gr);
+      } else if (voice.origin === 'note') {
+        const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
+        if (sample) {
+          const audio = def.sampleVersion === 'original'
+            ? { ...sample, samples: sample.originalSamples ?? sample.samples }
+            : sample;
+          mix(renderSampleNote(audio, def.params.freq, voice.pitch, voice.durationSec, voice.velocity, voice.pitchBend), start, gl, gr);
         }
-        if (def.playbackMode === 'chord') {
-          for (const event of c.chordEvents ?? []) {
-            if (event.step !== source.localStep) continue;
-            const pitches = guitarChordPitches(event.root, event.quality, event.articulation);
-            if (event.articulation === 'up-strum') pitches.reverse();
-            const duration = event.articulation === 'muted'
-              ? Math.min(0.08, event.durationSteps * stepLen / sr)
-              : event.durationSteps * stepLen / sr;
-            const velocity = (event.velocity ?? 1) * (event.articulation === 'muted' ? 0.75 : 1);
-            for (let index = 0; index < pitches.length; index++) {
-              const stagger = event.articulation === 'down-strum' || event.articulation === 'up-strum'
-                ? index * 0.018
-                : 0;
-              mix(renderPitchedNote(def.params, pitches[index], Math.max(0.01, duration - stagger), velocity, sr),
-                start + Math.round(stagger * sr), gl, gr);
-            }
-          }
-        }
+        else if (!def.sampleId) mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr, voice.pitchBend), start, gl, gr);
+      } else {
+        mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr),
+          start + Math.round(voice.offsetSec * sr), gl, gr);
       }
     }
   }

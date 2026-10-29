@@ -15,10 +15,11 @@ A PWA built with TypeScript, React and Vite, deployed to GitHub Pages by `.githu
 
 ## Audio today
 - The scheduler ticks every 25 ms and schedules grid steps 100 ms ahead, with swing.
-- On each step the engine plays steps, notes (pitch-shifted synth or sample) and chord events (voicing plus strum stagger) through a master chain: filter, 3-band EQ, delay, reverb.
-- WAV export re-implements the same logic in pure DSP inside a worker, which has no Web Audio.
+- On each step, `compileStep` (`src/audio/performance.ts`) turns grid hits, notes and chord events (voicing plus strum stagger) into voice events.
+- The live engine plays those voices (pitch-shifted synth or sample) through a master chain: filter, 3-band EQ, delay, reverb.
+- WAV export mixes the same voice events in pure DSP inside a worker, which has no Web Audio. Each side keeps its own step-length arithmetic, so exports are bit-identical to before the compiler existed.
 
-## Audio target (from `expansion.md` E0)
+## Audio target (`expansion.md` E1 onwards)
 ```text
 Project -> performance compiler (pure TS) -> VoiceEvent[]
              -> live engine (AudioBufferSource + envelopes)

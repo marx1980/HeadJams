@@ -135,6 +135,8 @@ export interface Project {
   effects: ProjectEffects;
   swingTemplate: SwingTemplate;
   recognitionTakes: RecognitionTake[];
+  /** Seed for reproducible humanisation and round-robin choices. */
+  seed: number;
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
@@ -180,6 +182,7 @@ export function createProject(name = 'Untitled'): Project {
     effects: { ...DEFAULT_EFFECTS },
     swingTemplate: 'straight',
     recognitionTakes: [],
+    seed: 1,
   };
 }
 
