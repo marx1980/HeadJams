@@ -33,7 +33,7 @@ import './styles.css';
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
-type HeaderMenu = 'file' | 'share' | 'settings' | 'help';
+type HeaderMenu = 'file' | 'settings' | 'help';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -55,6 +55,7 @@ export function App() {
   const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
   const [designer, setDesigner] = useState(false);
+  const [midiOpen, setMidiOpen] = useState(false);
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem(VIEW_KEY);
     return isView(saved) ? saved : 'beat';
@@ -303,32 +304,23 @@ export function App() {
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
         <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" />MusicMaker</h1>
-        <label>BPM
-          <input type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
-        </label>
+        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
+          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
+        </button>
         <div className="header-menus">
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
-          </div>
-          <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
           </div>
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
           </div>
           <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
         </div>
-        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
-          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
-        </button>
       </header>
             {openMenu === 'file' && (
               <HeaderTile label="File" onClose={closeMenu}>
-                <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
-              </HeaderTile>
-            )}
-            {openMenu === 'share' && (
-              <HeaderTile label="Export" onClose={closeMenu}>
+                              <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
+                <h3>Export</h3>
                 <label>WAV sample rate
                   <select aria-label="WAV sample rate" value={exportSampleRate}
                     onChange={(event) => setExportSampleRate(Number(event.target.value))}>
@@ -405,6 +397,9 @@ export function App() {
       <div className={`workspace view-${view}${openMenu ? ' covered' : ''}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
           <div className="row beat-options">
+            <label>BPM
+              <input id="bpm-input" type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
+            </label>
             <label>Note length
               <select id="note-length" value={project.noteLength} onChange={(e) => setProject(setNoteLength(project, Number(e.target.value) as NoteLength))}>
                 {NOTE_LENGTHS.map((n) => <option key={n} value={n}>1/{n}</option>)}
@@ -436,15 +431,6 @@ export function App() {
               </select>
             </label>
           </div>
-          <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
-            onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
-            onRecordingChange={onMidiRecordingChange} onMessage={onMidiMessage}
-            onConnected={() => emit('midi-connected')}
-            onReleaseAll={() => {
-              engine.stopLiveNotes();
-              if (midiRecordingRef.current) finishMidiRecording();
-              else midiActiveNotesRef.current.clear();
-            }} />
           <section className="channels">
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
@@ -502,6 +488,18 @@ export function App() {
             <button id="add-channel" disabled={project.channels.length >= MAX_CHANNELS}
               onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}><Icon name="add" className="inline-icon" /> Add channel</button>
           </div>
+          <details className="midi-details" open={midiOpen || !!tutorial || midiRecording} onToggle={(e) => setMidiOpen(e.currentTarget.open)}>
+            <summary>MIDI keyboard (optional)</summary>
+          <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
+            onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
+            onRecordingChange={onMidiRecordingChange} onMessage={onMidiMessage}
+            onConnected={() => emit('midi-connected')}
+            onReleaseAll={() => {
+              engine.stopLiveNotes();
+              if (midiRecordingRef.current) finishMidiRecording();
+              else midiActiveNotesRef.current.clear();
+            }} />
+          </details>
         </div>
 
         <div id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" className={`pane pane-sound${view === 'sound' ? ' active' : ''}`}>

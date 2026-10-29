@@ -124,7 +124,7 @@ export function MidiInput({
     }
     const request = (navigator as MidiNavigator).requestMIDIAccess;
     if (!request || !supportsMidiInput()) {
-      setError('MIDI input is not supported here. Use a Web MIDI browser (e.g. Chrome or Edge) over HTTPS, or the Android app.');
+      setError('MIDI input is not supported in this browser. Use Chrome, Edge or Opera on localhost or HTTPS, or the Android/iOS app. A MIDI keyboard is optional.');
       return;
     }
     setOpening(true);
@@ -156,7 +156,6 @@ export function MidiInput({
 
   return (
     <section className="panel midi-panel" aria-label="MIDI keyboard">
-      <h2>MIDI keyboard</h2>
       {!connected ? (
         <button id="midi-connect" className="secondary" disabled={opening} onClick={() => void enable()}>
           {opening ? 'Connecting…' : 'Connect MIDI keyboard'}

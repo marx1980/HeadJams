@@ -22,8 +22,8 @@ export interface TutorialStep {
   requires?: TutorialCapability[];
   /** Screen that must be showing for this step. */
   view?: View;
-  /** Open a header menu (File: Template/Save; Share: Export). */
-  menu?: 'file' | 'share';
+  /** Open a header menu (File: Save Project and Export). */
+  menu?: 'file';
   /** Switch the first channel to piano-roll mode. */
   pianoRoll?: boolean;
   /** CSS selector of the element to highlight ("tap here"). */
@@ -130,7 +130,7 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Save your project and download it as a WAV file.', features: ['save-export'], doneMessage: 'Saved and exported!',
     steps: [
       { text: 'Your work saves automatically. Tap Save Project to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
-      { menu: 'share', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
+      { menu: 'file', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {
@@ -156,7 +156,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'tempo-swing', title: 'Change tempo and swing', tab: 'beat', group: 'Mix & tempo', level: 'beginner', estMinutes: 1,
     summary: 'Speed up or slow down, and add a groove.', features: ['bpm', 'swing'], doneMessage: 'Tempo and groove set.',
     steps: [
-      { view: 'beat', text: 'Change the BPM (beats per minute). Higher is faster.', target: '.bar input[type=number]', done: (s) => s.project.bpm !== s.base.bpm },
+      { view: 'beat', text: 'Change the BPM (beats per minute). Higher is faster.', target: '#bpm-input', done: (s) => s.project.bpm !== s.base.bpm },
       { view: 'sound', text: 'Pick a swing template to make the rhythm bounce.', target: '[aria-label="Swing template"]', done: (s) => s.project.swingTemplate !== s.base.swingTemplate },
     ],
   },
@@ -292,8 +292,8 @@ export const TUTORIALS: Tutorial[] = [
     id: 'export-options', title: 'Choose export quality', tab: 'global', group: 'Export', level: 'intermediate', estMinutes: 1,
     summary: 'Sample rate, bit depth and normalization.', features: ['export-options'], doneMessage: 'Exported with your chosen settings.',
     steps: [
-      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: 'share', target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
-      { menu: 'share', text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
+      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: 'file', target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
+      { menu: 'file', text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {
