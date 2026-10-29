@@ -179,6 +179,7 @@ Hosting: GitHub Pages allows a published site of up to 1 GB and a soft 100 GB/mo
 
 ## 7. Decisions
 1. First guitar: **nylon** (decided 2026-10-30).
-2. CC-BY attribution in Settings › About for the Salamander piano: **open**, to be confirmed before E5.
+2. CC-BY attribution line in Settings › About for the Salamander piano: **accepted** (2026-10-30).
+   The repo stays public (decided 2026-10-30), so bundled samples must be redistributable.
 3. About 150 MB total download, fetched per instrument on demand: **accepted**.
 4. Personal guitar capture (E6) and recorded chords (E7): **kept as optional features**. Nothing in E0–E5 depends on you recording anything.
