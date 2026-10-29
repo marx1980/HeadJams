@@ -22,6 +22,17 @@ describe('project storage migration', () => {
     delete (globalThis as { localStorage?: Storage }).localStorage;
   });
 
+  it('gives projects without a seed a stable default and keeps an existing seed', () => {
+    const project = createProject() as Partial<ReturnType<typeof createProject>>;
+    delete project.seed;
+    values.set('musicmaker.project.v4', JSON.stringify(project));
+    expect(loadProject().seed).toBe(1);
+    values.set('musicmaker.project.v4', JSON.stringify({ ...createProject(), seed: 4242 }));
+    expect(loadProject().seed).toBe(4242);
+    values.set('musicmaker.project.v4', JSON.stringify({ ...createProject(), seed: -3 }));
+    expect(loadProject().seed).toBe(1);
+  });
+
   it('loads legacy v1 projects without changing sound and sample references', () => {
     const project = createProject();
     project.channels[0].soundId = 'legacy-custom-id';

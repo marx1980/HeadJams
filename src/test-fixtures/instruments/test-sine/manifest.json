@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "test-sine",
+  "name": "Test Sine",
+  "family": "other",
+  "version": 1,
+  "engine": "sampler",
+  "defaultArticulation": "sustain",
+  "maxPolyphony": 8,
+  "pitchShiftLimitSemitones": 6,
+  "preloadStrategy": "all",
+  "envelope": {
+    "mode": "one-shot",
+    "attackMs": 2,
+    "releaseMs": 30
+  },
+  "provenance": {
+    "source": "MusicMaker test fixture",
+    "url": "https://github.com/marx1980/MusicMaker/blob/main/scripts/make-test-instrument.mjs",
+    "creator": "MusicMaker contributors (generated)",
+    "licence": "CC0-1.0",
+    "obtained": "2026-10-30",
+    "redistribution": true,
+    "modification": true,
+    "processing": "Synthesised sine tones, 22.05 kHz 16-bit mono"
+  },
+  "regions": [
+    {
+      "id": "sine-48",
+      "file": "sine-48.wav",
+      "rootMidi": 48,
+      "lowMidi": 42,
+      "highMidi": 53,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain"
+    },
+    {
+      "id": "sine-60",
+      "file": "sine-60.wav",
+      "rootMidi": 60,
+      "lowMidi": 54,
+      "highMidi": 65,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain"
+    },
+    {
+      "id": "sine-72",
+      "file": "sine-72.wav",
+      "rootMidi": 72,
+      "lowMidi": 66,
+      "highMidi": 77,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain"
+    }
+  ]
+}

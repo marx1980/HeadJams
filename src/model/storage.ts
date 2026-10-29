@@ -190,6 +190,7 @@ function normalizeProject(raw: string): Project | undefined {
       effects: normalizeEffects(p.effects),
       swingTemplate: normalizeSwingTemplate(p.swingTemplate),
       recognitionTakes: normalizeRecognitionTakes(p.recognitionTakes),
+      seed: Number.isInteger(p.seed) && p.seed >= 0 ? p.seed : 1,
     };
   } catch { /* corrupt data: try the legacy key or fall back */ }
   return undefined;
