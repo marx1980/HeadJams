@@ -28,11 +28,10 @@ export function SampleLibrary({
   onImport: () => void;
   onEdit: () => void;
   onRecognitionEdit: () => void;
-  onLibraryAction: (event: 'library-search' | 'library-tag' | 'pad-view') => void;
+  onLibraryAction: (event: 'library-search' | 'library-tag') => void;
 }) {
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('');
-  const [padView, setPadView] = useState(false);
   const [channelId, setChannelId] = useState(channels[0]?.id ?? '');
 
   const availableTags = useMemo(() => [...new Set(sounds.flatMap((sound) => sound.tags ?? []))].sort(), [sounds]);
@@ -49,10 +48,6 @@ export function SampleLibrary({
     <section className="panel sample-library" aria-label="Sound library">
       <div className="library-heading">
         <h2>Sound library</h2>
-        <button id="pad-view" className="secondary" aria-pressed={padView} onClick={() => {
-          setPadView(!padView);
-          onLibraryAction('pad-view');
-        }}>{padView ? 'Library view' : 'Pad view'}</button>
       </div>
       <div className="library-filters">
         <label>Search sounds
@@ -62,11 +57,12 @@ export function SampleLibrary({
           }} placeholder="Name, category, or tag" />
         </label>
         <label>Tag
-          <select id="library-tag" value={tag} onChange={(event) => {
+          <select id="library-tag" value={tag} disabled={!availableTags.length}
+            title={availableTags.length ? undefined : 'No tags yet. Add tags when saving a sample.'} onChange={(event) => {
             setTag(event.target.value);
             if (event.target.value) onLibraryAction('library-tag');
           }}>
-            <option value="">All tags</option>
+            <option value="">{availableTags.length ? 'All tags' : 'No tags yet'}</option>
             {availableTags.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
         </label>
@@ -76,11 +72,11 @@ export function SampleLibrary({
           </select>
         </label>
       </div>
-      <div className={padView ? 'sound-list pads' : 'sound-list'}>
+      <div className="sound-list">
         {visibleSounds.map((sound) => (
           <div className="sound-card" key={sound.id}>
             <span className="sound-title">{sound.name}</span>
-            {!padView && <span className="sound-meta">{sound.category}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</span>}
+            <span className="sound-meta">{sound.category}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</span>
             <div className="sound-actions">
               <button aria-label={`Preview ${sound.name}`} onClick={() => onPreview(sound)}><Icon name="play" className="inline-icon" /></button>
               <button disabled={!channelId} onClick={() => onUse(sound.id, channelId)}>Use</button>

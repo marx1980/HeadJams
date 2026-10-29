@@ -33,7 +33,6 @@ import './styles.css';
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
-const UNLOCK_KEY = 'musicmaker.unlockedTabs';
 type HeaderMenu = 'file' | 'share' | 'settings' | 'help';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
@@ -61,7 +60,6 @@ export function App() {
     return isView(saved) ? saved : 'beat';
   });
   // Sound and Song tabs unlock after the first play (or immediately for returning users / "Show all").
-  const [unlocked, setUnlocked] = useState(() => localStorage.getItem(UNLOCK_KEY) === '1' || localStorage.getItem(SEEN_KEY) !== null);
   const [openMenu, setOpenMenu] = useState<HeaderMenu | null>(null);
   const closeMenu = useCallback(() => setOpenMenu(null), []);
   const toggleMenu = (m: HeaderMenu) => setOpenMenu((cur) => (cur === m ? null : m));
@@ -107,8 +105,6 @@ export function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
-  useEffect(() => { if (unlocked) localStorage.setItem(UNLOCK_KEY, '1'); }, [unlocked]);
-  useEffect(() => { if (events.has('play')) setUnlocked(true); }, [events]);
   useEffect(() => {
     if (!project.channels.some((channel) => channel.id === midiTargetChannelId)) {
       setMidiTargetChannelId(project.channels[0]?.id ?? '');
@@ -280,7 +276,6 @@ export function App() {
   };
 
   const goTab = (v: View) => {
-    if (v !== 'beat' && v !== 'library') setUnlocked(true);
     if (v !== 'beat' && prefs.hints && !tutorial && !localStorage.getItem(`musicmaker.nudge.${v}`)) {
       localStorage.setItem(`musicmaker.nudge.${v}`, '1');
       setNudge(v);
@@ -293,7 +288,7 @@ export function App() {
     const first = projectRef.current.channels[0];
     if (step.pianoRoll && first) setPianoChannels((s) => new Set(s).add(first.id));
   };
-  const visibleTabs = TABS.filter((t) => unlocked || t.id === 'beat' || t.id === 'library' || t.id === view);
+  const visibleTabs = TABS;
   const onTabKey = (e: React.KeyboardEvent) => {
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!dir) return;
@@ -329,13 +324,7 @@ export function App() {
       </header>
             {openMenu === 'file' && (
               <HeaderTile label="File" onClose={closeMenu}>
-                <label>Template
-                  <select value="" onChange={(e) => { loadTemplate(e.target.value); closeMenu(); }}>
-                    <option value="" disabled>Choose…</option>
-                    {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                </label>
-                <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save</button>
+                <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
               </HeaderTile>
             )}
             {openMenu === 'share' && (
@@ -371,8 +360,6 @@ export function App() {
                 <h3>Interface</h3>
                 <label className="check-label"><input type="checkbox" checked={prefs.largeIcons}
                   onChange={(e) => updatePrefs({ largeIcons: e.target.checked })} /> Larger icons</label>
-                <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
-                  onChange={() => setUnlocked(true)} /> Show all tabs</label>
                 <label className="check-label"><input type="checkbox" checked={prefs.reduceMotion}
                   onChange={(e) => updatePrefs({ reduceMotion: e.target.checked })} /> Reduce motion</label>
                 <h3>Tutorials</h3>
@@ -442,6 +429,12 @@ export function App() {
               </select>
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
+            <label>Template
+              <select id="template-select" value="" onChange={(e) => loadTemplate(e.target.value)}>
+                <option value="" disabled>Choose…</option>
+                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </label>
           </div>
           <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
             onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
