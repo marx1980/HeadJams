@@ -165,6 +165,15 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .strip > :is(button, input, select) { box-sizing: border-box; height: 40px; min-height: 40px; }
 .strip > label > input { box-sizing: border-box; height: 40px; min-height: 40px; }
 .strip > input[type='range'] { padding: 0; margin: 0; }
+.strip > .generated-track-badge { flex: 1 1 100%; }
+.strip .sound-picker-trigger { min-width: 0; }
+@media (max-width: 640px) {
+  .strip > label, .strip > .generated-track-badge { flex: 1 1 100%; }
+  .strip .sound-picker-trigger { flex: 1 1 calc(100% - 150px); max-width: none; }
+  .strip > button { flex: none; min-width: 44px; }
+  .strip > input[type='range'] { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  .strip > button.secondary[aria-label^='Show'], .strip > button.secondary[aria-label^='Hide'] { flex: 1 1 0; min-width: 0; }
+}
 .bar-row { display: grid; gap: 3px; margin-bottom: 3px; }
 .step { min-height: 40px; padding: 0; background: var(--surface-muted); border-radius: var(--control-radius); }
 .step.group { background: color-mix(in srgb, var(--surface-muted) 70%, var(--border)); }

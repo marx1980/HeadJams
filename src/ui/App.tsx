@@ -458,9 +458,9 @@ export function App() {
                     preview(sound, c.volume);
                     emit('sound-change');
                   }} />
-                <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}><Icon name="audio" className="inline-icon" /></button>
-                <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
+                <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
+                <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}><Icon name="audio" className="inline-icon" /></button>
                 <input type="range" aria-label={`Volume ${c.name}`} min={0} max={1} step={0.05} value={c.volume}
                   onChange={(e) => setProject(updateChannel(project, c.id, { volume: Number(e.target.value) }))} />
                 <input type="range" aria-label={`Pan ${c.name}`} min={-1} max={1} step={0.1} value={c.pan}
