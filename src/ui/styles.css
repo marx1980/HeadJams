@@ -314,7 +314,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .bar h1.app-brand { flex: 1; }
 .midi-details { margin: 12px 0; }
 .midi-details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-.beat-options input[type='number'] { width: 90px; box-sizing: border-box; }
+.beat-options input[type='number'] { width: 90px; }
 .header-menus .help-btn { margin-left: 0; }
 .icon-btn { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; }
 .icon-btn svg { width: 28px; height: 28px; }
@@ -336,7 +336,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .pane.active { display: block; }
 .pitch-time-controls summary { cursor: pointer; font-weight: 700; margin-bottom: 6px; }
 .piano-editor { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
-.beat-options { align-items: end; }
+.beat-options { --option-control-height: 40px; align-items: end; }
+.beat-options :is(select, input, button) { box-sizing: border-box; flex: none; height: var(--option-control-height); min-height: var(--option-control-height); padding-top: 0; padding-bottom: 0; font-size: 0.875rem; line-height: 1.2; }
 @media (max-width: 640px) {
   .tabs { position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0; padding: 8px max(18px, env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); border-top: 1px solid var(--border); background: var(--surface); z-index: 9; }
   .app { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
