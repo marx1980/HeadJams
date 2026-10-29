@@ -306,9 +306,6 @@ export function App() {
       <header className="bar">
         <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" /><img className="app-wordmark" src={`${import.meta.env.BASE_URL}wordmark.svg`} alt="MusicMaker" /></h1>
         <div className="header-menus">
-          <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
-          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
-        </button>
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
           </div>
@@ -316,6 +313,9 @@ export function App() {
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
           </div>
           <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
+          <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
+            <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
+          </button>
         </div>
       </header>
             {openMenu === 'file' && (
