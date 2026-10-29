@@ -142,6 +142,7 @@ Problems: the "..." (Project) menu still opens partly off-screen; it is one long
 - Done in code: shared `Popover` (viewport clamp/flip/scroll, bottom sheet ≤640px, outside click/Escape); File, Share, View, Settings (gear) and Help icon buttons; inline skins; persisted export defaults; tutorial steps target the right menu; icon-over-label tab bar with safe-area padding and `viewport-fit=cover`.
 - Done: redesigned bass, guitar and strings icons (violin with bow) with more detail; all family, tab and header icons enlarged (plus a "Larger icons" setting); Settings groups: Skins, Export defaults, Interface (larger icons, reduce motion), Tutorials (first-visit hints, reset), Audio and MIDI (remembered input), Data and privacy (clear samples, reset app data).
 - Done: remaining family icons (drums, percussion, keys, brass/winds, synth, and FX) refined to match the detail level of bass, guitar, and strings.
+- Done (layout pass): Play moved to the app icon/name row; File and Share merged into one File tile (Save Project + Export); Template moved next to Apply kit and BPM into the Beat options row; MIDI moved to a collapsible section at the bottom of Beat with clearer unsupported-browser text; "Show all tabs" removed (tabs always shown); Library pad view removed, tiles smaller with Play and Use on one row, Tag filter disabled when no tags exist.
 - Not done yet: rendered screenshot review across all eight skins and small screens, plus testing on a real device.
 
 ## Decisions / Important Context

@@ -28,13 +28,13 @@ import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY } from '
 import { HeaderTile } from './Popover';
 import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
+import '@fontsource/exo-2/700.css';
 import './styles.css';
 
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
-const UNLOCK_KEY = 'musicmaker.unlockedTabs';
-type HeaderMenu = 'file' | 'share' | 'settings' | 'help';
+type HeaderMenu = 'file' | 'settings' | 'help';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -56,12 +56,12 @@ export function App() {
   const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
   const [designer, setDesigner] = useState(false);
+  const [midiOpen, setMidiOpen] = useState(false);
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem(VIEW_KEY);
     return isView(saved) ? saved : 'beat';
   });
   // Sound and Song tabs unlock after the first play (or immediately for returning users / "Show all").
-  const [unlocked, setUnlocked] = useState(() => localStorage.getItem(UNLOCK_KEY) === '1' || localStorage.getItem(SEEN_KEY) !== null);
   const [openMenu, setOpenMenu] = useState<HeaderMenu | null>(null);
   const closeMenu = useCallback(() => setOpenMenu(null), []);
   const toggleMenu = (m: HeaderMenu) => setOpenMenu((cur) => (cur === m ? null : m));
@@ -107,8 +107,6 @@ export function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
-  useEffect(() => { if (unlocked) localStorage.setItem(UNLOCK_KEY, '1'); }, [unlocked]);
-  useEffect(() => { if (events.has('play')) setUnlocked(true); }, [events]);
   useEffect(() => {
     if (!project.channels.some((channel) => channel.id === midiTargetChannelId)) {
       setMidiTargetChannelId(project.channels[0]?.id ?? '');
@@ -280,7 +278,6 @@ export function App() {
   };
 
   const goTab = (v: View) => {
-    if (v !== 'beat' && v !== 'library') setUnlocked(true);
     if (v !== 'beat' && prefs.hints && !tutorial && !localStorage.getItem(`musicmaker.nudge.${v}`)) {
       localStorage.setItem(`musicmaker.nudge.${v}`, '1');
       setNudge(v);
@@ -293,7 +290,7 @@ export function App() {
     const first = projectRef.current.channels[0];
     if (step.pianoRoll && first) setPianoChannels((s) => new Set(s).add(first.id));
   };
-  const visibleTabs = TABS.filter((t) => unlocked || t.id === 'beat' || t.id === 'library' || t.id === view);
+  const visibleTabs = TABS;
   const onTabKey = (e: React.KeyboardEvent) => {
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!dir) return;
@@ -308,38 +305,23 @@ export function App() {
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
         <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" />MusicMaker</h1>
-        <label>BPM
-          <input type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
-        </label>
+        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
+          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
+        </button>
         <div className="header-menus">
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
-          </div>
-          <div className="project-menu">
-            <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'share'} aria-label="Share and export menu" title="Share / Export" onClick={() => toggleMenu('share')}><Icon name="share" /></button>
           </div>
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
           </div>
           <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
         </div>
-        <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
-          <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
-        </button>
       </header>
             {openMenu === 'file' && (
               <HeaderTile label="File" onClose={closeMenu}>
-                <label>Template
-                  <select value="" onChange={(e) => { loadTemplate(e.target.value); closeMenu(); }}>
-                    <option value="" disabled>Choose…</option>
-                    {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
-                </label>
-                <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save</button>
-              </HeaderTile>
-            )}
-            {openMenu === 'share' && (
-              <HeaderTile label="Export" onClose={closeMenu}>
+                              <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
+                <h3>Export</h3>
                 <label>WAV sample rate
                   <select aria-label="WAV sample rate" value={exportSampleRate}
                     onChange={(event) => setExportSampleRate(Number(event.target.value))}>
@@ -371,8 +353,6 @@ export function App() {
                 <h3>Interface</h3>
                 <label className="check-label"><input type="checkbox" checked={prefs.largeIcons}
                   onChange={(e) => updatePrefs({ largeIcons: e.target.checked })} /> Larger icons</label>
-                <label className="check-label"><input type="checkbox" checked={unlocked} disabled={unlocked}
-                  onChange={() => setUnlocked(true)} /> Show all tabs</label>
                 <label className="check-label"><input type="checkbox" checked={prefs.reduceMotion}
                   onChange={(e) => updatePrefs({ reduceMotion: e.target.checked })} /> Reduce motion</label>
                 <h3>Tutorials</h3>
@@ -418,6 +398,9 @@ export function App() {
       <div className={`workspace view-${view}${openMenu ? ' covered' : ''}`}>
         <div id="pane-beat" role="tabpanel" aria-labelledby="tab-beat" className={`pane pane-beat${view === 'beat' ? ' active' : ''}`}>
           <div className="row beat-options">
+            <label>BPM
+              <input id="bpm-input" type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
+            </label>
             <label>Note length
               <select id="note-length" value={project.noteLength} onChange={(e) => setProject(setNoteLength(project, Number(e.target.value) as NoteLength))}>
                 {NOTE_LENGTHS.map((n) => <option key={n} value={n}>1/{n}</option>)}
@@ -442,16 +425,13 @@ export function App() {
               </select>
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
+            <label>Template
+              <select id="template-select" value="" onChange={(e) => loadTemplate(e.target.value)}>
+                <option value="" disabled>Choose…</option>
+                {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </label>
           </div>
-          <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
-            onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
-            onRecordingChange={onMidiRecordingChange} onMessage={onMidiMessage}
-            onConnected={() => emit('midi-connected')}
-            onReleaseAll={() => {
-              engine.stopLiveNotes();
-              if (midiRecordingRef.current) finishMidiRecording();
-              else midiActiveNotesRef.current.clear();
-            }} />
           <section className="channels">
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
@@ -509,6 +489,18 @@ export function App() {
             <button id="add-channel" disabled={project.channels.length >= MAX_CHANNELS}
               onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}><Icon name="add" className="inline-icon" /> Add channel</button>
           </div>
+          <details className="midi-details" open={midiOpen || !!tutorial || midiRecording} onToggle={(e) => setMidiOpen(e.currentTarget.open)}>
+            <summary>MIDI keyboard (optional)</summary>
+          <MidiInput channels={project.channels} targetChannelId={midiTargetChannelId}
+            onTargetChannelChange={setMidiTargetChannelId} recording={midiRecording}
+            onRecordingChange={onMidiRecordingChange} onMessage={onMidiMessage}
+            onConnected={() => emit('midi-connected')}
+            onReleaseAll={() => {
+              engine.stopLiveNotes();
+              if (midiRecordingRef.current) finishMidiRecording();
+              else midiActiveNotesRef.current.clear();
+            }} />
+          </details>
         </div>
 
         <div id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" className={`pane pane-sound${view === 'sound' ? ' active' : ''}`}>

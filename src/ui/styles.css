@@ -141,7 +141,7 @@ body { margin: 0; background: var(--app-bg); color: var(--text); }
 .app { max-width: 1000px; margin: 0 auto; padding: 12px 12px 140px; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .bar h1 { font-size: 1.3rem; margin: 0 8px 0 0; align-self: center; }
-.bar h1.app-brand { display: flex; align-items: center; gap: 8px; }
+.bar h1.app-brand { font-family: 'Exo 2', system-ui, sans-serif; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .app-logo { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
 .inline-icon { display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: middle; }
 .is-favorite { color: var(--warning); fill: currentColor; }
@@ -173,12 +173,11 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .library-heading { justify-content: space-between; }
 .library-heading h2, .sample-editor h3 { margin: 0; }
 .library-filters { align-items: end; }
-.sound-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 360px; overflow: auto; }
-.sound-list.pads { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
-.sound-card { display: flex; flex-direction: column; gap: 5px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--control-radius); padding: 8px; }
+.sound-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 360px; overflow: auto; }
+.sound-card { display: flex; flex-direction: column; gap: 3px; font-size: .85rem; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--control-radius); padding: 5px 7px; }
 .sound-title { font-weight: 650; }
 .sound-meta { font-size: 0.75rem; opacity: 0.7; }
-.sound-actions { margin-top: auto; }
+.sound-actions { margin-top: auto; flex-wrap: nowrap; }
 .sound-actions button { min-height: 34px; }
 .sound-picker-trigger { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sound-picker-trigger.missing { border-color: var(--danger); color: var(--danger); }
@@ -308,7 +307,11 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 }
 .bar { position: sticky; top: 0; z-index: 5; background: var(--app-bg); padding: 6px 0; }
 .project-menu { position: relative; }
-.header-menus { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+.header-menus { display: flex; gap: 6px; order: 3; flex-basis: 100%; align-items: center; }
+.bar h1.app-brand { flex: 1; }
+.midi-details { margin: 12px 0; }
+.midi-details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.beat-options input[type='number'] { width: 90px; box-sizing: border-box; }
 .header-menus .help-btn { margin-left: 0; }
 .icon-btn { width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; }
 .icon-btn svg { width: 28px; height: 28px; }

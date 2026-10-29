@@ -22,8 +22,8 @@ export interface TutorialStep {
   requires?: TutorialCapability[];
   /** Screen that must be showing for this step. */
   view?: View;
-  /** Open a header menu (File: Template/Save; Share: Export). */
-  menu?: 'file' | 'share';
+  /** Open a header menu (File: Save Project and Export). */
+  menu?: 'file';
   /** Switch the first channel to piano-roll mode. */
   pianoRoll?: boolean;
   /** CSS selector of the element to highlight ("tap here"). */
@@ -85,7 +85,7 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'timeline', label: 'Arrangement timeline' }, { id: 'arrangement-assist', label: 'Arrangement assistance' },
   { id: 'export-options', label: 'Export options' }, { id: 'privacy-offline', label: 'Privacy and offline use' },
   { id: 'confidence-cues', label: 'Confidence and source-take cues' }, { id: 'keyboard-navigation', label: 'Keyboard navigation' },
-  { id: 'library-tools', label: 'Pad view, search and tags' },
+  { id: 'library-tools', label: 'Search and tags' },
   { id: 'midi-keyboard', label: 'MIDI keyboard input' },
 ];
 
@@ -129,8 +129,8 @@ export const TUTORIALS: Tutorial[] = [
     id: 'save-export', title: '5. Save and export', tab: 'global', group: 'Export', level: 'beginner', estMinutes: 1,
     summary: 'Save your project and download it as a WAV file.', features: ['save-export'], doneMessage: 'Saved and exported!',
     steps: [
-      { text: 'Your work saves automatically. Tap Save to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
-      { menu: 'share', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
+      { text: 'Your work saves automatically. Tap Save Project to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
+      { menu: 'file', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {
@@ -156,7 +156,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'tempo-swing', title: 'Change tempo and swing', tab: 'beat', group: 'Mix & tempo', level: 'beginner', estMinutes: 1,
     summary: 'Speed up or slow down, and add a groove.', features: ['bpm', 'swing'], doneMessage: 'Tempo and groove set.',
     steps: [
-      { view: 'beat', text: 'Change the BPM (beats per minute). Higher is faster.', target: '.bar input[type=number]', done: (s) => s.project.bpm !== s.base.bpm },
+      { view: 'beat', text: 'Change the BPM (beats per minute). Higher is faster.', target: '#bpm-input', done: (s) => s.project.bpm !== s.base.bpm },
       { view: 'sound', text: 'Pick a swing template to make the rhythm bounce.', target: '[aria-label="Swing template"]', done: (s) => s.project.swingTemplate !== s.base.swingTemplate },
     ],
   },
@@ -173,7 +173,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'templates', title: 'Start from a template', tab: 'beat', group: 'Mix & tempo', level: 'beginner', estMinutes: 1,
     summary: 'Load a ready-made beat.', features: ['templates'], doneMessage: 'Templates are a quick way to start.',
     steps: [
-      { menu: 'file', text: 'Open the Template menu and choose one (this replaces your beat, after asking).', target: '.header-tile select', done: (s) => s.events.has('template') },
+      { text: 'Open the Template menu next to Apply kit and choose one (this replaces your beat, after asking).', target: '#template-select', done: (s) => s.events.has('template') },
       { text: 'Press Play to hear it.', target: '#play-btn', done: (s) => s.events.has('play') },
     ],
   },
@@ -233,7 +233,7 @@ export const TUTORIALS: Tutorial[] = [
     steps: [
       { view: 'library', text: 'Choose an audio file to import. It opens in the editor so you can preview or trim it.', target: '.sample-editor input[type="file"]', fallback: 'Choose an audio file in the Sample Editor to begin.', done: (s) => s.events.has('sample-imported') },
       { view: 'library', text: 'Save it so it appears in the library.', target: '#save-sample', done: (s) => s.events.has('sample-saved') },
-      info('Use search and tags to find sounds, and switch to Pad view to play them.', { target: '.sample-library' }),
+      info('Use search and tags to find sounds, and press Use to put a sound on a channel.', { target: '.sample-library' }),
     ],
   },
   {
@@ -292,8 +292,8 @@ export const TUTORIALS: Tutorial[] = [
     id: 'export-options', title: 'Choose export quality', tab: 'global', group: 'Export', level: 'intermediate', estMinutes: 1,
     summary: 'Sample rate, bit depth and normalization.', features: ['export-options'], doneMessage: 'Exported with your chosen settings.',
     steps: [
-      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: 'share', target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
-      { menu: 'share', text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
+      info('Pick a sample rate (44.1, 48 or 96 kHz), 16- or 24-bit, and optional normalization.', { menu: 'file', target: '[aria-label="WAV sample rate"], [aria-label="WAV bit depth"]' }),
+      { menu: 'file', text: 'Tap Export WAV.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },
   {
@@ -321,12 +321,11 @@ export const TUTORIALS: Tutorial[] = [
     ],
   },
   {
-    id: 'library-tools', title: 'Search, tag and play library sounds', tab: 'library', group: 'Library tools', level: 'beginner', estMinutes: 1,
-    summary: 'Find sounds by name or tag and use the pad layout.', features: ['library-tools'], doneMessage: 'You can quickly find and audition library sounds.',
+    id: 'library-tools', title: 'Search, tag and use library sounds', tab: 'library', group: 'Library tools', level: 'beginner', estMinutes: 1,
+    summary: 'Find sounds by name or tag and use them on a channel.', features: ['library-tools'], doneMessage: 'You can quickly find and audition library sounds.',
     steps: [
       { view: 'library', text: 'Search by sound name, category or tag.', target: '#library-search', done: (s) => s.events.has('library-search') },
       { view: 'library', text: 'Filter by a tag to narrow the results.', target: '#library-tag', done: (s) => s.events.has('library-tag') },
-      { view: 'library', text: 'Switch to Pad view to audition sounds in a larger layout.', target: '#pad-view', done: (s) => s.events.has('pad-view') },
     ],
   },
   {
