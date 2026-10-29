@@ -224,14 +224,8 @@ export function RecognitionPanel({
 
   return (
     <section className="panel recognition-panel" aria-label="Audio recognition">
-      <h3>Turn a recording into tracks</h3>
-      <p className="hint">Recognition runs on this device. Save an imported or recorded sample in the editor first.</p>
       <div className="recognition-controls">
-        <label>Project tempo
-          <input aria-label="Recognition tempo" type="number" min={40} max={200} value={project.bpm}
-            onChange={(event) => onBpmChange(Number(event.target.value))} />
-        </label>
-        <label>Recording
+        <label className="wide">Recording
           <select aria-label="Recording to recognize" value={sampleId} onChange={(event) => setSampleId(event.target.value)}>
             <option value="">Choose a saved sample…</option>
             {availableSamples.map((item) => (
@@ -247,9 +241,9 @@ export function RecognitionPanel({
             {MODES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
-        <label className="check-label">
-          <input type="checkbox" checked={useCleaned} onChange={(event) => setUseCleaned(event.target.checked)} />
-          Use cleaned audio
+        <label>Project tempo
+          <input aria-label="Recognition tempo" type="number" min={40} max={200} value={project.bpm}
+            onChange={(event) => onBpmChange(Number(event.target.value))} />
         </label>
         <label>Timing correction
           <select aria-label="Timing correction" value={!enabled ? 'off' : strength < 0.45 ? 'light' : strength < 0.85 ? 'medium' : 'strong'}
@@ -263,11 +257,6 @@ export function RecognitionPanel({
             <option value="medium">Medium</option>
             <option value="strong">Strong</option>
           </select>
-        </label>
-        <label>Custom strength
-          <input aria-label="Quantisation strength" type="range" min={0} max={1} step={0.05} value={strength}
-            disabled={!enabled} onChange={(event) => setStrength(Number(event.target.value))} />
-          <output>{Math.round(strength * 100)}%</output>
         </label>
         <label>Grid
           <select aria-label="Quantisation grid" value={subdivision}
@@ -295,13 +284,22 @@ export function RecognitionPanel({
             Snap to project scale
           </label>
         </>}
+        <label className="wide">Custom strength
+          <input aria-label="Quantisation strength" type="range" min={0} max={1} step={0.05} value={strength}
+            disabled={!enabled} onChange={(event) => setStrength(Number(event.target.value))} />
+          <output>{Math.round(strength * 100)}%</output>
+        </label>
+        <label className="check-label">
+          <input type="checkbox" checked={useCleaned} onChange={(event) => setUseCleaned(event.target.checked)} />
+          Use cleaned audio
+        </label>
         <label className="check-label">
           <input type="checkbox" checked={replaceResult} onChange={(event) => setReplaceResult(event.target.checked)} />
           Replace selected track result
         </label>
       </div>
       <div className="row">
-        <button disabled={!sample || Boolean(progress)} onClick={() => void runRecognition()}>
+        <button className="wide" disabled={!sample || Boolean(progress)} onClick={() => void runRecognition()}>
           {progress ? 'Recognizing…' : `Recognize ${MODES.find((item) => item.value === mode)?.label}`}
         </button>
         {progress && <button className="secondary" onClick={cancel}>Cancel</button>}
@@ -400,7 +398,6 @@ export function RecognitionPanel({
               ) : null)}
             </>
           )}
-          <p className="hint">The original recording and detected events are retained; generated tracks can be edited in Beat or Song.</p>
         </div>
       )}
     </section>

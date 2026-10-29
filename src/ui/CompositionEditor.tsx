@@ -399,11 +399,10 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               );
             })}
           </div>
-        ) : <p className="hint">Add patterns to build a song timeline. Without clips, playback loops the selected pattern.</p>}
+        ) : null}
       </div>
       <section className="arrangement-assistant" aria-label="Arrangement assistance">
         <h3>Arrangement assistance</h3>
-        <p className="hint">Suggestions use one melody track and never change it. Preview and add them as a separate editable track.</p>
         <div className="arrangement-assistant-controls">
           <label>Melody source
             <select aria-label="Melody source" value={sourceChannel?.id ?? ''}
@@ -479,7 +478,6 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
         )}
         <div className="bass-assistant">
           <h4>Bass generation</h4>
-          <p className="hint">Preview a bass line from your reviewed chord suggestions or the selected melody. The source track stays unchanged.</p>
           <div className="arrangement-assistant-controls">
             <label>Bass follows
               <select aria-label="Bass follows" value={bassMode}
@@ -492,9 +490,6 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               disabled={!sourceChannel || (bassMode === 'chords' ? !suggestions?.length : !inputNotes.length)}
               onClick={generateBassPreview}>Preview bass line</button>
           </div>
-          {bassMode === 'chords' && !suggestions?.length
-            ? <p className="hint">Suggest and review chords above before generating a chord-following bass line.</p>
-            : null}
           {bassPreview && (
             <>
               <p className="hint" aria-live="polite">
@@ -533,7 +528,6 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
         </div>
         <div className="bass-assistant">
           <h4>Harmony and accompaniment</h4>
-          <p className="hint">Generate a scale-aware harmony from the selected melody, or a rhythmic accompaniment from reviewed chords.</p>
           <div className="arrangement-assistant-controls">
             <label>Generate
               <select aria-label="Arrangement part" value={arrangementMode}
@@ -557,9 +551,6 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
               disabled={!sourceChannel || (arrangementMode === 'harmony' ? !inputNotes.length : !suggestions?.length)}
               onClick={generateArrangementPreview}>Preview {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'}</button>
           </div>
-          {arrangementMode === 'accompaniment' && !suggestions?.length
-            ? <p className="hint">Suggest and review chords above before generating an accompaniment.</p>
-            : null}
           {arrangementPreview && (
             <>
               <p className="hint" aria-live="polite">

@@ -506,13 +506,13 @@ export function App() {
         <div id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" className={`pane pane-sound${view === 'sound' ? ' active' : ''}`}>
           <section className="panel effects-panel" aria-label="Sound shaping">
             <h2>Sound shaping</h2>
-            <label>Swing
-              <select aria-label="Swing template" value={project.swingTemplate}
-                onChange={(e) => setProject(setSwingTemplate(project, e.target.value as Project['swingTemplate']))}>
-                {SWING_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}
-              </select>
-            </label>
         <div className="effect-controls">
+          <label>Swing
+            <select aria-label="Swing template" value={project.swingTemplate}
+              onChange={(e) => setProject(setSwingTemplate(project, e.target.value as Project['swingTemplate']))}>
+              {SWING_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}
+            </select>
+          </label>
           <label>Reverb
             <input aria-label="Reverb" type="range" min={0} max={1} step={0.05} value={project.effects.reverb}
               onChange={(e) => setProject(setEffects(project, { reverb: Number(e.target.value) }))} />

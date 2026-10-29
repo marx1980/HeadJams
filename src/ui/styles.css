@@ -400,3 +400,41 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 
 .icon-btn[aria-expanded='true'] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-contrast) inset; }
 .covered { display: none !important; }
+
+/* Library, Song and Sound layout: two-column grids, 40px controls */
+.wide { grid-column: 1 / -1; flex: 1 1 100%; }
+.library-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+.library-filters label { min-width: 0; }
+.library-filters :is(input, select) { width: 100%; box-sizing: border-box; height: 40px; }
+.library-section { border-top: 1px solid var(--border); padding-top: 4px; margin-top: 8px; }
+.library-section > summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; min-height: 40px; display: flex; align-items: center; }
+.library-section .panel { border: 0; padding: 0; margin: 0; box-shadow: none; background: none; }
+.library-section .sample-editor, .library-section .recognition-panel { border-top: 0; padding-top: 0; }
+.sound-group > summary { cursor: pointer; font-weight: 650; min-height: 40px; display: flex; align-items: center; gap: 8px; }
+.sound-group .count { opacity: 0.6; font-weight: 400; font-size: 0.8rem; }
+.sound-list { max-height: none; overflow: visible; }
+.sound-card { flex-direction: row; align-items: stretch; justify-content: space-between; gap: 6px; padding: 4px 6px; }
+.sound-text { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; flex: 1; }
+.sound-title { line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sound-actions { flex-direction: column; align-items: stretch; margin-top: 0; gap: 4px; flex: none; width: 56px; }
+.sound-actions button { min-height: 32px; height: 32px; padding: 0 6px; }
+.record-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; margin: 0; }
+.record-controls > label:first-child, .record-controls > #record-sample, .record-controls .recording-position { grid-column: 1 / -1; }
+.record-controls > label { min-width: 0; }
+.record-controls input[type='file'] { width: 100%; height: 40px; box-sizing: border-box; padding: 0 6px; }
+.record-controls input[type='file']::file-selector-button { height: 28px; border: 0; border-radius: 6px; background: var(--surface-muted); color: var(--text); padding: 0 10px; margin-right: 8px; font: inherit; }
+.record-controls :is(button, select) { width: 100%; box-sizing: border-box; height: 40px; min-height: 40px; }
+.record-controls .check-label { min-height: 40px; }
+.recognition-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+.recognition-controls label { min-width: 0; }
+.recognition-controls :is(select, input:not([type='range']):not([type='checkbox'])) { width: 100%; box-sizing: border-box; height: 40px; }
+.recognition-controls .check-label { min-height: 40px; }
+.recognition-panel > .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.recognition-panel > .row button { min-height: 40px; flex: 1 1 auto; }
+.arrangement-assistant-controls { align-items: end; }
+.arrangement-assistant-controls label { flex: 1 1 230px; min-width: 0; }
+.arrangement-assistant-controls select { width: 100%; box-sizing: border-box; height: 40px; }
+.arrangement-assistant-controls > button { flex: 1 1 auto; height: 40px; }
+.effect-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.effect-controls label { min-width: 0; }
+.effect-controls select { width: 100%; box-sizing: border-box; height: 40px; }
