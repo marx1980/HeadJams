@@ -7,6 +7,8 @@ import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
 
+const SECTION = { name: 'library-section' } as Record<string, string>;
+
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
   onRecordStart, onRecordStop, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onLibraryAction,
@@ -40,6 +42,13 @@ export function SampleLibrary({
     return text.includes(query.toLowerCase()) && (!tag || sound.tags?.includes(tag));
   }), [sounds, query, tag]);
 
+  const filtering = Boolean(query.trim() || tag);
+  const groups = useMemo(() => {
+    const byCategory = new Map<string, typeof visibleSounds>();
+    for (const sound of visibleSounds) byCategory.set(sound.category, [...(byCategory.get(sound.category) ?? []), sound]);
+    return [...byCategory];
+  }, [visibleSounds]);
+
   useEffect(() => {
     if (!channels.some((channel) => channel.id === channelId)) setChannelId(channels[0]?.id ?? '');
   }, [channels, channelId]);
@@ -49,42 +58,56 @@ export function SampleLibrary({
       <div className="library-heading">
         <h2>Sound library</h2>
       </div>
-      <div className="library-filters">
-        <label>Search sounds
-          <input id="library-search" type="search" value={query} onChange={(event) => {
-            setQuery(event.target.value);
-            if (event.target.value.trim()) onLibraryAction('library-search');
-          }} placeholder="Name, category, or tag" />
-        </label>
-        <label>Tag
-          <select id="library-tag" value={tag} disabled={!availableTags.length}
-            title={availableTags.length ? undefined : 'No tags yet. Add tags when saving a sample.'} onChange={(event) => {
-            setTag(event.target.value);
-            if (event.target.value) onLibraryAction('library-tag');
-          }}>
-            <option value="">{availableTags.length ? 'All tags' : 'No tags yet'}</option>
-            {availableTags.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
-        </label>
-        <label>Use on channel
-          <select value={channelId} onChange={(event) => setChannelId(event.target.value)} disabled={!channels.length}>
-            {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="sound-list">
-        {visibleSounds.map((sound) => (
-          <div className="sound-card" key={sound.id}>
-            <span className="sound-title">{sound.name}</span>
-            <span className="sound-meta">{sound.category}{sound.tags?.length ? ` · ${sound.tags.join(', ')}` : ''}</span>
-            <div className="sound-actions">
-              <button aria-label={`Preview ${sound.name}`} onClick={() => onPreview(sound)}><Icon name="play" className="inline-icon" /></button>
-              <button disabled={!channelId} onClick={() => onUse(sound.id, channelId)}>Use</button>
-            </div>
-          </div>
-        ))}
-        {!visibleSounds.length && <p className="hint">No sounds match your search.</p>}
-      </div>
+      <details className="library-section" {...SECTION} open>
+        <summary>Sounds</summary>
+        <div className="library-filters">
+          <label className="wide">Search sounds
+            <input id="library-search" type="search" value={query} onChange={(event) => {
+              setQuery(event.target.value);
+              if (event.target.value.trim()) onLibraryAction('library-search');
+            }} placeholder="Name, category, or tag" />
+          </label>
+          <label>Tag
+            <select id="library-tag" value={tag} disabled={!availableTags.length}
+              title={availableTags.length ? undefined : 'No tags yet. Add tags when saving a sample.'} onChange={(event) => {
+              setTag(event.target.value);
+              if (event.target.value) onLibraryAction('library-tag');
+            }}>
+              <option value="">{availableTags.length ? 'All tags' : 'No tags yet'}</option>
+              {availableTags.map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </label>
+          <label>Use on channel
+            <select value={channelId} onChange={(event) => setChannelId(event.target.value)} disabled={!channels.length}>
+              {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="sound-groups">
+          {groups.map(([category, list], index) => (
+            <details className="sound-group" key={category} open={filtering || index === 0}>
+              <summary>{category} <span className="count">{list.length}</span></summary>
+              <div className="sound-list">
+                {list.map((sound) => (
+                  <div className="sound-card" key={sound.id}>
+                    <div className="sound-text">
+                      <span className="sound-title">{sound.name}</span>
+                      {sound.tags?.length ? <span className="sound-meta">{sound.tags.join(', ')}</span> : null}
+                    </div>
+                    <div className="sound-actions">
+                      <button aria-label={`Preview ${sound.name}`} onClick={() => onPreview(sound)}><Icon name="play" className="inline-icon" /></button>
+                      <button disabled={!channelId} onClick={() => onUse(sound.id, channelId)}>Use</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ))}
+          {!visibleSounds.length && <p className="hint">No sounds match your search.</p>}
+        </div>
+      </details>
+      <details className="library-section" {...SECTION}>
+        <summary>Sample editor</summary>
       <SampleEditor
         sounds={sounds}
         samples={sampleData}
@@ -98,6 +121,9 @@ export function SampleLibrary({
         onImport={onImport}
         onEdit={onEdit}
       />
+      </details>
+      <details className="library-section" {...SECTION}>
+        <summary>Recognition</summary>
       <RecognitionPanel
         project={project}
         samples={sampleData}
@@ -107,6 +133,7 @@ export function SampleLibrary({
         onPreviewSample={onPreviewSample}
         onEdit={onRecognitionEdit}
       />
+      </details>
     </section>
   );
 }

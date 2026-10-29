@@ -120,6 +120,10 @@ export function TutorialOverlay({ tutorial, state, onExit, onStep, onComplete }:
     if (!step.target) return;
     const els = Array.from(document.querySelectorAll(step.target));
     setMissing(els.length === 0);
+    els.forEach((e) => {
+      let closed = e.parentElement?.closest('details:not([open])');
+      while (closed) { (closed as HTMLDetailsElement).open = true; closed = closed.parentElement?.closest('details:not([open])'); }
+    });
     els.slice(0, 40).forEach((e) => e.classList.add('tut-highlight'));
     return () => els.forEach((e) => e.classList.remove('tut-highlight'));
   });

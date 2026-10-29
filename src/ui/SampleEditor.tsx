@@ -330,8 +330,7 @@ export function SampleEditor({
 
   return (
     <div className="sample-editor">
-      <h3>Sample editor</h3>
-      <div className="row">
+      <div className="row record-controls">
         <label>Import audio
           <input type="file" accept="audio/*,.wav,.mp3,.ogg" onChange={(event) => {
             const file = event.target.files?.[0];
@@ -362,7 +361,7 @@ export function SampleEditor({
         {(recording || countingIn) && <span className="recording-position">
           {countingIn ? `Count-in · Beat ${countInBeat} of ${countInBars * 4}` : recordPosition}
         </span>}
-        {activeSampleId && <button className="secondary" onClick={() => { setActiveSampleId(''); setDraft(undefined); }}>Close editor</button>}
+        {activeSampleId && <button className="secondary wide" onClick={() => { setActiveSampleId(''); setDraft(undefined); }}>Close editor</button>}
       </div>
       {draft && <>
         <div className="row">
