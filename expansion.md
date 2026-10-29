@@ -109,7 +109,7 @@ Each phase is one or two focused PRs. Every phase must:
 - Acceptance: the kit loads in under 2 s on Wi-Fi, a 4-bar loop has no machine-gun repetition at 16ths, and export matches playback.
 
 ### E3. Real guitar (constructed path)
-- Bundle the FreePats nylon guitar (CC0). Evaluate the FreePats steel-string guitar (GPL-3 with exception) and keep it only if its licence terms are acceptable for a public repo. Otherwise you record a steel-string set in E6.
+- Bundle the FreePats nylon guitar (CC0). This is the first and only factory guitar in this phase (decided 2026-10-30). Steel-string and electric guitars move to E5 as optional additions; the FreePats steel-string set (GPL-3 with exception) is only used if its licence terms are acceptable.
 - Voicing dictionary as data: major, minor, 7, maj7, m7, sus2, sus4, power chords and common slash chords. Open and barre shapes tagged open, barre, position and easy. Scoring takes movement from the previous voicing into account. The current solver remains the fallback for unsupported chords.
 - Guitar performer: a chord expands to one note per sounding string. Down strums play low to high, up strums high to low. The strum spreads over `strumMs` with seeded, order-preserving jitter. A new chord chokes the previous chord's strings ("tight" mode); "natural" mode adds a short overlap. Muted and palm-muted strokes use short envelopes, filtered from the same samples until dedicated samples exist.
 - The existing synth guitar presets remain as Classic. Existing chord events play on the new guitar only when the channel's sound is switched to it.
@@ -177,8 +177,8 @@ Hosting: GitHub Pages allows a published site of up to 1 GB and a soft 100 GB/mo
 - Personal samples can extend or replace factory regions gradually.
 - Measured memory stays within budget on your phone through a 5-minute session.
 
-## 7. Decisions needed from Marko
-1. Which guitar matters most first: steel-string acoustic, nylon, or electric?
-2. Is CC-BY attribution in Settings › About acceptable, so the Salamander piano can be used?
-3. Is a total download of about 150 MB (fetched per instrument, on demand) acceptable?
-4. Are you willing to record a short guitar set yourself (E6 and E7) to cover the steel-string and chord gaps if no free set is good enough?
+## 7. Decisions
+1. First guitar: **nylon** (decided 2026-10-30).
+2. CC-BY attribution in Settings › About for the Salamander piano: **open**, to be confirmed before E5.
+3. About 150 MB total download, fetched per instrument on demand: **accepted**.
+4. Personal guitar capture (E6) and recorded chords (E7): **kept as optional features**. Nothing in E0–E5 depends on you recording anything.
