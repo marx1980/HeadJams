@@ -76,7 +76,7 @@ function TargetHarness() {
       project: defaultProject, channelId: defaultProject.channels[0]!.id, onChange: () => undefined,
     }),
     createElement(SongEditor, { project, onChange: () => undefined }),
-    createElement(SoundDesigner, { onPreview: () => undefined, onSave: () => undefined, onClose: () => undefined }),
+    createElement(SoundDesigner, { onPreview: () => undefined, onSave: () => undefined }),
   );
 }
 

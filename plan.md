@@ -145,6 +145,7 @@ Problems: the "..." (Project) menu still opens partly off-screen; it is one long
 - Done (layout pass): Play moved to the app icon/name row; File and Share merged into one File tile (Save Project + Export); Template moved next to Apply kit and BPM into the Beat options row; MIDI moved to a collapsible section at the bottom of Beat with clearer unsupported-browser text; "Show all tabs" removed (tabs always shown); Library pad view removed, tiles smaller with Play and Use on one row, Tag filter disabled when no tags exist.
 - Done: Beat options row controls (Template, BPM, Note length, Loop, Pattern, Drum kit, Apply kit) share one explicit height and font size (`--option-control-height`); measured equal across all eight skins at desktop and 390px widths in Chromium.
 - Done: Library reorganised into Sounds / Sample editor / Recognition accordion sections; two-column sound tiles (Play above Use, no inner scroll, grouped by category); 40px two-column grids for record/import, recognition, Song assistants and Sound shaping; explanatory paragraphs removed from Library and Song; tutorials auto-open collapsed sections.
+- Done: Library sound groups are an exclusive accordion (all collapsed by default); Sound tab top tile renamed "Shape a sound" and the designer is always shown (no "Make a sound" toggle or Close).
 - Not done yet: rendered screenshot review across all eight skins and small screens, plus testing on a real device.
 
 ## Decisions / Important Context

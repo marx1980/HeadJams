@@ -43,11 +43,17 @@ export function SampleLibrary({
   }), [sounds, query, tag]);
 
   const filtering = Boolean(query.trim() || tag);
+  const [openGroup, setOpenGroup] = useState('');
   const groups = useMemo(() => {
     const byCategory = new Map<string, typeof visibleSounds>();
     for (const sound of visibleSounds) byCategory.set(sound.category, [...(byCategory.get(sound.category) ?? []), sound]);
     return [...byCategory];
   }, [visibleSounds]);
+
+  useEffect(() => {
+    setOpenGroup(filtering ? groups[0]?.[0] ?? '' : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tag]);
 
   useEffect(() => {
     if (!channels.some((channel) => channel.id === channelId)) setChannelId(channels[0]?.id ?? '');
@@ -84,9 +90,9 @@ export function SampleLibrary({
           </label>
         </div>
         <div className="sound-groups">
-          {groups.map(([category, list], index) => (
-            <details className="sound-group" key={category} open={filtering || index === 0}>
-              <summary>{category} <span className="count">{list.length}</span></summary>
+          {groups.map(([category, list]) => (
+            <details className="sound-group" key={category} open={openGroup === category}>
+              <summary onClick={(event) => { event.preventDefault(); setOpenGroup(openGroup === category ? '' : category); }}>{category} <span className="count">{list.length}</span></summary>
               <div className="sound-list">
                 {list.map((sound) => (
                   <div className="sound-card" key={sound.id}>
