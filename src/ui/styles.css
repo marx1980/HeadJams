@@ -141,7 +141,8 @@ body { margin: 0; background: var(--app-bg); color: var(--text); }
 .app { max-width: 1000px; margin: 0 auto; padding: 12px 12px 140px; }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .bar h1 { font-size: 1.3rem; margin: 0 8px 0 0; align-self: center; }
-.bar h1.app-brand { font-family: 'Exo 2', system-ui, sans-serif; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.bar h1.app-brand { display: flex; align-items: center; justify-content: center; gap: 8px; flex-basis: 100%; margin: 0; }
+.app-wordmark { height: 30px; width: auto; }
 .app-logo { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
 .inline-icon { display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: middle; }
 .is-favorite { color: var(--warning); fill: currentColor; }
@@ -154,7 +155,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
-button.play { background: var(--accent); color: var(--accent-contrast); font-weight: 700; min-width: 100px; }
+button.play { margin-left: auto; background: var(--accent); color: var(--accent-contrast); font-weight: 700; min-width: 100px; }
 button.secondary { background: transparent; }
 button.on { background: var(--color, var(--accent)); color: var(--accent-contrast); }
 .channel { margin: 14px 0; padding: 8px; border-left: 6px solid var(--color); background: var(--surface); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
@@ -165,7 +166,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .step.group { background: color-mix(in srgb, var(--surface-muted) 70%, var(--border)); }
 .step.on { background: var(--color); border-color: var(--color); }
 .step.playing { outline: 3px solid var(--text); }
-.row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 10px 0; }
+.beat-options > label > :is(input, select) { flex: 1; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 12px; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--card-shadow); }
 .toast { position: fixed; top: 10px; right: 10px; background: var(--success); color: var(--success-contrast); padding: 8px 14px; border-radius: var(--control-radius); }
 .hint { opacity: 0.7; }
@@ -307,7 +309,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 }
 .bar { position: sticky; top: 0; z-index: 5; background: var(--app-bg); padding: 6px 0; }
 .project-menu { position: relative; }
-.header-menus { display: flex; gap: 6px; order: 3; flex-basis: 100%; align-items: center; }
+.header-menus { display: flex; width: 100%; gap: 6px; order: 3; flex-basis: 100%; align-items: center; }
 .bar h1.app-brand { flex: 1; }
 .midi-details { margin: 12px 0; }
 .midi-details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
