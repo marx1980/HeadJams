@@ -20,4 +20,11 @@ describe('offline service worker source', () => {
     expect(source).toContain("new URL('index.html', self.registration.scope)");
     expect(source).toContain('self.clients.claim()');
   });
+
+  it('serves sampled instruments from their own long-lived cache', () => {
+    const source = createOfflineWorkerSource(['index.html'], 'musicmaker-shell-test');
+    expect(source).toContain("const INSTRUMENT_CACHE = 'musicmaker-instruments-v1'");
+    expect(source).toContain("new URL('instruments/', self.registration.scope)");
+    expect(source).toContain("requestUrl.pathname.endsWith('/manifest.json')");
+  });
 });

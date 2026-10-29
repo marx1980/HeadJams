@@ -10,6 +10,8 @@ import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
+import { instrumentStore } from '../audio/sampler/browser';
+import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -87,7 +89,7 @@ export function App() {
   const sampleDataRef = useRef(sampleData);
   sampleDataRef.current = sampleData;
   const engineRef = useRef<Engine | undefined>(undefined);
-  engineRef.current ??= new Engine(() => projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id));
+  engineRef.current ??= new Engine(() => projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id), instrumentStore);
   const engine = engineRef.current;
   midiTargetChannelRef.current = midiTargetChannelId;
 
@@ -132,14 +134,27 @@ export function App() {
   }, []);
 
   const sounds = useMemo(() => allSounds(project), [project]);
-  const unavailableSoundIds = useMemo(() => new Set(
-    samplesLoaded
+  const [instrumentVersion, setInstrumentVersion] = useState(0);
+  useEffect(() => instrumentStore.subscribe(() => setInstrumentVersion((version) => version + 1)), []);
+  useEffect(() => {
+    // Load sampled instruments the project uses in the background, so Play starts without waiting.
+    const timer = window.setTimeout(() => void instrumentStore.prepare(instrumentNeeds(project)), 250);
+    return () => window.clearTimeout(timer);
+  }, [project]);
+  const unavailableSoundIds = useMemo(() => new Set([
+    ...(samplesLoaded
       ? sounds.filter((sound) => sound.sampleId && !sampleData.has(sound.sampleId)).map((sound) => sound.id)
-      : [],
-  ), [sounds, sampleData, samplesLoaded]);
-  const loadingSoundIds = useMemo(() => new Set(
-    samplesLoaded ? [] : sounds.filter((sound) => sound.sampleId).map((sound) => sound.id),
-  ), [sounds, samplesLoaded]);
+      : []),
+    ...sounds.filter((sound) => sound.instrumentId && instrumentStore.status(sound.instrumentId)?.state === 'error')
+      .map((sound) => sound.id),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]), [sounds, sampleData, samplesLoaded, instrumentVersion]);
+  const loadingSoundIds = useMemo(() => new Set([
+    ...(samplesLoaded ? [] : sounds.filter((sound) => sound.sampleId).map((sound) => sound.id)),
+    ...sounds.filter((sound) => sound.instrumentId && instrumentStore.status(sound.instrumentId)?.state === 'loading')
+      .map((sound) => sound.id),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]), [sounds, samplesLoaded, instrumentVersion]);
 
   const togglePlay = async () => {
     if (engine.playing) engine.stop();
@@ -231,6 +246,9 @@ export function App() {
         samples: sample.samples.slice(),
         sampleRate: sample.sampleRate,
       }));
+      const needs = instrumentNeeds(project);
+      await instrumentStore.prepare(needs);
+      const instruments = instrumentStore.exportAudio(needs.keys());
       const wav = await new Promise<ArrayBuffer>((resolve, reject) => {
         const worker = new Worker(new URL('../audio/exportWorker.ts', import.meta.url), { type: 'module' });
         worker.onmessage = (event: MessageEvent<ArrayBuffer>) => {
@@ -247,7 +265,8 @@ export function App() {
           sampleRate: exportSampleRate,
           bitDepth: exportBitDepth,
           normalize: normalizeExport,
-        }, samples.map((sample) => sample.samples.buffer));
+          instruments,
+        }, [...samples.map((sample) => sample.samples.buffer), ...instruments.regions.map((region) => region.data.buffer)]);
       });
       const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
       const a = document.createElement('a');

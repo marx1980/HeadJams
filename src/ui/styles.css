@@ -197,6 +197,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .sound-actions button { min-height: 34px; }
 .sound-picker-trigger { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sound-picker-trigger.missing { border-color: var(--danger); color: var(--danger); }
+.sound-picker-trigger.loading { opacity: 0.7; }
 .sound-picker-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: var(--modal-backdrop); }
 .sound-picker.panel { width: min(620px, 100%); max-height: min(80vh, 700px); overflow: auto; margin: 0; }
 .sound-picker-heading, .sound-picker-item, .sound-picker-actions { display: flex; align-items: center; gap: 8px; }

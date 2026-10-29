@@ -3,7 +3,17 @@ import { renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { stepDuration, stepDurationWithSwing } from './scheduler';
 import { pitchToFrequency } from '../model/music';
-import { compileStep } from './performance';
+import { compileStep, type VoiceEvent } from './performance';
+import type { InstrumentManifest } from './sampler/manifest';
+import { RoundRobin } from './sampler/selectRegion';
+import { planSampledVoice, renderSampledVoice, type SampledVoicePlan } from './sampler/sampledVoice';
+import { VoiceTracker } from './sampler/voices';
+
+/** Decoded sampled-instrument audio for offline rendering, keyed like InstrumentStore.regionKey. */
+export interface InstrumentAudio {
+  manifests: ReadonlyMap<string, InstrumentManifest>;
+  regions: ReadonlyMap<string, { sampleRate: number; data: Float32Array }>;
+}
 
 interface BiquadCoefficients {
   b0: number;
@@ -124,7 +134,9 @@ export function panGains(volume: number, pan: number): [number, number] {
 }
 
 /** Offline mixdown of one pass of the loop (plus a short tail) to stereo. */
-export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap<string, SampleData> = new Map()): { left: Float32Array; right: Float32Array } {
+export function renderProject(
+  p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap<string, SampleData> = new Map(), instruments?: InstrumentAudio,
+): { left: Float32Array; right: Float32Array } {
   const stepLen = Math.round(stepDuration(p.bpm, p.noteLength) * sr);
   const songSteps = arrangementLength(p) || totalSteps(p);
   const stepStarts: number[] = [];
@@ -189,10 +201,15 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
     }
     return output;
   };
+  const sampled: { voice: VoiceEvent; start: number }[] = [];
   for (let step = 0; step < songSteps; step++) {
     const start = stepStarts[step];
     for (const voice of compileStep(p, step, (steps) => steps * stepLen / sr)) {
       const def = voice.sound;
+      if (def.instrumentId) {
+        sampled.push({ voice, start: start + Math.round(voice.offsetSec * sr) });
+        continue;
+      }
       const [gl, gr] = panGains(voice.volume, voice.pan);
       if (voice.kind === 'hit') {
         let data = cache.get(def.id);
@@ -218,6 +235,31 @@ export function renderProject(p: Project, sr = SAMPLE_RATE, samples: ReadonlyMap
         mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr),
           start + Math.round(voice.offsetSec * sr), gl, gr);
       }
+    }
+  }
+  if (sampled.length && instruments) {
+    // Same order as live playback, so round robins, choke groups and voice stealing match.
+    const roundRobin = new RoundRobin(p.seed);
+    const tracker = new VoiceTracker();
+    const planned: { plan: SampledVoicePlan; start: number; voice: VoiceEvent; cut?: number }[] = [];
+    for (const { voice, start } of sampled) {
+      const manifest = instruments.manifests.get(voice.sound.instrumentId!);
+      if (!manifest) continue;
+      const plan = planSampledVoice(voice, manifest,
+        (region) => instruments.regions.get(`${manifest.id}@${manifest.version}/${region.file}`), roundRobin);
+      if (!plan) continue;
+      const startSec = start / sr;
+      const id = planned.length;
+      const cuts = tracker.add({
+        id, start: startSec, noteEnd: startSec + plan.noteEndSec, end: startSec + plan.endSec, level: plan.level,
+        polyKey: `${voice.channelId}:${manifest.id}`, chokeKey: plan.chokeKey,
+      }, manifest.maxPolyphony);
+      for (const cut of cuts) planned[cut.id].cut = cut.at - planned[cut.id].start / sr;
+      planned.push({ plan, start, voice });
+    }
+    for (const { plan, start, voice, cut } of planned) {
+      const [gl, gr] = panGains(1, voice.pan);
+      mix(renderSampledVoice(plan, sr, cut), start, gl, gr);
     }
   }
   return {

@@ -25,7 +25,11 @@ Project -> performance compiler (pure TS) -> VoiceEvent[]
              -> live engine (AudioBufferSource + envelopes)
              -> offline renderer (mixes the same events in the worker)
 ```
-Sampled instruments are described by manifests under `public/instruments/<id>/`. Their audio is fetched on demand, cached at runtime (not precached), and decoded into an LRU buffer cache.
+## Sampled instruments (E1)
+- Bundled instruments live in `app/public/instruments/<id>/` (manifest, audio, `LICENCE.txt`). A test checks each one validates, allows redistribution and fits the download budget.
+- `InstrumentStore` (`src/audio/sampler/instrumentStore.ts`) fetches manifests and region audio on demand, decodes to mono, and keeps an LRU cache within the memory budgets. The app prepares the project's instruments in the background; Play and export wait for them.
+- `selectRegion`, `RoundRobin`, `VoiceTracker` and `planSampledVoice` are pure and shared: the live engine plays plans with Web Audio nodes (source → envelope → cut gain → pan), and the export worker renders the same plans with `renderSampledVoice`.
+- The service worker serves `instruments/` from a separate cache that survives app updates; audio URLs carry `?v=<manifest version>`.
 
 ## Storage
 - The project is a JSON document in localStorage (`formatVersion` with migrations).
