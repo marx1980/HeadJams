@@ -6,3 +6,4 @@
 - Keep every control in the Beat tab's options row (Template, BPM, Note length, Loop, Pattern, Drum kit, Apply kit) the same height and font size; they share `--option-control-height` in `.beat-options`.
 - Select dropdowns use `appearance: none` with a CSS chevron; iOS Safari ignores `height`/`min-height` on native-styled selects, so never remove it.
 - In each channel strip, align controls to the bottom edge and keep every control 40px tall so Track name and the sound picker line up.
+- Channel strip order is: Track name, then [sound picker, S (solo), M (mute), preview], then Volume/Pan, then [duplicate, Piano roll/Grid, remove]. On phones each group is its own row (picker takes the remaining width), so nothing can wrap alone.
