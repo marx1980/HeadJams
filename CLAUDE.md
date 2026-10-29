@@ -22,3 +22,6 @@ Follow `skill.md` (layout rules) and keep on-screen text to labels and values, w
 - Bundled instruments go in `app/public/instruments/<id>/` with `manifest.json`, audio files and `LICENCE.txt`. Only redistributable licences (the repo is public); see `expansion.md` §5.
 - `npm test` validates every bundled manifest and checks the download budget. Regenerate the test instrument with `node scripts/make-test-instrument.mjs`.
 - Existing projects must keep rendering identically: compare WAV render hashes before and after any change to `performance.ts`, `render.ts` or `engine.ts`.
+
+## Hum-to-music must keep working (`hum.md`)
+After any change to audio, recognition, recording or the Library/Beat UI, run the browser check: import a hummed-style WAV (generate one, e.g. sine notes C D E G E D C C with slight vibrato) → save in the Sample editor → recognise as Melody → confirm a melody track with the right notes appears and the original is kept. Report the detected notes.
