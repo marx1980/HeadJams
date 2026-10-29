@@ -28,6 +28,7 @@ import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY } from '
 import { HeaderTile } from './Popover';
 import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
+import '@fontsource/exo-2/700.css';
 import './styles.css';
 
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
