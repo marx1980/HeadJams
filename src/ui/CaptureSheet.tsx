@@ -179,8 +179,8 @@ export function CaptureSheet({
           {part === 'draw' && <DrawPad project={project} playing={playing} onAudition={onAudition} onUse={onUseDrawn} />}
           {!pad && <button id="capture-record" className="capture-main" onClick={() => void record()}><Icon name="record" className="inline-icon" /> Record</button>}
           <div className="capture-more">
-            <button className="secondary" onClick={() => onOpenSong('chords')}>Chords</button>
-            <button className="secondary" onClick={() => onOpenSong('harmony')}>Harmony</button>
+            <button className="secondary" onClick={() => onOpenSong('chords')}>Edit chords</button>
+            <button className="secondary" onClick={() => onOpenSong('harmony')}>Edit harmony</button>
           </div>
         </>
       )}
