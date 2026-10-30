@@ -9,6 +9,12 @@
   "maxPolyphony": 24,
   "pitchShiftLimitSemitones": 3,
   "preloadStrategy": "range",
+  "tags": [
+    "acoustic",
+    "bright",
+    "punchy",
+    "sustained"
+  ],
   "envelope": {
     "mode": "sustain",
     "attackMs": 1,

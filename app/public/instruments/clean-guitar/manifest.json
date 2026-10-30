@@ -10,6 +10,11 @@
   "pitchShiftLimitSemitones": 3,
   "preloadStrategy": "range",
   "gainDb": 2,
+  "tags": [
+    "bright",
+    "plucky",
+    "smooth"
+  ],
   "envelope": {
     "mode": "sustain",
     "attackMs": 1,

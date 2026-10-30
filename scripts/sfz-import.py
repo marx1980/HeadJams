@@ -126,6 +126,7 @@ def main():
     ap.add_argument('--exclude', help='skip samples whose path matches this regex')
     ap.add_argument('--loop', help='loop START-END seconds (with a baked crossfade); the file ends at END')
     ap.add_argument('--crossfade-ms', type=float, default=250)
+    ap.add_argument('--tags', help='comma-separated description words (warm, bright, dark, soft, punchy, acoustic, electronic, smooth, plucky, sustained)')
     ap.add_argument('--level-zones', action='store_true', help='even out loudness across key zones (keeps layer balance)')
     ap.add_argument('--out', type=Path)
     args = ap.parse_args()
@@ -247,6 +248,7 @@ def main():
         'engine': 'sampler', 'defaultArticulation': args.articulation, 'maxPolyphony': args.polyphony,
         'pitchShiftLimitSemitones': args.pitch_limit, 'preloadStrategy': 'range',
         **({'gainDb': int(args.gain_db) if args.gain_db.is_integer() else args.gain_db} if args.gain_db else {}),
+        **({'tags': [tag.strip() for tag in args.tags.split(',') if tag.strip()]} if args.tags else {}),
         'envelope': {'mode': 'sustain', 'attackMs': 1, 'releaseMs': args.release_ms},
         'provenance': {
             'source': args.source, 'url': url, 'creator': args.creator, 'licence': args.licence,

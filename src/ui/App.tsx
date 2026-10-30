@@ -855,6 +855,9 @@ export function App() {
         onRecognitionEdit={() => emit('recognition-edited')}
         onRemoveIdea={(takeId) => { setProject(removeRecognitionTake(projectRef.current, takeId)); flash('Idea removed', true); }}
         onHearAs={(takeId, id) => setProject(hearTakeAs(projectRef.current, takeId, id))}
+        onAudition={(preview) => void audition(preview)}
+        playing={playStep !== null}
+        onUseSound={(channelId, soundId) => { auditionRef.current = undefined; setProject(updateChannel(projectRef.current, channelId, { soundId })); }}
         onLibraryAction={emit}
       />
 

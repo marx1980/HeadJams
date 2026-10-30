@@ -50,6 +50,8 @@ export interface InstrumentManifest {
   maxPolyphony: number;
   pitchShiftLimitSemitones: number;
   preloadStrategy: 'all' | 'range' | 'on-demand';
+  /** Description words for Find the sound (warm, bright, …). */
+  tags?: string[];
   /** Level offset that matches the instrument's loudness to Classic sounds. */
   gainDb?: number;
   envelope?: { mode: 'one-shot' | 'sustain'; attackMs: number; releaseMs: number };
@@ -98,6 +100,7 @@ export function validateManifest(input: unknown, options: ValidateOptions = {}):
     errors.push('pitchShiftLimitSemitones must be between 0 and 24');
   }
   if (!['all', 'range', 'on-demand'].includes(m.preloadStrategy as string)) errors.push('preloadStrategy must be all, range or on-demand');
+  if (m.tags !== undefined && !(Array.isArray(m.tags) && m.tags.every(isText))) errors.push('tags must be a list of words');
 
   const prov = m.provenance as Partial<Provenance> | undefined;
   if (!prov) errors.push('provenance is required');
