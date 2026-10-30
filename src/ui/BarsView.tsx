@@ -4,7 +4,8 @@ import {
 } from '../model/bars';
 import { totalSteps, type Project } from '../model/project';
 import { Icon } from './Icon';
-import { PHRASE_VARIATIONS, type PhraseVariation } from '../library/phrases';
+import { PHRASE_VARIATIONS } from '../library/phrases';
+import { SuggestionSet } from './SuggestionSet';
 
 const HEIGHT = 64;
 
@@ -62,6 +63,7 @@ export function BarsView({ project, colors, playStep, playing, onChange, onAudit
   onAudition: (preview?: Project) => void;
 }) {
   const [looping, setLooping] = useState<number>();
+  const [varying, setVarying] = useState<number>();
   useEffect(() => { if (!playing) setLooping(undefined); }, [playing]);
   const families = barFamilies(project);
   const names = barNames(project);
@@ -70,6 +72,7 @@ export function BarsView({ project, colors, playStep, playing, onChange, onAudit
     ? Math.floor((playStep % totalSteps(project)) / per) : looping;
   const change = (next: Project) => {
     if (looping !== undefined) { onAudition(undefined); setLooping(undefined); }
+    setVarying(undefined);
     onChange(next);
   };
 
@@ -100,7 +103,10 @@ export function BarsView({ project, colors, playStep, playing, onChange, onAudit
               <select aria-label={`More for bar ${bar + 1}`} value="" disabled={project.loopBars < 2 && !canVaryBar(project, bar)}
                 onChange={(event) => {
                   const [action, value] = event.target.value.split(':');
-                  change(action === 'vary' ? varyBar(project, bar, value as PhraseVariation) : copyBar(project, bar, Number(value)));
+                  if (action === 'vary') {
+                    if (looping !== undefined) { onAudition(undefined); setLooping(undefined); }
+                    setVarying(varying === bar ? undefined : bar);
+                  } else change(copyBar(project, bar, Number(value)));
                 }}>
                 <option value="" disabled>More</option>
                 {project.loopBars > 1 && (
@@ -109,15 +115,20 @@ export function BarsView({ project, colors, playStep, playing, onChange, onAudit
                       .map((to) => <option key={to} value={`copy:${to}`}>{names[to] || `Bar ${to + 1}`}</option>)}
                   </optgroup>
                 )}
-                {canVaryBar(project, bar) && (
-                  <optgroup label="Vary">
-                    {PHRASE_VARIATIONS.map((item) => <option key={item.id} value={`vary:${item.id}`}>{item.label}</option>)}
-                  </optgroup>
-                )}
+                {canVaryBar(project, bar) && <option value="vary:">Vary</option>}
               </select>
               <button className="secondary" aria-label={`Clear bar ${bar + 1}`} disabled={families[bar] === '–'}
                 onClick={() => change(clearBar(project, bar))}><Icon name="close" className="inline-icon" /></button>
             </div>
+            {varying === bar && canVaryBar(project, bar) && (
+              <SuggestionSet label={`Variations of bar ${bar + 1}`} playing={playing} onAudition={onAudition} keepLabel="Keep"
+                items={PHRASE_VARIATIONS.map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  preview: () => ({ ...varyBar(project, bar, item.id), arrangement: [] }),
+                  keep: () => change(varyBar(project, bar, item.id)),
+                }))} />
+            )}
           </li>
         ))}
       </ol>
