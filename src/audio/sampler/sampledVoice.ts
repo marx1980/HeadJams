@@ -71,7 +71,9 @@ export function planSampledVoice(
     noteEndSec: mode === 'sustain' ? Math.min(durationSec, endSec) : 0,
     endSec,
     pitchBend: pitched ? voice.pitchBend : undefined,
-    chokeKey: choice.region.chokeGroup ? `${manifest.id}:${choice.region.chokeGroup}` : undefined,
+    chokeKey: choice.region.chokeGroup
+      ? `${manifest.id}:${choice.region.chokeGroup}`
+      : pitched && voice.chokeKey ? `${voice.channelId}:${manifest.id}:${voice.chokeKey}` : undefined,
   };
 }
 

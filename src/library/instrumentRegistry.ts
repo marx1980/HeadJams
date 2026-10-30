@@ -158,6 +158,25 @@ const acoustic = (piece: string, name: string, note: number, extra: Partial<Soun
   ...extra,
 });
 
+const sampledGuitar = (
+  id: string, name: string, instrumentId: 'nylon-guitar' | 'clean-guitar', chords: boolean, extra: Partial<SoundDef> = {},
+): SoundDef => ({
+  id,
+  name,
+  category: 'Guitars',
+  subcategory: chords ? 'Chords' : instrumentId === 'nylon-guitar' ? 'Acoustic' : 'Electric',
+  params: { wave: 'triangle', freq: 220, freqEnd: 220, decay: 0.45, cutoff: 5000 },
+  type: chords ? 'chord' : 'pitched',
+  playbackMode: chords ? 'chord' : 'notes',
+  instrumentId,
+  tags: ['guitar', 'sampled'],
+  assetAttribution: instrumentId === 'nylon-guitar'
+    ? 'Spanish Classical Guitar by roberto@zenvoid.org (FreePats)'
+    : 'Emily Guitar by Karoryfer Samples',
+  assetLicense: 'CC0-1.0',
+  ...extra,
+});
+
 /** Built-in sounds played by sampled instruments (app/public/instruments). */
 export const SAMPLED_SOUNDS: SoundDef[] = [
   acoustic('kick', 'Acoustic Kick', 36),
@@ -173,6 +192,11 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   acoustic('crash', 'Acoustic Crash', 49),
   acoustic('ride', 'Acoustic Ride', 51),
   acoustic('ride-bell', 'Acoustic Ride Bell', 53),
+  sampledGuitar('nylon-guitar', 'Nylon Guitar', 'nylon-guitar', false),
+  sampledGuitar('nylon-chords', 'Nylon Chords', 'nylon-guitar', true),
+  sampledGuitar('clean-guitar', 'Clean Electric Guitar', 'clean-guitar', false),
+  sampledGuitar('clean-chords', 'Clean Electric Chords', 'clean-guitar', true),
+  sampledGuitar('clean-chords-tight', 'Clean Electric Chords Tight', 'clean-guitar', true, { chordRing: 'tight' }),
 ];
 
 export function createInstrumentRegistry(customSounds: readonly SoundDef[]): InstrumentRegistryEntry[] {

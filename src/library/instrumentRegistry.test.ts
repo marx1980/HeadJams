@@ -75,12 +75,22 @@ describe('instrument registry', () => {
 
   it('registers synthesized chord-mode guitar presets in the Chords subgroup', () => {
     const registry = createInstrumentRegistry([]);
-    const chordPresets = registry.filter((entry) => entry.subgroup === 'Chords');
+    const chordPresets = registry.filter((entry) => entry.subgroup === 'Chords' && !entry.sound.instrumentId);
     expect(chordPresets.map((entry) => entry.id)).toEqual([
       'guitar-chord-acoustic', 'guitar-chord-clean', 'guitar-chord-crunch', 'guitar-chord-power',
     ]);
     expect(chordPresets.every((entry) => entry.group === 'Guitars' && entry.type === 'chord'
       && entry.playbackMode === 'chord' && entry.source === 'synth')).toBe(true);
+  });
+
+  it('registers the sampled guitars with notes and chord sounds', () => {
+    const registry = createInstrumentRegistry([]);
+    const sampled = registry.filter((entry) => entry.group === 'Guitars' && entry.sound.instrumentId);
+    expect(sampled.map((entry) => [entry.id, entry.sound.instrumentId, entry.playbackMode])).toEqual([
+      ['nylon-guitar', 'nylon-guitar', 'notes'], ['nylon-chords', 'nylon-guitar', 'chord'],
+      ['clean-guitar', 'clean-guitar', 'notes'], ['clean-chords', 'clean-guitar', 'chord'],
+      ['clean-chords-tight', 'clean-guitar', 'chord'],
+    ]);
   });
 
   it('includes ten additional Bass, Synths, Drums, and Percussion sounds', () => {
