@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  barFamilies, barNames, barPreview, canDuplicateBar, clearBar, copyBar, doubleLoop, duplicateBar, MAX_BARS, moveBar, setBarName,
+  barFamilies, barNames, barPreview, canDuplicateBar, canVaryBar, clearBar, copyBar, doubleLoop, duplicateBar, MAX_BARS, moveBar, setBarName, varyBar,
 } from '../model/bars';
 import { totalSteps, type Project } from '../model/project';
 import { Icon } from './Icon';
+import { PHRASE_VARIATIONS, type PhraseVariation } from '../library/phrases';
 
 const HEIGHT = 64;
 
@@ -96,11 +97,23 @@ export function BarsView({ project, colors, playStep, playing, onChange, onAudit
                 onClick={() => change(moveBar(project, bar, 1))}><Icon name="forward" className="inline-icon" /></button>
               <button className="secondary" aria-label={`Duplicate bar ${bar + 1}`} disabled={!canDuplicateBar(project, bar)}
                 onClick={() => change(duplicateBar(project, bar))}><Icon name="duplicate" className="inline-icon" /></button>
-              <select aria-label={`Copy bar ${bar + 1} to`} value="" disabled={project.loopBars < 2}
-                onChange={(event) => change(copyBar(project, bar, Number(event.target.value)))}>
-                <option value="" disabled>Copy</option>
-                {Array.from({ length: project.loopBars }, (_, to) => to).filter((to) => to !== bar)
-                  .map((to) => <option key={to} value={to}>{names[to] || `Bar ${to + 1}`}</option>)}
+              <select aria-label={`More for bar ${bar + 1}`} value="" disabled={project.loopBars < 2 && !canVaryBar(project, bar)}
+                onChange={(event) => {
+                  const [action, value] = event.target.value.split(':');
+                  change(action === 'vary' ? varyBar(project, bar, value as PhraseVariation) : copyBar(project, bar, Number(value)));
+                }}>
+                <option value="" disabled>More</option>
+                {project.loopBars > 1 && (
+                  <optgroup label="Copy to">
+                    {Array.from({ length: project.loopBars }, (_, to) => to).filter((to) => to !== bar)
+                      .map((to) => <option key={to} value={`copy:${to}`}>{names[to] || `Bar ${to + 1}`}</option>)}
+                  </optgroup>
+                )}
+                {canVaryBar(project, bar) && (
+                  <optgroup label="Vary">
+                    {PHRASE_VARIATIONS.map((item) => <option key={item.id} value={`vary:${item.id}`}>{item.label}</option>)}
+                  </optgroup>
+                )}
               </select>
               <button className="secondary" aria-label={`Clear bar ${bar + 1}`} disabled={families[bar] === '–'}
                 onClick={() => change(clearBar(project, bar))}><Icon name="close" className="inline-icon" /></button>
