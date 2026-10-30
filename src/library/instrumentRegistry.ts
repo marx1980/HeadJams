@@ -177,6 +177,23 @@ const sampledGuitar = (
   ...extra,
 });
 
+const sampledInstrument = (
+  id: string, name: string, category: string, subcategory: string, attribution: string, extra: Partial<SoundDef> = {},
+): SoundDef => ({
+  id,
+  name,
+  category,
+  subcategory,
+  params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.5, cutoff: 8000 },
+  type: 'pitched',
+  playbackMode: 'notes',
+  instrumentId: id,
+  tags: ['sampled'],
+  assetAttribution: attribution,
+  assetLicense: 'CC0-1.0',
+  ...extra,
+});
+
 /** Built-in sounds played by sampled instruments (app/public/instruments). */
 export const SAMPLED_SOUNDS: SoundDef[] = [
   acoustic('kick', 'Acoustic Kick', 36),
@@ -197,6 +214,9 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   sampledGuitar('clean-guitar', 'Clean Electric Guitar', 'clean-guitar', false),
   sampledGuitar('clean-chords', 'Clean Electric Chords', 'clean-guitar', true),
   sampledGuitar('clean-chords-tight', 'Clean Electric Chords Tight', 'clean-guitar', true, { chordRing: 'tight' }),
+  sampledInstrument('grand-piano', 'Grand Piano', 'Keys', 'Piano', 'Versilian Community Sample Library (VCSL)'),
+  sampledInstrument('electric-bass', 'Electric Bass', 'Bass', 'Electric', 'Black And Blue Basses by Karoryfer Samples'),
+  sampledInstrument('strings', 'Strings', 'Strings', 'Ensemble', 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)'),
 ];
 
 export function createInstrumentRegistry(customSounds: readonly SoundDef[]): InstrumentRegistryEntry[] {

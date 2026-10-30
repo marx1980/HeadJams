@@ -103,6 +103,11 @@ export class Engine {
     const ctx = this.ctx!;
     const source = ctx.createBufferSource();
     source.buffer = this.regionBuffer(plan.audio);
+    if (plan.loop) {
+      source.loop = true;
+      source.loopStart = plan.loop.startSec;
+      source.loopEnd = plan.loop.endSec;
+    }
     const bends = sanitizeBends(plan.pitchBend);
     source.playbackRate.setValueAtTime(plan.rate, start);
     let previous = start;

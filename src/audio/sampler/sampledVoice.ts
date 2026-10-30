@@ -26,6 +26,8 @@ export interface SampledVoicePlan {
   endSec: number;
   pitchBend?: PitchBendPoint[];
   chokeKey?: string;
+  /** Sustained regions with loop points keep playing between them until the note is released. */
+  loop?: { startSec: number; endSec: number };
 }
 
 /** Grid hits use the middle velocity layer by default, leaving the loudest layer for accents. */
@@ -57,7 +59,13 @@ export function planSampledVoice(
   const attackSec = (manifest.envelope?.attackMs ?? DEFAULT_ATTACK_MS) / 1000;
   const releaseSec = (manifest.envelope?.releaseMs ?? DEFAULT_RELEASE_MS) / 1000;
   const durationSec = pitched ? Math.max(0.01, voice.durationSec) : 0;
-  const naturalSec = audio.data.length / audio.sampleRate / choice.rate;
+  const fileSec = audio.data.length / audio.sampleRate;
+  const { loopStartMs, loopEndMs } = choice.region;
+  const loop = mode === 'sustain' && loopStartMs !== undefined && loopEndMs !== undefined
+    && loopStartMs >= 0 && loopEndMs - loopStartMs >= 10 && loopEndMs / 1000 <= fileSec + 1e-3
+    ? { startSec: loopStartMs / 1000, endSec: Math.min(fileSec, loopEndMs / 1000) }
+    : undefined;
+  const naturalSec = loop ? Number.POSITIVE_INFINITY : fileSec / choice.rate;
   const endSec = mode === 'sustain' ? Math.min(naturalSec, durationSec + releaseSec) : naturalSec;
   return {
     region: choice.region,
@@ -71,6 +79,7 @@ export function planSampledVoice(
     noteEndSec: mode === 'sustain' ? Math.min(durationSec, endSec) : 0,
     endSec,
     pitchBend: pitched ? voice.pitchBend : undefined,
+    ...(loop ? { loop } : {}),
     chokeKey: choice.region.chokeGroup
       ? `${manifest.id}:${choice.region.chokeGroup}`
       : pitched && voice.chokeKey ? `${voice.channelId}:${manifest.id}:${voice.chokeKey}` : undefined,
@@ -107,7 +116,10 @@ export function renderSampledVoice(plan: SampledVoicePlan, sr: number, cutSec?: 
   let bendIndex = 0;
   let currentBend = { time: 0, value: 0 };
   let position = 0;
+  const loopStart = plan.loop ? plan.loop.startSec * sampleRate : 0;
+  const loopEnd = plan.loop ? Math.min(data.length - 1, plan.loop.endSec * sampleRate) : 0;
   for (let i = 0; i < length; i++) {
+    if (plan.loop) while (position >= loopEnd) position -= loopEnd - loopStart;
     if (position >= data.length - 1) break;
     const time = i / sr;
     while (bendIndex < bends.length && bends[bendIndex].time <= time) currentBend = bends[bendIndex++];

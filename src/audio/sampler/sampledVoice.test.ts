@@ -109,3 +109,32 @@ describe('sampled voices', () => {
     expect(ids(3)).toEqual(ids(3));
   });
 });
+
+describe('looped sustain regions', () => {
+  it('keeps a looped note sounding for its whole length, at pitch, then releases', async () => {
+    const { manifest, audio } = await loaded();
+    const region = manifest.regions.find((r) => r.rootMidi === 60)!;
+    const decoded = audio.regions.get(`${manifest.id}@${manifest.version}/${region.file}`)!;
+    const fileSec = decoded.data.length / decoded.sampleRate;
+    const looped: InstrumentManifest = {
+      ...manifest,
+      envelope: { mode: 'sustain', attackMs: 1, releaseMs: 50 },
+      regions: manifest.regions.map((r) => ({ ...r, loopStartMs: 50, loopEndMs: 140 })),
+    };
+    const voice: PitchedVoice = {
+      kind: 'pitched', origin: 'note', sound: sound(), channelId: 'a', offsetSec: 0, volume: 1, pan: 0, pitch: 60, durationSec: 3,
+    };
+    const plan = planSampledVoice(voice, looped, (r) => audio.regions.get(`${manifest.id}@${manifest.version}/${r.file}`))!;
+    expect(plan.loop).toEqual({ startSec: 0.05, endSec: 0.14 });
+    expect(plan.endSec).toBeCloseTo(3.05, 6);
+    const out = renderSampledVoice(plan, 48000);
+    expect(out.length).toBe(Math.ceil(3.05 * 48000));
+    const late = out.subarray(Math.round(2.5 * 48000), Math.round(2.9 * 48000));
+    expect(Math.max(...late.map(Math.abs))).toBeGreaterThan(0.1);
+    expect(frequency(out, 48000, Math.round(2.5 * 48000), Math.round(2.9 * 48000))).toBeCloseTo(261.6, -1);
+    expect(fileSec).toBeLessThan(0.2);
+    // Without loop points the same note stops when the file ends.
+    const plain = planSampledVoice(voice, { ...looped, regions: manifest.regions }, (r) => audio.regions.get(`${manifest.id}@${manifest.version}/${r.file}`))!;
+    expect(plain.loop).toBeUndefined();
+  });
+});
