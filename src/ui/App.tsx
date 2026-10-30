@@ -42,6 +42,9 @@ import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
 import { TrackPatternTools } from './TrackPatternTools';
 import { gridCells } from '../model/trackPattern';
+import { insertLosesHit, insertStep, removeStep } from '../model/stepEdit';
+import type { TapMode } from './TrackPatternTools';
+import { GridLayoutControls, type BarsShown, type GridLayout } from './GridLayoutControls';
 import { confineTakeToBar, shiftTakeStart } from '../model/takeStart';
 import { barPreview } from '../model/bars';
 import { OfflineInstruments } from './OfflineInstruments';
@@ -65,6 +68,8 @@ const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const BEAT_VIEW_KEY = 'musicmaker.beatView';
+const GRID_LAYOUT_KEY = 'musicmaker.gridLayout';
+const BARS_SHOWN_KEY = 'musicmaker.barsShown';
 type HeaderMenu = 'file' | 'settings' | 'help' | 'capture' | 'song';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
@@ -88,13 +93,40 @@ export function App() {
   const [nudge, setNudge] = useState<View | null>(null);
   const [midiOpen, setMidiOpen] = useState(false);
   const [toolChannels, setToolChannels] = useState<ReadonlySet<string>>(new Set());
+  /** Per-track Tap mode (Pattern tools › Tap): Hit toggles a step, Insert / Remove add or take away one. */
+  const [tapModes, setTapModes] = useState<Record<string, TapMode>>({});
+  const [pendingInsert, setPendingInsert] = useState<{ channelId: string; step: number }>();
+  const setTapMode = (id: string, mode: TapMode) => {
+    setTapModes((current) => ({ ...current, [id]: mode }));
+    setPendingInsert(undefined);
+  };
   const toggleTools = (id: string) => {
     if (!toolChannels.has(id)) emit('pattern-tools');
+    else {
+      setTapModes((current) => { const { [id]: _off, ...rest } = current; return rest; });
+      setPendingInsert(undefined);
+    }
     setToolChannels((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  };
+  /** Row layout: every track's line scrolls together, so the bars stay lined up. */
+  const syncRowScroll = (event: React.UIEvent<HTMLElement>) => {
+    const source = event.target as HTMLElement;
+    if (!source.classList?.contains('row-layout')) return;
+    event.currentTarget.querySelectorAll<HTMLElement>('.grid.row-layout').forEach((grid) => {
+      if (grid !== source && grid.scrollLeft !== source.scrollLeft) grid.scrollLeft = source.scrollLeft;
+    });
+  };
+  const tapStep = (channelId: string, step: number, hit: () => void) => {
+    const mode = tapModes[channelId] ?? 'hit';
+    if (mode === 'hit') { hit(); return; }
+    setPendingInsert(undefined);
+    if (mode === 'remove') { setProject(removeStep(project, channelId, step)); return; }
+    if (insertLosesHit(project, channelId)) { setPendingInsert({ channelId, step }); return; }
+    setProject(insertStep(project, channelId, step));
   };
   // Phones show one bar of every grid at a time, with a bar pager above the tracks.
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 600px)').matches === true);
@@ -106,8 +138,30 @@ export function App() {
     return () => query.removeEventListener?.('change', update);
   }, []);
   const [viewBar, setViewBar] = useState(0);
-  const pagerBar = Math.min(viewBar, project.loopBars - 1);
-  const shownBar = narrow && project.loopBars > 1 ? pagerBar : undefined;
+  const [gridLayout, setGridLayout] = useState<GridLayout>(() => {
+    try { return localStorage.getItem(GRID_LAYOUT_KEY) === 'row' ? 'row' : 'stack'; } catch { return 'stack'; }
+  });
+  const [barsChoice, setBarsChoice] = useState<BarsShown | undefined>(() => {
+    try {
+      const saved = localStorage.getItem(BARS_SHOWN_KEY);
+      return saved === '1' ? 1 : saved === '2' ? 2 : saved === 'all' ? 'all' : undefined;
+    } catch { return undefined; }
+  });
+  const pickGridLayout = (next: GridLayout) => {
+    setGridLayout(next);
+    try { localStorage.setItem(GRID_LAYOUT_KEY, next); } catch { /* storage unavailable */ }
+  };
+  const pickBarsShown = (next: BarsShown) => {
+    setBarsChoice(next);
+    try { localStorage.setItem(BARS_SHOWN_KEY, String(next)); } catch { /* storage unavailable */ }
+  };
+  // Stacked bars: every bar on wide screens, one at a time on phones, unless the choice says otherwise. Row shows them all in a line.
+  const perPage = gridLayout === 'row' || project.loopBars < 2 ? project.loopBars
+    : barsChoice === undefined ? (narrow ? 1 : project.loopBars)
+      : barsChoice === 'all' ? project.loopBars : Math.min(barsChoice, project.loopBars);
+  const pageStart = Math.floor(Math.min(viewBar, project.loopBars - 1) / perPage) * perPage;
+  const shownBars = perPage < project.loopBars ? Array.from({ length: perPage }, (_, index) => pageStart + index) : undefined;
+  const shownBar = shownBars?.[0];
   const [beatView, setBeatView] = useState<'tracks' | 'bars'>(() => {
     try { return localStorage.getItem(BEAT_VIEW_KEY) === 'bars' ? 'bars' : 'tracks'; } catch { return 'tracks'; }
   });
@@ -944,19 +998,14 @@ export function App() {
               onChange={setProject}
               onAudition={(preview) => void audition(preview)} />
           ) : (<>
-          {shownBar !== undefined && (
-            <div className="bar-pager" role="group" aria-label="Bar shown">
-              <button className="secondary" aria-label="Previous bar" disabled={pagerBar === 0} onClick={() => setViewBar(pagerBar - 1)}><Icon name="back" className="inline-icon" /></button>
-              <span id="bar-pager-value">Bar {pagerBar + 1}/{project.loopBars}</span>
-              <button className="secondary" aria-label="Next bar" disabled={pagerBar >= project.loopBars - 1} onClick={() => setViewBar(pagerBar + 1)}><Icon name="forward" className="inline-icon" /></button>
-            </div>
-          )}
-          <section className="channels">
+          <GridLayoutControls loopBars={project.loopBars} layout={gridLayout} onLayout={pickGridLayout}
+            perPage={perPage} onPerPage={pickBarsShown} pageStart={pageStart} onPage={setViewBar} />
+          <section className="channels" onScrollCapture={syncRowScroll}>
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
           const def = findSound(project, c.soundId);
           return (
-            <div className="channel" key={c.id} style={{ ['--color' as string]: color }}>
+            <div className={`channel${(tapModes[c.id] ?? 'hit') !== 'hit' ? ` tap-${tapModes[c.id]}` : ''}`} key={c.id} style={{ ['--color' as string]: color }}>
               <div className="strip">
                 <label>Track name
                   <input aria-label={`Track name ${c.name}`} value={c.name}
@@ -1016,16 +1065,23 @@ export function App() {
                 }}><Icon name="close" className="inline-icon" /></button>
               </div>
               {toolChannels.has(c.id) && !pianoChannels.has(c.id) && (
-                <TrackPatternTools project={project} channel={c} shownBar={shownBar} onChange={setProject} onMessage={(text) => flash(text)} />
+                <TrackPatternTools project={project} channel={c} shownBar={shownBar} onChange={setProject} onMessage={(text) => flash(text)}
+                  tap={tapModes[c.id] ?? 'hit'} onTap={(mode) => setTapMode(c.id, mode)}
+                  noRoom={pendingInsert?.channelId === c.id}
+                  onInsertAnyway={() => {
+                    if (pendingInsert) setProject(insertStep(project, pendingInsert.channelId, pendingInsert.step, true));
+                    setPendingInsert(undefined);
+                  }}
+                  onCancelInsert={() => setPendingInsert(undefined)} />
               )}
               {c.lanes
-                ? <KitLanes channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBar={shownBar}
-                  onToggle={(laneId, step) => setProject(toggleLaneStep(project, c.id, laneId, step))}
+                ? <KitLanes channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBars={shownBars} layout={gridLayout}
+                  onToggle={(laneId, step) => tapStep(c.id, step, () => setProject(toggleLaneStep(project, c.id, laneId, step)))}
                   onKeyboardNavigate={() => emit('keyboard-nav')} />
                 : pianoChannels.has(c.id)
                 ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
-                : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBar={shownBar}
-                  onToggle={(step) => setProject(toggleStep(project, c.id, step))}
+                : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBars={shownBars} layout={gridLayout}
+                  onToggle={(step) => tapStep(c.id, step, () => setProject(toggleStep(project, c.id, step)))}
                   onKeyboardNavigate={() => emit('keyboard-nav')} />}
             </div>
           );
@@ -1226,13 +1282,14 @@ export function App() {
 
 /** A kit channel's lanes, each a beat grid with its name (expansion.md E2b). */
 function KitLanes({
-  channel, loopBars, noteLength, playStep, shownBar, onToggle, onKeyboardNavigate,
+  channel, loopBars, noteLength, playStep, shownBars, layout, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
-  shownBar?: number;
+  shownBars?: readonly number[];
+  layout: GridLayout;
   onToggle: (laneId: string, step: number) => void;
   onKeyboardNavigate: () => void;
 }) {
@@ -1245,7 +1302,7 @@ function KitLanes({
         <div className="kit-lane" key={lane.id}>
           <span className="kit-lane-name">{lane.name}</span>
           <BeatGrid channel={{ ...channel, name: `${channel.name} ${lane.name}`, steps: lane.steps, stepEventMetadata: lane.stepEventMetadata }}
-            loopBars={loopBars} noteLength={noteLength} playStep={playStep} shownBar={shownBar}
+            loopBars={loopBars} noteLength={noteLength} playStep={playStep} shownBars={shownBars} layout={layout}
             onToggle={(step) => onToggle(lane.id, step)} onKeyboardNavigate={onKeyboardNavigate} />
         </div>
       ))}
@@ -1259,14 +1316,16 @@ function KitLanes({
 }
 
 function BeatGrid({
-  channel, loopBars, noteLength, playStep, shownBar, onToggle, onKeyboardNavigate,
+  channel, loopBars, noteLength, playStep, shownBars, layout, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
-  /** On narrow screens, the one bar shown (wraps for tracks shorter than the loop); undefined shows every bar. */
-  shownBar?: number;
+  /** The bars shown (they wrap for tracks shorter than the loop); undefined shows every bar. */
+  shownBars?: readonly number[];
+  /** Stack puts each bar on its own line; Row puts all bars on one scrolling line. */
+  layout: GridLayout;
   onToggle: (step: number) => void;
   onKeyboardNavigate: () => void;
 }) {
@@ -1277,12 +1336,14 @@ function BeatGrid({
   const view = channel.viewSteps && channel.viewSteps < noteLength ? channel.viewSteps : noteLength;
   const every = noteLength / view;
   const trackBars = Math.max(1, Math.ceil(length / noteLength));
-  const bars = shownBar === undefined ? Array.from({ length: trackBars }, (_, bar) => bar) : [shownBar % trackBars];
+  const bars = shownBars === undefined ? Array.from({ length: trackBars }, (_, bar) => bar) : [...new Set(shownBars.map((bar) => bar % trackBars))];
+  const inRow = layout === 'row' && bars.length > 1;
   const rows = bars.map((bar) => {
     const start = bar * noteLength;
     const end = Math.min(length, start + noteLength);
     return { bar, cells: gridCells(steps.slice(start, end), end - start, noteLength, view).map((cell) => ({ ...cell, step: cell.step + start })) };
   });
+  const lines = inRow ? [{ bar: -1, cells: rows.flatMap((row) => row.cells) }] : rows;
   const visible = rows.flatMap((row) => row.cells.map((cell) => cell.step));
   const activeFocus = visible.includes(focusedStep) ? focusedStep : visible[0] ?? 0;
   const playing = playStep === null ? null : (playStep % total) % length;
@@ -1299,10 +1360,22 @@ function BeatGrid({
     event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${next}"]`)?.focus();
   };
 
+  const gridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Row layout: keep the playing step in view.
+    const grid = gridRef.current;
+    const cell = inRow ? grid?.querySelector<HTMLElement>('.step.playing') : null;
+    if (!grid || !cell) return;
+    if (cell.offsetLeft < grid.scrollLeft + 8 || cell.offsetLeft + cell.offsetWidth > grid.scrollLeft + grid.clientWidth - 8) {
+      grid.scrollLeft = Math.max(0, cell.offsetLeft - 40);
+    }
+  }, [inRow, playing]);
+
   return (
-    <div className="grid" role="grid" aria-label={`${channel.name} beat grid`}>
-      {rows.map(({ bar, cells }) => (
-        <div className="bar-row" role="row" key={bar} style={{ gridTemplateColumns: `repeat(${view}, 1fr)` }}>
+    <div className={`grid${inRow ? ' row-layout' : ''}`} role="grid" aria-label={`${channel.name} beat grid`} ref={gridRef}>
+      {lines.map(({ bar, cells }) => (
+        <div className="bar-row" role="row" key={bar}
+          style={{ gridTemplateColumns: inRow ? `repeat(${cells.length}, minmax(30px, 1fr))` : `repeat(${view}, 1fr)` }}>
           {cells.map(({ step, on, hidden }, j) => {
             const metadata = channel.stepEventMetadata?.[step];
             const confidence = metadata?.confidence;
@@ -1316,7 +1389,7 @@ function BeatGrid({
               <button key={step} data-step={step} role="gridcell" tabIndex={activeFocus === step ? 0 : -1}
                 aria-label={`${channel.name} step ${step + 1}${details ? `, ${details}` : ''}`} aria-pressed={on}
                 title={details || undefined}
-                className={`step${on ? ' on' : ''}${hidden ? ' hidden-hits' : ''}${j % Math.max(1, view / 4) === 0 ? ' group' : ''}${isPlaying ? ' playing' : ''}${confidence !== undefined ? ' recognized' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}`}
+                className={`step${on ? ' on' : ''}${hidden ? ' hidden-hits' : ''}${j % Math.max(1, view / 4) === 0 ? ' group' : ''}${inRow && j > 0 && j % view === 0 ? ' bar-start' : ''}${isPlaying ? ' playing' : ''}${confidence !== undefined ? ' recognized' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}`}
                 onClick={() => onToggle(step)} onKeyDown={(event) => moveFocus(event, step)}>
                 {confidence !== undefined && confidence < 0.7 ? <span className="confidence-indicator" aria-hidden="true">!</span> : null}
               </button>
