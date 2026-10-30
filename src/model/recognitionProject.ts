@@ -1,8 +1,9 @@
 import {
-  addChannel, removeChannel, totalSteps, updateChannel, type Project, type SoundDef,
+  addChannel, LOOP_BARS, MAX_CHANNELS, removeChannel, setLoopBars, totalSteps, updateChannel,
+  type NoteEvent, type Project, type SoundDef,
 } from './project';
 import type {
-  PercussionClass, PercussionEvent, RecognitionEvent, RecognitionResult, RecognitionTake,
+  AppliedSnapshot, PercussionClass, PercussionEvent, RecognitionEvent, RecognitionResult, RecognitionTake,
 } from './recognition';
 import { noteEventToSteps, percussionEventToStep, quantiseRecognitionEvents } from '../library/quantisation';
 import { SCALES, snapPitchToScale } from './music';
@@ -141,65 +142,192 @@ function eventsByClass(events: readonly RecognitionEvent[]): Map<string, { type:
   return groups;
 }
 
-export function applyRecognitionTake(project: Project, take: RecognitionTake, bpm = take.tempoBpm): Project | undefined {
-  let next = project;
-  const previous = next.recognitionTakes.find((candidate) => candidate.id === take.id);
-  for (const id of previous?.channelIds ?? []) next = removeChannel(next, id);
-  if (previous?.originalChannelId) next = removeChannel(next, previous.originalChannelId);
+export interface ApplyRecognitionOptions {
+  /** Throw away grid edits on this take's tracks and write the recognition result fresh. */
+  discardEdits?: boolean;
+}
 
+const noteKey = (note: { step: number; pitch: number; durationSteps: number }) => `${note.step}:${note.pitch}:${note.durationSteps}`;
+
+/** The project's loop only grows to fit a take; it never shrinks (shrinking deletes content). */
+function growLoopFor(project: Project, take: RecognitionTake, bpm: number): Project {
+  let neededSteps = 0;
+  for (const event of take.quantisedEvents) {
+    if ('pitch' in event) {
+      const { step, durationSteps } = noteEventToSteps(
+        event, bpm, project.noteLength, take.quantisation.enabled ? take.quantisation.strength : 0, take.quantisation.subdivision,
+      );
+      neededSteps = Math.max(neededSteps, step + Math.min(durationSteps, 1));
+    } else {
+      neededSteps = Math.max(neededSteps, percussionEventToStep(
+        event, bpm, project.noteLength, take.quantisation.strength, take.quantisation.subdivision,
+      ) + 1);
+    }
+  }
+  const neededBars = Math.ceil(neededSteps / project.noteLength);
+  const target = LOOP_BARS.find((bars) => bars >= neededBars) ?? LOOP_BARS[LOOP_BARS.length - 1];
+  return target > project.loopBars ? setLoopBars(project, target) : project;
+}
+
+function generatedNotes(take: RecognitionTake, bpm: number, noteLength: number): NoteEvent[] {
+  return take.quantisedEvents.flatMap((event) => {
+    if (!('pitch' in event)) return [];
+    const { step, durationSteps } = noteEventToSteps(
+      event, bpm, noteLength, take.quantisation.enabled ? take.quantisation.strength : 0, take.quantisation.subdivision,
+    );
+    return [{
+      id: event.id,
+      step,
+      pitch: event.pitch,
+      durationSteps,
+      velocity: event.velocity,
+      confidence: event.confidence,
+      ...(event.pitchBend ? { pitchBend: event.pitchBend } : {}),
+      sourceTakeId: take.id,
+    }];
+  });
+}
+
+/**
+ * Write a recognition take into the project. On re-apply (new correction, tempo or event edit) the take's
+ * tracks are updated in place: anything the user changed on the grid (moved, added or deleted notes and
+ * steps) is kept, and the tracks' sound, volume, pan and mute are untouched.
+ */
+export function applyRecognitionTake(
+  project: Project, take: RecognitionTake, bpm = take.tempoBpm, options: ApplyRecognitionOptions = {},
+): Project | undefined {
+  const previous = project.recognitionTakes.find((candidate) => candidate.id === take.id);
+  let next = growLoopFor(project, take, bpm);
   const isPercussion = take.mode === 'beat';
-  const groups = isPercussion ? [...eventsByClass(take.quantisedEvents).entries()] : [];
-  const channelCount = isPercussion ? groups.length : take.quantisedEvents.length ? 1 : 0;
-  const originalChannelCount = take.sourceSampleId ? 1 : 0;
-  if (next.channels.length + channelCount + originalChannelCount > 8) return undefined;
+  const exists = (id: string | undefined) => Boolean(id && next.channels.some((channel) => channel.id === id));
+  const applied: AppliedSnapshot = {};
   const createdChannelIds: string[] = [];
 
   if (isPercussion) {
-    for (const [, group] of groups) {
-      const { type, events } = group;
-      const channelName = NAME_FOR_CLASS[type];
-      const soundId = events[0]?.assignedSoundId ?? SOUND_FOR_CLASS[type];
-      next = addChannel(next, channelName, soundId);
-      const channel = next.channels.at(-1);
-      if (!channel) return undefined;
-      const steps = new Array(totalSteps(next)).fill(false);
-      const stepEventMetadata = { ...(channel.stepEventMetadata ?? {}) };
-      for (const event of events) {
-        const step = percussionEventToStep(event, bpm, next.noteLength, take.quantisation.strength, take.quantisation.subdivision);
-        const loopStep = step % steps.length;
-        steps[loopStep] = true;
-        stepEventMetadata[loopStep] = { confidence: event.confidence, sourceTakeId: take.id };
+    const len = totalSteps(next);
+    const groups = eventsByClass(take.quantisedEvents);
+    // Map each event group to its channel. Older takes have no snapshot: their channels were created in group order.
+    type GroupSnapshot = NonNullable<AppliedSnapshot['groups']>[string];
+    const previousGroups: Record<string, GroupSnapshot> = { ...(previous?.applied?.groups ?? {}) };
+    if (previous && !previous.applied?.groups) {
+      [...eventsByClass(previous.quantisedEvents).keys()].forEach((key, index) => {
+        const channelId = previous.channelIds[index];
+        const channel = next.channels.find((candidate) => candidate.id === channelId);
+        if (channel) previousGroups[key] = { channelId, steps: [...channel.steps] };
+      });
+    }
+    const keys = [...new Set([...Object.keys(previousGroups), ...groups.keys()])];
+    const newChannels = keys.filter((key) => groups.has(key) && !previousGroups[key]).length;
+    const needsOriginal = take.sourceSampleId && !exists(previous?.originalChannelId) ? 1 : 0;
+    if (next.channels.length + newChannels + needsOriginal > MAX_CHANNELS) return undefined;
+    applied.groups = {};
+    // Events keep their identity across corrections and reclassification: a hit the user deleted stays deleted.
+    const deletedEvents = new Set<string>();
+    for (const group of Object.values(previousGroups)) {
+      const channel = next.channels.find((candidate) => candidate.id === group.channelId);
+      for (const [id, step] of Object.entries(group.events ?? {})) {
+        if (step < 0 || (!options.discardEdits && channel && !channel.steps[step])) deletedEvents.add(id);
       }
-
+    }
+    for (const key of keys) {
+      const group = groups.get(key);
+      const known = previousGroups[key];
+      if (known && !exists(known.channelId)) {
+        applied.groups[key] = known; // the user deleted this track: keep it deleted
+        continue;
+      }
+      const writes: { id: string; step: number; confidence?: number }[] = [];
+      const events: Record<string, number> = {};
+      for (const event of group?.events ?? []) {
+        if (deletedEvents.has(event.id)) { events[event.id] = -1; continue; }
+        const step = percussionEventToStep(event, bpm, next.noteLength, take.quantisation.strength, take.quantisation.subdivision) % len;
+        writes.push({ id: event.id, step, confidence: event.confidence });
+        events[event.id] = step;
+      }
+      const generated = new Array(len).fill(false);
+      const metadata: Record<number, { confidence?: number; sourceTakeId: string }> = {};
+      for (const write of writes) {
+        generated[write.step] = true;
+        metadata[write.step] = { confidence: write.confidence, sourceTakeId: take.id };
+      }
+      if (!known) {
+        if (!group) continue;
+        next = addChannel(next, NAME_FOR_CLASS[group.type], group.events[0]?.assignedSoundId ?? SOUND_FOR_CLASS[group.type]);
+        const channel = next.channels.at(-1)!;
+        next = updateChannel(next, channel.id, { steps: generated, stepEventMetadata: metadata });
+        applied.groups[key] = { channelId: channel.id, steps: generated, events };
+        createdChannelIds.push(channel.id);
+        continue;
+      }
+      const channel = next.channels.find((candidate) => candidate.id === known.channelId)!;
+      const user = Array.from({ length: len }, (_, i) => channel.steps[i] ?? false);
+      const last = options.discardEdits ? user : Array.from({ length: len }, (_, i) => known.steps[i] ?? false);
+      // Keep steps the user added; clear steps recognition wrote last time (still on); then write this pass.
+      const userAdded = user.map((on, i) => on && !last[i]);
+      const steps = userAdded.map((added, i) => added || generated[i]);
+      const untouched = user.every((on, i) => on === last[i]);
+      if (!steps.some(Boolean) && untouched && !group) {
+        next = removeChannel(next, channel.id);
+        continue;
+      }
+      const stepEventMetadata = { ...(channel.stepEventMetadata ?? {}) };
+      for (let i = 0; i < len; i++) {
+        if (stepEventMetadata[i]?.sourceTakeId === take.id && !generated[i]) delete stepEventMetadata[i];
+        if (metadata[i]) stepEventMetadata[i] = metadata[i];
+      }
       next = updateChannel(next, channel.id, { steps, stepEventMetadata });
+      applied.groups[key] = { channelId: channel.id, steps: generated, events };
       createdChannelIds.push(channel.id);
     }
-  } else if (take.quantisedEvents.length) {
-    next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', take.mode === 'bass' ? 'bass-6' : 'keys-1');
-    const channel = next.channels.at(-1);
-    if (!channel) return undefined;
-    const notes = take.quantisedEvents.flatMap((event) => {
-      if (!('pitch' in event)) return [];
-      const { step, durationSteps } = noteEventToSteps(
-        event, bpm, next.noteLength, take.quantisation.enabled ? take.quantisation.strength : 0, take.quantisation.subdivision,
-      );
-      return [{
-        id: event.id,
-        step,
-        pitch: event.pitch,
-        durationSteps,
-        velocity: event.velocity,
-        confidence: event.confidence,
-        ...(event.pitchBend ? { pitchBend: event.pitchBend } : {}),
-        sourceTakeId: take.id,
-      }];
-    });
-    next = updateChannel(next, channel.id, { notes });
-    createdChannelIds.push(channel.id);
+  } else {
+    const generated = generatedNotes(take, bpm, next.noteLength);
+    const channelId = previous?.channelIds.find((id) => exists(id));
+    const needsChannel = !channelId && generated.length && !(previous && previous.channelIds.length) ? 1 : 0;
+    const needsOriginal = take.sourceSampleId && !exists(previous?.originalChannelId) ? 1 : 0;
+    if (next.channels.length + needsChannel + needsOriginal > MAX_CHANNELS) return undefined;
+    if (channelId) {
+      const channel = next.channels.find((candidate) => candidate.id === channelId)!;
+      const ownNotes = channel.notes.filter((note) => note.sourceTakeId === take.id);
+      // Older takes have no snapshot: treat the current grid as what recognition wrote.
+      const last: Record<string, string> = options.discardEdits || !previous?.applied?.notes
+        ? Object.fromEntries(ownNotes.map((note) => [note.id, noteKey(note)]))
+        : { ...previous.applied.notes };
+      const byId = new Map(generated.map((note) => [note.id, note]));
+      const snapshot: Record<string, string> = { ...last };
+      const notes: NoteEvent[] = [];
+      const present = new Set<string>();
+      for (const note of channel.notes) {
+        if (note.sourceTakeId !== take.id) { notes.push(note); continue; } // added by the user
+        present.add(note.id);
+        const untouched = last[note.id] !== undefined && last[note.id] === noteKey(note);
+        if (!untouched) { notes.push(note); continue; } // edited on the grid
+        const fresh = byId.get(note.id);
+        if (fresh) { notes.push(fresh); snapshot[note.id] = noteKey(fresh); }
+        else delete snapshot[note.id];
+      }
+      for (const note of generated) {
+        if (present.has(note.id)) continue;
+        if (last[note.id] !== undefined) continue; // the user deleted it
+        notes.push(note);
+        snapshot[note.id] = noteKey(note);
+      }
+      next = updateChannel(next, channelId, { notes });
+      applied.notes = snapshot;
+      createdChannelIds.push(channelId);
+    } else if (generated.length && !(previous && previous.channelIds.length)) {
+      next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', take.mode === 'bass' ? 'bass-6' : 'keys-1');
+      const channel = next.channels.at(-1)!;
+      next = updateChannel(next, channel.id, { notes: generated });
+      applied.notes = Object.fromEntries(generated.map((note) => [note.id, noteKey(note)]));
+      createdChannelIds.push(channel.id);
+    } else {
+      applied.notes = previous?.applied?.notes; // the user deleted the track: keep it deleted
+      if (previous) createdChannelIds.push(...previous.channelIds);
+    }
   }
 
-  let originalChannelId: string | undefined;
-  if (take.sourceSampleId) {
+  let originalChannelId = exists(previous?.originalChannelId) ? previous!.originalChannelId : undefined;
+  if (take.sourceSampleId && !originalChannelId && !(previous?.originalChannelId)) {
     const soundId = `recognition-original-${take.id}`;
     const sound: SoundDef = {
       id: soundId,
@@ -223,9 +351,14 @@ export function applyRecognitionTake(project: Project, take: RecognitionTake, bp
       steps[0] = true;
       next = updateChannel(next, originalChannel.id, { steps, mute: true });
     }
+  } else if (previous?.originalChannelId && !originalChannelId) {
+    originalChannelId = previous.originalChannelId; // the user deleted the original track: keep it deleted
   }
 
-  const savedTake: RecognitionTake = { ...take, channelIds: createdChannelIds, originalChannelId };
+  const savedTake: RecognitionTake = {
+    ...take, channelIds: createdChannelIds, ...(originalChannelId ? { originalChannelId } : {}), applied,
+  };
+  if (!originalChannelId) delete savedTake.originalChannelId;
   return {
     ...next,
     recognitionTakes: [...next.recognitionTakes.filter((candidate) => candidate.id !== take.id), savedTake],

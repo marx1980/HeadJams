@@ -64,6 +64,15 @@ export interface RecognitionTake {
   quantisedEvents: RecognitionEvent[];
   channelIds: string[];
   originalChannelId?: string;
+  /** What recognition last wrote to the project, so user edits on the grid can be told apart and kept. */
+  applied?: AppliedSnapshot;
+}
+
+export interface AppliedSnapshot {
+  /** Melody/bass: note id -> "step:pitch:durationSteps" as last written. */
+  notes?: Record<string, string>;
+  /** Beat: event group key -> its channel, the steps last written, and each event's step (-1 = deleted by the user). */
+  groups?: Record<string, { channelId: string; steps: boolean[]; events?: Record<string, number> }>;
 }
 
 export interface RecognitionResult {

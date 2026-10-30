@@ -6,6 +6,7 @@ import { RecognitionPanel } from './RecognitionPanel';
 import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
+import type { ApplyRecognitionOptions } from '../model/recognitionProject';
 
 const SECTION = { name: 'library-section' } as Record<string, string>;
 
@@ -25,7 +26,7 @@ export function SampleLibrary({
   onUpdateSample: (sample: SampleData) => Promise<void>;
   onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
   onRecordStop: () => void;
-  onRecognize: (take: RecognitionTake) => boolean;
+  onRecognize: (take: RecognitionTake, options?: ApplyRecognitionOptions) => boolean;
   onRecognitionBpmChange: (bpm: number, take?: RecognitionTake) => void;
   onImport: () => void;
   onEdit: () => void;

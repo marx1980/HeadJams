@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../model/project';
-import { createRecognitionTake, SOUND_FOR_CLASS } from '../model/recognitionProject';
+import { createRecognitionTake, SOUND_FOR_CLASS, type ApplyRecognitionOptions } from '../model/recognitionProject';
 import { correctRecognitionPitches } from '../model/recognitionProject';
 import { quantiseRecognitionEvents, quantiseTime } from '../library/quantisation';
 import type { SoundDef } from '../model/project';
@@ -26,7 +26,7 @@ export function RecognitionPanel({
   project: Project;
   samples: ReadonlyMap<string, SampleData>;
   sounds: SoundDef[];
-  onApply: (take: RecognitionTake) => boolean;
+  onApply: (take: RecognitionTake, options?: ApplyRecognitionOptions) => boolean;
   onBpmChange: (bpm: number, take?: RecognitionTake) => void;
   onPreviewSample: (sample: SampleData) => void;
   onEdit: () => void;
@@ -347,6 +347,7 @@ export function RecognitionPanel({
           <div className="row">
             <button className="secondary" onClick={undoEvents} disabled={!eventHistory.length}>Undo correction</button>
             <button className="secondary" onClick={restoreDetected}>Restore detected result</button>
+            <button className="secondary" onClick={() => onApply(activeTake, { discardEdits: true })}>Reset track</button>
           </div>
           {activeTake.mode === 'beat' && activeTake.quantisedEvents.map((event) => 'type' in event ? (
             <label className="recognition-event" key={event.id}>
