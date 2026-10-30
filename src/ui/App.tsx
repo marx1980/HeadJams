@@ -23,7 +23,7 @@ import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { hearTakeAs } from '../model/hearAs';
 import { refreshChordRows } from '../model/chordRow';
 import { applyRhythm } from '../model/rhythmUse';
-import { addPersonalInstrument, personalAudio, personalManifest } from '../model/personalInstrument';
+import { addPersonalInstrument, addRecordedChords, personalAudio, personalManifest } from '../model/personalInstrument';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -866,6 +866,12 @@ export function App() {
         onAudition={(preview) => void audition(preview)}
         playing={playStep !== null}
         onUseSound={(channelId, soundId) => { auditionRef.current = undefined; setProject(updateChannel(projectRef.current, channelId, { soundId })); }}
+        onMakeChords={(name, chords, fallback) => {
+          const { project: next, sound } = addRecordedChords(projectRef.current, name, chords, fallback);
+          if (!sound) return;
+          setProject(next);
+          flash(`${sound.name} added`, true);
+        }}
         onMakeInstrument={(name, picked) => {
           const { project: next, sound } = addPersonalInstrument(projectRef.current, name, picked);
           if (!sound) return;

@@ -46,6 +46,8 @@ export interface SoundDef {
   instrumentArticulation?: string;
   /** MIDI velocity (1–127) for grid hits on a sampled instrument (default 100). */
   instrumentVelocity?: number;
+  /** Recorded-chord sound: the personal instrument holding whole-chord recordings (E7); `instrumentId` is the guitar for the rest. */
+  recordedChordsId?: string;
   /** Sampled chord sounds: 'natural' lets strings a new chord does not play keep ringing; 'tight' stops the whole chord. */
   chordRing?: 'natural' | 'tight';
 }

@@ -558,3 +558,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .make-instrument label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .make-instrument .check-label { flex-direction: row; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .make-instrument > button { min-height: 40px; }
+.make-instrument-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.make-instrument-kind button { min-height: 40px; }
+.make-instrument-samples.chords li { grid-template-columns: 1fr 72px 80px; }
+.make-instrument input.invalid { border-color: var(--danger); }

@@ -293,6 +293,13 @@ function normalizeProject(raw: string): Project | undefined {
             samples: item.samples.filter((sample) => sample && typeof sample.sampleId === 'string'
               && Number.isInteger(sample.rootMidi) && sample.rootMidi >= 0 && sample.rootMidi <= 127)
               .map((sample) => ({ sampleId: sample.sampleId, rootMidi: sample.rootMidi })),
+            ...(Array.isArray(item.chords) ? {
+              chords: item.chords.filter((chord) => chord && typeof chord.sampleId === 'string' && Number.isInteger(chord.root)
+                && chord.root >= 0 && chord.root <= 11 && CHORD_QUALITIES.some((quality) => quality.id === chord.quality)
+                && (chord.direction === 'down' || chord.direction === 'up'))
+                .map((chord) => ({ sampleId: chord.sampleId, root: chord.root, quality: chord.quality, direction: chord.direction })),
+            } : {}),
+            ...(typeof item.fallback === 'string' && /^[a-z0-9-]+$/.test(item.fallback) ? { fallback: item.fallback } : {}),
           }]
           : [])
         : undefined,

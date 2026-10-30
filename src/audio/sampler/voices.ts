@@ -10,8 +10,8 @@ export interface TrackedVoice {
   level: number;
   /** Voices sharing this key count against one polyphony limit (instrument on a channel). */
   polyKey: string;
-  /** Voices sharing this key cut each other off (for example closed and open hi-hat). */
-  chokeKey?: string;
+  /** Voices sharing a key cut each other off (for example closed and open hi-hat). A voice may hold several keys. */
+  chokeKey?: string | string[];
 }
 
 export interface VoiceCut {
@@ -35,7 +35,11 @@ export class VoiceTracker {
       this.active = this.active.filter((active) => active !== victim);
     };
     if (voice.chokeKey) {
-      for (const active of [...this.active]) if (active.chokeKey === voice.chokeKey) cut(active);
+      const keys = new Set(typeof voice.chokeKey === 'string' ? [voice.chokeKey] : voice.chokeKey);
+      for (const active of [...this.active]) {
+        const theirs = active.chokeKey === undefined ? [] : typeof active.chokeKey === 'string' ? [active.chokeKey] : active.chokeKey;
+        if (theirs.some((key) => keys.has(key))) cut(active);
+      }
     }
     const limit = Math.max(1, maxPolyphony);
     let same = this.active.filter((active) => active.polyKey === voice.polyKey);

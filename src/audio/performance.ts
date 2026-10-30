@@ -4,6 +4,7 @@ import {
 import { findSound } from '../library/sounds';
 import { guitarChordPitches } from '../model/music';
 import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
+import { chordArticulation, recordedChordFor } from '../model/personalInstrument';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -35,8 +36,8 @@ export interface PitchedVoice extends VoiceBase {
   /** Left undefined when the source event has none, so renderers keep their own default. */
   velocity?: number;
   pitchBend?: PitchBendPoint[];
-  /** Sampled guitars: voices with the same key on a channel cut each other (one per string, or the whole chord when tight). */
-  chokeKey?: string;
+  /** Sampled guitars: voices sharing a key on a channel cut each other (one per string, or the whole chord when tight). */
+  chokeKey?: string | string[];
 }
 
 export type VoiceEvent = HitVoice | PitchedVoice;
@@ -125,7 +126,23 @@ function compileSampledChords(
   const voicings = voiceChordSequence(events);
   const tight = base.sound.chordRing === 'tight';
   const voices: PitchedVoice[] = [];
+  const recorded = base.sound.recordedChordsId
+    ? p.personalInstruments?.find((instrument) => instrument.id === base.sound.recordedChordsId)
+    : undefined;
   for (const event of starting) {
+    // Recorded chords (E7) play whole; they hold every string so a built chord after them cuts them, and vice versa.
+    const take = recorded?.chords && recordedChordFor(recorded.chords, event);
+    if (take && recorded) {
+      const length = durationOf(event.durationSteps);
+      voices.push({
+        ...base,
+        sound: { ...base.sound, instrumentId: recorded.id, instrumentArticulation: chordArticulation(take.root, take.quality, take.direction) },
+        kind: 'pitched', origin: 'chord', offsetSec: 0, pitch: 60, durationSec: Math.max(0.01, length),
+        velocity: Math.max(0, Math.min(1, event.velocity ?? 1)),
+        chokeKey: ['chord', 'string0', 'string1', 'string2', 'string3', 'string4', 'string5'],
+      });
+      continue;
+    }
     const voicing = voicings.get(event.id);
     if (!voicing) continue;
     const muted = event.articulation === 'muted';
