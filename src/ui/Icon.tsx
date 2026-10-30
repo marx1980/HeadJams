@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
+import { ILLUSTRATIONS } from './illustrations';
+import './illustrations.css';
 
 export type IconName =
   | 'beat' | 'sound' | 'library' | 'song'
@@ -55,7 +57,20 @@ const paths: Record<IconName, ReactNode> = {
   recent: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
 };
 
+/**
+ * Pictures of things (instruments, tabs, file, settings, help, …) are illustrated in one hue with soft and crisp
+ * shading (scripts/build-illustrations.py); marks for actions (play, close, arrows, …) stay as line icons.
+ * Both follow currentColor, so they take the family, accent or text colour around them.
+ */
 export function Icon({ name, className }: { name: IconName; className?: string }) {
+  const id = useId().replace(/[^A-Za-z0-9_-]/g, '');
+  const art = ILLUSTRATIONS[name];
+  if (art) {
+    return (
+      <svg className={`${className ?? ''} illo`} viewBox="0 0 128 128" aria-hidden="true" focusable="false"
+        dangerouslySetInnerHTML={{ __html: art.replaceAll('ID_', `i${id}_`) }} />
+    );
+  }
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">

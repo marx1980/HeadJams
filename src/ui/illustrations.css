@@ -1,0 +1,25 @@
+/* Illustrated icons (scripts/build-illustrations.py): every tone is the icon's own colour, darker or lighter,
+   so an icon is one hue and follows the family, accent or text colour around it. The plain currentColor
+   line before each color-mix is the fallback for browsers without color-mix. */
+.illo { overflow: visible; }
+.illo .f0 { fill: currentColor; fill: color-mix(in oklab, currentColor 34%, #000); }
+.illo .f1 { fill: currentColor; fill: color-mix(in oklab, currentColor 64%, #000); }
+.illo .f2 { fill: currentColor; }
+.illo .f3 { fill: currentColor; fill: color-mix(in oklab, currentColor 58%, #fff); }
+.illo .f4 { fill: currentColor; fill: color-mix(in oklab, currentColor 22%, #fff); }
+.illo .fw { fill: #fff; }
+.illo .k0 { stroke: currentColor; stroke: color-mix(in oklab, currentColor 34%, #000); }
+.illo .k1 { stroke: currentColor; stroke: color-mix(in oklab, currentColor 64%, #000); }
+.illo .k2 { stroke: currentColor; }
+.illo .k3 { stroke: currentColor; stroke: color-mix(in oklab, currentColor 58%, #fff); }
+.illo .k4 { stroke: currentColor; stroke: color-mix(in oklab, currentColor 22%, #fff); }
+.illo .s0 { stop-color: currentColor; stop-color: color-mix(in oklab, currentColor 34%, #000); }
+.illo .s1 { stop-color: currentColor; stop-color: color-mix(in oklab, currentColor 64%, #000); }
+.illo .s2 { stop-color: currentColor; }
+.illo .s3 { stop-color: currentColor; stop-color: color-mix(in oklab, currentColor 58%, #fff); }
+.illo .s4 { stop-color: currentColor; stop-color: color-mix(in oklab, currentColor 22%, #fff); }
+
+/* Pictures take the skin's accent where they would otherwise be plain text colour (a near-white or near-black
+   hue leaves no room for shading), and the accent's contrast colour on selected, accent-filled buttons. */
+.tabs .tab-icon.illo, .tab-icon.illo, .icon-btn .illo, .inline-icon.illo { color: var(--accent); }
+.tabs button.on .tab-icon.illo, .tabs button.on .illo, button.on .illo, button[aria-pressed='true'].on .illo { color: var(--accent-contrast); }
