@@ -194,6 +194,8 @@ export interface Project {
   recognitionTakes: RecognitionTake[];
   /** Seed for reproducible humanisation and round-robin choices. */
   seed: number;
+  /** Bar names per pattern id (or "loop" when there are no patterns), from the Bars view. */
+  barNames?: Record<string, string[]>;
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
