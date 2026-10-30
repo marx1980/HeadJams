@@ -587,3 +587,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .offline-instruments { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
 .offline-instruments button { min-width: 120px; }
 #offline-count { font-variant-numeric: tabular-nums; }
+
+/* Song link */
+.song-link { display: flex; flex-direction: column; gap: 6px; }
+.song-link-actions { display: grid; grid-template-columns: 44px 1fr; gap: 6px; }
+#share-url { width: 100%; box-sizing: border-box; }

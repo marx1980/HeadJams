@@ -232,7 +232,8 @@ export function saveProject(p: Project): void {
   try { localStorage.setItem(KEY, JSON.stringify({ ...p, formatVersion: CURRENT_PROJECT_FORMAT_VERSION })); } catch { /* storage full or unavailable */ }
 }
 
-function normalizeProject(raw: string): Project | undefined {
+/** Parse and normalise a saved or shared project (JSON text); undefined if it is not a project. */
+export function normalizeProject(raw: string): Project | undefined {
   try {
     const p = JSON.parse(raw) as Project;
     if (!p || !Array.isArray(p.channels) || typeof p.bpm !== 'number') return undefined;

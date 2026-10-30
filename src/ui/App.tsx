@@ -35,6 +35,7 @@ import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
 import { OfflineInstruments } from './OfflineInstruments';
+import { decodeSong, songLink, songPayload } from '../model/songLink';
 import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
@@ -51,7 +52,7 @@ const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
 const BEAT_VIEW_KEY = 'musicmaker.beatView';
-type HeaderMenu = 'file' | 'settings' | 'help' | 'capture';
+type HeaderMenu = 'file' | 'settings' | 'help' | 'capture' | 'song';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -129,6 +130,26 @@ export function App() {
   };
 
   useEffect(() => { saveProject(project); }, [project]);
+
+  // Song links: a project in the URL fragment opens as a song to hear, then open to remix.
+  const [incoming, setIncoming] = useState<Project>();
+  const [incomingPlaying, setIncomingPlaying] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  useEffect(() => { if (playStep === null) setIncomingPlaying(false); }, [playStep]);
+  useEffect(() => {
+    const read = () => {
+      const payload = songPayload(window.location.hash);
+      if (!payload) return;
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      void decodeSong(payload).then((song) => {
+        if (song) { setIncoming(song); setOpenMenu('song'); } else flash('Song link not readable');
+      });
+    };
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const historyRef = useRef<UndoHistory<Project> | undefined>(undefined);
   historyRef.current ??= new UndoHistory(project);
   const history = historyRef.current;
@@ -508,6 +529,18 @@ export function App() {
                   <button id="redo-btn" className="secondary" disabled={!history.canRedo(project)} onClick={redo}>Redo</button>
                 </div>
                               <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
+                <h3>Share</h3>
+                <button id="share-link" className="secondary" onClick={() => {
+                  void songLink(project, window.location.origin + import.meta.env.BASE_URL).then(async (url) => {
+                    setShareUrl(url);
+                    try {
+                      if (navigator.share) { await navigator.share({ title: project.name, url }); return; }
+                      await navigator.clipboard.writeText(url);
+                      flash('Link copied ✓');
+                    } catch { /* share cancelled or clipboard blocked: the link stays in the field */ }
+                  });
+                }}><Icon name="share" className="inline-icon" /> Share link</button>
+                {shareUrl && <input id="share-url" aria-label="Song link" readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} />}
                 <h3>Export</h3>
                 <label>WAV sample rate
                   <select aria-label="WAV sample rate" value={exportSampleRate}
@@ -567,6 +600,32 @@ export function App() {
                 }}>Reset all app data</button>
               </HeaderTile>
             )}
+      {openMenu === 'song' && incoming && (
+        <HeaderTile label="Song" onClose={() => { if (incomingPlaying) void audition(undefined); setIncomingPlaying(false); setIncoming(undefined); closeMenu(); }}>
+          <div className="song-link">
+            <strong id="song-link-name">{incoming.name}</strong>
+            <span>{incoming.bpm} BPM · {incoming.channels.length} tracks</span>
+            <div className="song-link-actions">
+              <button id="song-link-play" className="secondary" aria-label={incomingPlaying ? 'Stop' : 'Play'} onClick={() => {
+                if (incomingPlaying) { void audition(undefined); setIncomingPlaying(false); return; }
+                setIncomingPlaying(true);
+                void audition(incoming);
+              }}><Icon name={incomingPlaying ? 'stop' : 'play'} className="inline-icon" /></button>
+              <button id="song-link-open" onClick={() => {
+                if (incomingPlaying) void audition(undefined);
+                try { localStorage.setItem('musicmaker.project.beforeLink', JSON.stringify(projectRef.current)); } catch { /* storage full */ }
+                const own = projectRef.current.customSounds.filter((sound) => sound.assetSource === 'user-sample'
+                  && !incoming.customSounds.some((item) => item.id === sound.id));
+                setProject({ ...incoming, customSounds: [...incoming.customSounds, ...own] });
+                setIncomingPlaying(false);
+                setIncoming(undefined);
+                closeMenu();
+                flash(`${incoming.name} opened`, true);
+              }}>Open</button>
+            </div>
+          </div>
+        </HeaderTile>
+      )}
       {openMenu === 'capture' && (
         <HeaderTile label="Capture" onClose={closeMenu}>
           <CaptureSheet
