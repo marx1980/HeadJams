@@ -44,3 +44,48 @@ describe('personal instruments', () => {
     expect(store.exportAudio(['mine-1']).regions).toEqual([]);
   });
 });
+
+describe('recorded chords (E7)', () => {
+  const chords = [
+    { sampleId: 'am', root: 9, quality: 'minor' as const, direction: 'down' as const },
+    { sampleId: 'amu', root: 9, quality: 'minor' as const, direction: 'up' as const },
+    { sampleId: 'c', root: 0, quality: 'major' as const, direction: 'down' as const },
+  ];
+
+  it('looks up the exact chord, then the other direction, then a compatible quality, else builds it', async () => {
+    const { findRecordedChord, recordedChordFor } = await import('./personalInstrument');
+    expect(findRecordedChord(chords, 57, 'minor', 'up')!.sampleId).toBe('amu');
+    expect(findRecordedChord(chords, 48, 'major', 'up')!.sampleId).toBe('c');
+    expect(findRecordedChord(chords, 48, 'major7', 'down')!.sampleId).toBe('c');
+    expect(findRecordedChord(chords, 57, 'minor7', 'down')!.sampleId).toBe('am');
+    expect(findRecordedChord(chords, 55, 'major', 'down')).toBeUndefined();
+    expect(recordedChordFor(chords, { root: 57, quality: 'minor', articulation: 'muted' })).toBeUndefined();
+    expect(recordedChordFor(chords, { root: 57, quality: 'minor', articulation: 'sustained', strings: [1] })).toBeUndefined();
+  });
+
+  it('plays recorded chords whole and builds the rest, and each cuts the other on the channel', async () => {
+    const { addRecordedChords } = await import('./personalInstrument');
+    const { compileStep } = await import('../audio/performance');
+    const { VoiceTracker } = await import('../audio/sampler/voices');
+    const { project } = addRecordedChords(createProject('p'), 'My chords', chords);
+    const p = { ...project, channels: [{ ...createChannel('g', 'G', 'mine-1'), chordEvents: [
+      { id: 'a', step: 0, root: 57, quality: 'minor' as const, articulation: 'down-strum' as const, durationSteps: 4 },
+      { id: 'b', step: 4, root: 55, quality: 'major' as const, articulation: 'down-strum' as const, durationSteps: 4 },
+      { id: 'c', step: 8, root: 48, quality: 'major' as const, articulation: 'up-strum' as const, durationSteps: 4 },
+    ] }] };
+    const am = compileStep(p, 0, (s) => s * 0.125);
+    expect(am).toHaveLength(1);
+    expect(am[0].sound).toMatchObject({ instrumentId: 'mine-1', instrumentArticulation: 'chord-9-minor-down' });
+    const g = compileStep(p, 4, (s) => s * 0.125);
+    expect(g.length).toBeGreaterThan(3);
+    expect(g.every((v) => v.sound.instrumentId === 'nylon-guitar')).toBe(true);
+    expect(compileStep(p, 8, (s) => s * 0.125)[0].sound.instrumentArticulation).toBe('chord-0-major-down');
+    // No double trigger: a built string cuts the ringing recorded chord, and a recorded chord cuts every string.
+    const keys = (v: (typeof am)[number]) => (v.kind === 'pitched' ? v.chokeKey : undefined);
+    const tracker = new VoiceTracker();
+    tracker.add({ id: 1, start: 0, noteEnd: 1, end: 2, level: 1, polyKey: 'x', chokeKey: keys(am[0]) }, 8);
+    expect(tracker.add({ id: 2, start: 0.5, noteEnd: 1, end: 2, level: 1, polyKey: 'y', chokeKey: keys(g[0]) }, 8)).toEqual([{ id: 1, at: 0.5 }]);
+    tracker.add({ id: 3, start: 0.51, noteEnd: 1, end: 2, level: 1, polyKey: 'y', chokeKey: keys(g[1]) }, 8);
+    expect(tracker.add({ id: 4, start: 1, noteEnd: 2, end: 3, level: 1, polyKey: 'x', chokeKey: keys(am[0]) }, 8).map((c) => c.id).sort()).toEqual([2, 3]);
+  });
+});

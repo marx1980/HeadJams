@@ -43,6 +43,9 @@ export function instrumentNeeds(project: Project): Map<string, Set<number>> {
       notes.add(laneSound.instrumentNote ?? 60);
     }
     const sound = findSound(project, channel.soundId);
+    if (sound?.recordedChordsId && (channel.chordEvents?.length ?? 0) > 0) {
+      needs.set(sound.recordedChordsId, needs.get(sound.recordedChordsId) ?? new Set<number>([60]));
+    }
     if (!sound?.instrumentId) continue;
     const notes = needs.get(sound.instrumentId) ?? new Set<number>();
     needs.set(sound.instrumentId, notes);

@@ -3,6 +3,8 @@ import { totalSteps, type Channel, type ChordEvent, type ChordRow, type Project 
 import { DEFAULT_CHORD_ROW, HUMANISE_LEVELS, layoutChordRow, STRUM_PATTERNS, STRUM_SPEEDS } from '../library/guitar/patterns';
 import { voiceChordSequence } from '../library/guitar/performer';
 import { clearChordRow, setChordRow } from '../model/chordRow';
+import { recordedChordFor } from '../model/personalInstrument';
+import { findSound } from '../library/sounds';
 import { Icon } from './Icon';
 
 const fretText = (frets: (number | null)[]) => {
@@ -30,11 +32,16 @@ export function ChordRowEditor({ project, channel, onChange }: {
       articulation: chord.power ? 'power' : 'down-strum', durationSteps: chord.durationSteps, capo: row.capo,
     }));
     const voicings = voiceChordSequence(events);
+    // Diagnostics (E7): chords this sound has recorded play the recording instead of a built shape.
+    const sound = findSound(project, channel.soundId);
+    const recorded = sound?.recordedChordsId ? project.personalInstruments?.find((item) => item.id === sound.recordedChordsId)?.chords : undefined;
     layout.chords.forEach((chord, index) => {
-      if (!seen.has(chord.symbol)) seen.set(chord.symbol, fretText(voicings.get(`shape-${index}`)?.frets ?? []));
+      if (seen.has(chord.symbol)) return;
+      const take = recorded && recordedChordFor(recorded, { root: chord.root, quality: chord.quality, articulation: 'down-strum' });
+      seen.set(chord.symbol, take ? 'Recorded' : fretText(voicings.get(`shape-${index}`)?.frets ?? []));
     });
     return [...seen];
-  }, [layout, row.capo]);
+  }, [layout, row.capo, project, channel.soundId]);
 
   const apply = (next: ChordRow) => {
     setRow(next);

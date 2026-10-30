@@ -25,7 +25,7 @@ export interface SampledVoicePlan {
   /** Seconds after the voice start when the voice is silent (before any cut). */
   endSec: number;
   pitchBend?: PitchBendPoint[];
-  chokeKey?: string;
+  chokeKey?: string | string[];
   /** Sustained regions with loop points keep playing between them until the note is released. */
   loop?: { startSec: number; endSec: number };
 }
@@ -82,7 +82,10 @@ export function planSampledVoice(
     ...(loop ? { loop } : {}),
     chokeKey: choice.region.chokeGroup
       ? `${manifest.id}:${choice.region.chokeGroup}`
-      : pitched && voice.chokeKey ? `${voice.channelId}:${manifest.id}:${voice.chokeKey}` : undefined,
+      // Guitar keys are per channel (not per instrument), so recorded and built chords on one track cut each other.
+      : pitched && voice.chokeKey
+        ? (typeof voice.chokeKey === 'string' ? [voice.chokeKey] : voice.chokeKey).map((key) => `${voice.channelId}:${key}`)
+        : undefined,
   };
 }
 
