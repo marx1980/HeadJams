@@ -20,8 +20,12 @@ describe('preferences', () => {
   });
   it('round-trips saved values', () => {
     const s = memoryStorage();
-    savePreferences({ reduceMotion: true, largeIcons: true, hints: false }, s);
-    expect(loadPreferences(s)).toEqual({ reduceMotion: true, largeIcons: true, hints: false });
+    savePreferences({ reduceMotion: true, largeIcons: true, hints: false, recordingOffsetMs: 35 }, s);
+    expect(loadPreferences(s)).toEqual({ reduceMotion: true, largeIcons: true, hints: false, recordingOffsetMs: 35 });
+  });
+  it('clamps the recording offset', () => {
+    const s = memoryStorage({ 'musicmaker.preferences': JSON.stringify({ recordingOffsetMs: 9000 }) });
+    expect(loadPreferences(s).recordingOffsetMs).toBe(500);
   });
   it('clears only MusicMaker keys', () => {
     const s = memoryStorage({ 'musicmaker.theme': 'x', other: 'keep' });

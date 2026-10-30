@@ -11,6 +11,7 @@ interface DraftSample {
   name: string;
   samples: Float32Array;
   sampleRate: number;
+  recordingOffsetSeconds?: number;
 }
 
 function Setting({
@@ -33,7 +34,7 @@ function Setting({
 }
 
 export function SampleEditor({
-  sounds, samples, bpm, loopBars, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart, onRecordStop, onImport, onEdit,
+  sounds, samples, bpm, loopBars, onSaveSample, onUpdateSample, onPreviewSample, onRecordStart, onRecordStop, recordingOffset, onImport, onEdit,
 }: {
   sounds: SoundDef[];
   samples: ReadonlyMap<string, SampleData>;
@@ -42,8 +43,10 @@ export function SampleEditor({
   onSaveSample: (name: string, tags: string[], sample: SampleData) => Promise<void>;
   onUpdateSample: (sample: SampleData) => Promise<void>;
   onPreviewSample: (sample: SampleData) => void;
-  onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
+  onRecordStart: (durationMs: number, bars: number, metronome: boolean) => Promise<void> | void;
   onRecordStop: () => void;
+  /** Musical time of a recording's first sample, given when the recorder started and the mic's input latency. */
+  recordingOffset?: (recorderStartMs: number, inputLatencySec: number) => number | undefined;
   onImport: () => void;
   onEdit: () => void;
 }) {
@@ -74,6 +77,7 @@ export function SampleEditor({
   const positionTimerRef = useRef<number | undefined>(undefined);
   const recordingStartedAtRef = useRef(0);
   const recordingSessionRef = useRef(0);
+  const recordingOffsetRef = useRef<number | undefined>(undefined);
 
   const activeSound = sounds.find((sound) => sound.sampleId === activeSampleId);
   const activeSample = samples.get(activeSampleId);
@@ -154,7 +158,7 @@ export function SampleEditor({
     setError('');
   };
 
-  const loadAudio = async (blob: Blob, fallbackName: string, imported = false) => {
+  const loadAudio = async (blob: Blob, fallbackName: string, imported = false, recordingOffsetSeconds?: number) => {
     setError('');
     const context = new AudioContext();
     try {
@@ -167,6 +171,7 @@ export function SampleEditor({
       openNew({
         name: fallbackName.replace(/\.[^.]+$/, '') || 'My sample',
         samples: mono, sampleRate: decoded.sampleRate,
+        ...(recordingOffsetSeconds === undefined ? {} : { recordingOffsetSeconds }),
       });
       if (imported) onImport();
     } catch {
@@ -223,14 +228,18 @@ export function SampleEditor({
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
         throw new Error('Audio recording is not supported in this browser.');
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Noise suppression and automatic gain distort humming and hurt pitch tracking; echo cancellation stays on
+      // to limit speaker bleed while the project plays.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { noiseSuppression: false, autoGainControl: false, echoCancellation: true },
+      });
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (event) => { if (event.data.size) chunksRef.current.push(event.data); };
       recorder.onstop = () => {
-        void loadAudio(new Blob(chunksRef.current, { type: recorder.mimeType }), 'My recording');
+        void loadAudio(new Blob(chunksRef.current, { type: recorder.mimeType }), 'My recording', false, recordingOffsetRef.current);
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = undefined;
         stopClick();
@@ -249,19 +258,16 @@ export function SampleEditor({
         setCountingIn(false);
         setCountInBeat(0);
       }
-      await onRecordStart(recordBars * 4 * beatMs, recordBars);
+      await onRecordStart(recordBars * 4 * beatMs, recordBars, metronome);
+      recordingOffsetRef.current = undefined;
+      recorder.onstart = () => {
+        const settings = stream.getAudioTracks()[0]?.getSettings() as MediaTrackSettings & { latency?: number } | undefined;
+        recordingOffsetRef.current = recordingOffset?.(performance.now(), Number.isFinite(settings?.latency) ? settings!.latency! : 0);
+      };
       recorder.start();
       setRecording(true);
       recordingStartedAtRef.current = Date.now();
       setRecordPosition('Bar 1 · Beat 1');
-      if (metronome) {
-        let beat = 1;
-        playClick(true);
-        clickTimerRef.current = window.setInterval(() => {
-          playClick(beat % 4 === 0);
-          beat++;
-        }, beatMs);
-      }
       positionTimerRef.current = window.setInterval(() => {
         const beat = Math.floor((Date.now() - recordingStartedAtRef.current) / beatMs);
         setRecordPosition(`Bar ${Math.floor(beat / 4) + 1} · Beat ${(beat % 4) + 1}`);
@@ -301,6 +307,8 @@ export function SampleEditor({
       sampleRate,
       processingSettings: settings,
       recordedAt: activeSample?.recordedAt ?? Date.now(),
+      ...((activeSample?.recordingOffsetSeconds ?? draft?.recordingOffsetSeconds) === undefined
+        ? {} : { recordingOffsetSeconds: activeSample?.recordingOffsetSeconds ?? draft?.recordingOffsetSeconds }),
       detectedBpm,
       detectedPitch,
       targetPitch: targetNote,

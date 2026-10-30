@@ -1,10 +1,10 @@
-export interface Preferences { reduceMotion: boolean; largeIcons: boolean; hints: boolean }
+export interface Preferences { reduceMotion: boolean; largeIcons: boolean; hints: boolean; recordingOffsetMs: number }
 
 export const PREFERENCES_KEY = 'musicmaker.preferences';
 export const MIDI_INPUT_KEY = 'musicmaker.midiInput';
 
 export function defaultPreferences(): Preferences {
-  return { reduceMotion: false, largeIcons: false, hints: true };
+  return { reduceMotion: false, largeIcons: false, hints: true, recordingOffsetMs: 0 };
 }
 
 export function loadPreferences(storage: Pick<Storage, 'getItem'> = globalThis.localStorage): Preferences {
@@ -16,6 +16,7 @@ export function loadPreferences(storage: Pick<Storage, 'getItem'> = globalThis.l
       reduceMotion: raw.reduceMotion === true,
       largeIcons: raw.largeIcons === true,
       hints: raw.hints !== false,
+      recordingOffsetMs: Number.isFinite(raw.recordingOffsetMs) ? Math.max(-500, Math.min(500, Math.round(raw.recordingOffsetMs!))) : 0,
     };
   } catch {
     return base;

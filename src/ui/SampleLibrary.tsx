@@ -12,7 +12,7 @@ const SECTION = { name: 'library-section' } as Record<string, string>;
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onLibraryAction,
+  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onLibraryAction,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -24,8 +24,9 @@ export function SampleLibrary({
   onUse: (soundId: string, channelId: string) => void;
   onSaveSample: (name: string, tags: string[], sample: SampleData) => Promise<void>;
   onUpdateSample: (sample: SampleData) => Promise<void>;
-  onRecordStart: (durationMs: number, bars: number) => Promise<void> | void;
+  onRecordStart: (durationMs: number, bars: number, metronome: boolean) => Promise<void> | void;
   onRecordStop: () => void;
+  recordingOffset?: (recorderStartMs: number, inputLatencySec: number) => number | undefined;
   onRecognize: (take: RecognitionTake, options?: ApplyRecognitionOptions) => boolean;
   onRecognitionBpmChange: (bpm: number, take?: RecognitionTake) => void;
   onImport: () => void;
@@ -125,6 +126,7 @@ export function SampleLibrary({
         onPreviewSample={onPreviewSample}
         onRecordStart={onRecordStart}
         onRecordStop={onRecordStop}
+        recordingOffset={recordingOffset}
         onImport={onImport}
         onEdit={onEdit}
       />

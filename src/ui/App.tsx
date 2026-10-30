@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
-  totalSteps, type Channel, type Project, type SoundDef, type SynthParams,
+  totalSteps, arrangementLength, type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
@@ -10,6 +10,8 @@ import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
+import { recordingOffsetSeconds } from '../audio/alignment';
+import { stepDuration } from '../audio/scheduler';
 import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
@@ -380,6 +382,10 @@ export function App() {
                 <h3>Audio and MIDI</h3>
                 <p className="hint">The last MIDI input you pick is remembered on this device.</p>
                 <button className="secondary" onClick={() => { localStorage.removeItem(MIDI_INPUT_KEY); flash('MIDI input forgotten'); }}>Forget MIDI input</button>
+                <label>Recording offset (ms)
+                  <input id="recording-offset" type="number" min={-500} max={500} step={5} value={prefs.recordingOffsetMs}
+                    onChange={(e) => updatePrefs({ recordingOffsetMs: Math.max(-500, Math.min(500, Math.round(Number(e.target.value) || 0))) })} />
+                </label>
                 <h3>Data and privacy</h3>
                 <p className="hint">Projects, settings and recordings stay in this browser; nothing is uploaded.</p>
                 <button className="secondary" onClick={() => {
@@ -601,8 +607,9 @@ export function App() {
           emit('sample-updated');
           flash('Sample edits saved ✓');
         }}
-        onRecordStart={async (durationMs) => {
+        onRecordStart={async (durationMs, _bars, metronome) => {
           emit('record-start');
+          engine.setMetronome(metronome);
           // Play the project as it is while recording; never change its loop (that used to delete content).
           if (!engine.playing) {
             await engine.start();
@@ -614,7 +621,17 @@ export function App() {
             }, durationMs);
           }
         }}
+        recordingOffset={(recorderStartMs, inputLatencySec) => {
+          const beatZeroAudibleMs = engine.playbackBeatZeroMs;
+          if (beatZeroAudibleMs === undefined) return undefined;
+          const p = projectRef.current;
+          return recordingOffsetSeconds({
+            beatZeroAudibleMs, recorderStartMs, inputLatencySec, userOffsetMs: prefs.recordingOffsetMs,
+            loopSeconds: (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
+          });
+        }}
         onRecordStop={() => {
+          engine.setMetronome(false);
           window.clearTimeout(recognitionPlaybackTimerRef.current);
           recognitionPlaybackTimerRef.current = undefined;
           if (recognitionPlaybackRef.current) engine.stop();

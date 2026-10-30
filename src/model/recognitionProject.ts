@@ -7,6 +7,7 @@ import type {
 } from './recognition';
 import { noteEventToSteps, percussionEventToStep, quantiseRecognitionEvents } from '../library/quantisation';
 import { SCALES, snapPitchToScale } from './music';
+import { alignEvents } from '../audio/alignment';
 
 export const SOUND_FOR_CLASS: Record<PercussionClass, string> = {
   kick: 'kick-1',
@@ -43,9 +44,11 @@ export function createRecognitionTake(
   scaleAwarePitch = false,
   scaleRoot = 0,
   scaleId = 'major',
+  alignmentSeconds = 0,
 ): RecognitionTake {
   const transposeSemitones = 0;
-  const correctedEvents = correctRecognitionPitches(result.events, {
+  const events = alignEvents(result.events, alignmentSeconds);
+  const correctedEvents = correctRecognitionPitches(events, {
     pitchCorrection, scaleAwarePitch, scaleRoot, scaleId, transposeSemitones,
   });
   const quantisedEvents = options.enabled
@@ -67,9 +70,10 @@ export function createRecognitionTake(
     ...(result.detectedBpm === undefined ? {} : { detectedBpm: result.detectedBpm }),
     tempoAlternatives: [...result.tempoAlternatives],
     quantisation: { ...options },
-    originalEvents: result.events.map((event) => ({ ...event })),
+    originalEvents: events.map((event) => ({ ...event })),
     quantisedEvents,
     channelIds: [],
+    ...(alignmentSeconds ? { alignmentSeconds } : {}),
   };
 }
 

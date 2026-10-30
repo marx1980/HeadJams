@@ -163,6 +163,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       channelIds: Array.isArray(take.channelIds) ? take.channelIds.filter((id) => typeof id === 'string') : [],
       ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
       ...(normalizeApplied(take.applied) ? { applied: normalizeApplied(take.applied) } : {}),
+      ...(Number.isFinite(take.alignmentSeconds) ? { alignmentSeconds: take.alignmentSeconds } : {}),
     }];
   });
 }
