@@ -18,6 +18,13 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Offline acceptance check
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          npx vite preview --port 5199 &
+          sleep 3
+          node scripts/offline-check.cjs
       - name: Include UI mockups in Pages artifact
         run: |
           mkdir -p dist/mockups dist/docs/mockups

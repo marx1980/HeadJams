@@ -582,3 +582,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
   .bar-card-actions { gap: 4px; }
   .bar-card-actions > select { padding: 4px 16px 4px 4px; font-size: 0.85rem; background-position: calc(100% - 10px) 50%, calc(100% - 5px) 50%; }
 }
+
+/* Settings › Offline */
+.offline-instruments { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.offline-instruments button { min-width: 120px; }
+#offline-count { font-variant-numeric: tabular-nums; }

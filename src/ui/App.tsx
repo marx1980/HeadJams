@@ -34,6 +34,7 @@ import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
+import { OfflineInstruments } from './OfflineInstruments';
 import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
@@ -552,6 +553,8 @@ export function App() {
                   <input id="recording-offset" type="number" min={-500} max={500} step={5} value={prefs.recordingOffsetMs}
                     onChange={(e) => updatePrefs({ recordingOffsetMs: Math.max(-500, Math.min(500, Math.round(Number(e.target.value) || 0))) })} />
                 </label>
+                <h3>Offline</h3>
+                <OfflineInstruments onMessage={flash} />
                 <h3>Data and privacy</h3>
                 <p className="hint">Projects, settings and recordings stay in this browser; nothing is uploaded.</p>
                 <button className="secondary" onClick={() => {

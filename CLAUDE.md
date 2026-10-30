@@ -13,6 +13,7 @@ The sandbox clone tracks only `main`, so after a branch is pushed there is no `o
 ## Running and checking the UI
 - `npm run dev` does not load the app (the `app/` root cannot resolve `../src/main.tsx`). Use `npx vite build`, then `npx vite preview --port 5199` and open `http://localhost:5199/MusicMaker/`.
 - Before finishing: `npx tsc --noEmit` and `npm test`.
+- Offline acceptance (also in CI): with the preview server running, `node scripts/offline-check.cjs`.
 - Check layout changes at 320, 390 and 430px wide. Only Chromium is available in the sandbox, not iOS WebKit.
 
 ## UI rules
