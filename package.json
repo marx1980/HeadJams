@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:mobile": "tsc --noEmit && vite build --mode capacitor && cap sync",
-    "test": "vitest run"
+    "test": "vitest run",
+    "regression:update": "UPDATE_REGRESSION=1 vitest run src/audio/regression.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
