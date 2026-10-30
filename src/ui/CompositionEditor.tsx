@@ -21,6 +21,7 @@ import { detectKey, MOODS, suggestProgressions, type Mood, type Progression } fr
 import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
 import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type PhraseVariation } from '../library/phrases';
 import { withNextPhrase } from '../model/phraseProject';
+import { Automation, PlayFrom, TempoMap } from './SongTiming';
 import { buildSong, DENSITIES, SONG_TEMPLATES, templateSections, type SongSection, type SongTemplate } from '../model/songBuilder';
 import { createChannel } from '../model/project';
 
@@ -279,8 +280,10 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
 
 const KEY_CONFIDENCE = 0.5;
 
-export function SongEditor({ project, onChange, onAudition, playing, voice, onAction }: {
+export function SongEditor({ project, onChange, onAudition, playing, voice, onAction, onPlayFrom }: {
   voice?: { lang: string; allowOnline: boolean };
+  /** Play the song from a bar (or jump there while playing). */
+  onPlayFrom?: (bar: number) => void;
   onAction?: (action: VoiceAction) => void;
   project: Project;
   onChange: (project: Project) => void;
@@ -490,7 +493,9 @@ export function SongEditor({ project, onChange, onAudition, playing, voice, onAc
         </div>
         {project.arrangement.length ? (
           <div className="timeline" style={{ gridTemplateColumns: `repeat(${bars}, minmax(110px, 1fr))` }}>
-            {Array.from({ length: bars }, (_, bar) => <span className="timeline-bar" key={bar}>Bar {bar + 1}</span>)}
+            {Array.from({ length: bars }, (_, bar) => onPlayFrom
+              ? <button className="timeline-bar" key={bar} aria-label={`Play from bar ${bar + 1}`} onClick={() => onPlayFrom(bar)}>Bar {bar + 1}</button>
+              : <span className="timeline-bar" key={bar}>Bar {bar + 1}</span>)}
             {project.arrangement.map((clip) => {
               const pattern = project.patterns.find((item) => item.id === clip.patternId);
               return (
@@ -504,6 +509,9 @@ export function SongEditor({ project, onChange, onAudition, playing, voice, onAc
           </div>
         ) : null}
       </div>
+      {onPlayFrom && <PlayFrom project={project} onPlayFrom={onPlayFrom} />}
+      <TempoMap project={project} onChange={onChange} />
+      <Automation project={project} onChange={onChange} />
       <section className="song-builder bass-assistant" aria-label="Song builder">
         <h3>Song builder</h3>
         <div className="arrangement-assistant-controls">

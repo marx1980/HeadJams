@@ -200,6 +200,10 @@ export interface Project {
   seed: number;
   /** Bar names per pattern id (or "loop" when there are no patterns), from the Bars view. */
   barNames?: Record<string, string[]>;
+  /** Tempo changes on the song timeline (Song › Tempo); `bpm` is the tempo before the first one. */
+  tempoChanges?: import('./tempo').TempoChange[];
+  /** Volume and pan changes over the song, per track (Song › Automation). */
+  automation?: import('./automation').AutomationLane[];
 }
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];

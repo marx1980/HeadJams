@@ -1,5 +1,6 @@
 import { arrangementLength, channelsForPlaybackStep, totalSteps, type Channel, type Project } from '../model/project';
 import { stepDuration } from '../audio/scheduler';
+import { hasTempoMap, songSeconds } from '../model/tempo';
 
 /** Social video (adoption.md E3): the hummed idea, then the song, drawn as notes lighting up as they play. */
 
@@ -28,7 +29,8 @@ export interface VideoPlan {
 export function videoPlan(p: Project, introSeconds = 0): VideoPlan {
   const steps = arrangementLength(p) || totalSteps(p);
   const stepSeconds = stepDuration(p.bpm, p.noteLength);
-  const passSeconds = steps * stepSeconds;
+  // With tempo changes a pass lasts the sum of its steps (Song › Tempo).
+  const passSeconds = hasTempoMap(p) ? songSeconds(p) : steps * stepSeconds;
   const intro = Math.min(Math.max(0, introSeconds), 20);
   const room = MAX_VIDEO_SECONDS - intro;
   const passes = Math.max(1, Math.min(Math.ceil(MIN_SONG_SECONDS / passSeconds), Math.floor(room / passSeconds) || 1));

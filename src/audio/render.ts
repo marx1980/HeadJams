@@ -1,7 +1,8 @@
 import { arrangementLength, totalSteps, type Project } from '../model/project';
 import { renderPitchedNote, renderSound, SAMPLE_RATE } from '../library/sounds';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
-import { stepDuration, stepDurationWithSwing } from './scheduler';
+import { stepDuration } from './scheduler';
+import { durationAt, hasTempoMap, stepSeconds } from '../model/tempo';
 import { pitchToFrequency } from '../model/music';
 import { compileStep, type VoiceEvent } from './performance';
 import type { InstrumentManifest } from './sampler/manifest';
@@ -139,11 +140,12 @@ export function renderProject(
 ): { left: Float32Array; right: Float32Array } {
   const stepLen = Math.round(stepDuration(p.bpm, p.noteLength) * sr);
   const songSteps = arrangementLength(p) || totalSteps(p);
+  const tempoMap = hasTempoMap(p);
   const stepStarts: number[] = [];
   let elapsed = 0;
   for (let step = 0; step < songSteps; step++) {
     stepStarts.push(Math.round(elapsed * sr));
-    elapsed += stepDurationWithSwing(p.bpm, p.noteLength, p.swingTemplate, step);
+    elapsed += stepSeconds(p, step);
   }
   const loopLen = Math.round(elapsed * sr);
   const tail = sr * (1 + (p.effects.delay > 0 ? 1.5 : 0) + (p.effects.reverb > 0 ? 0.5 : 0));
@@ -204,7 +206,8 @@ export function renderProject(
   const sampled: { voice: VoiceEvent; start: number }[] = [];
   for (let step = 0; step < songSteps; step++) {
     const start = stepStarts[step];
-    for (const voice of compileStep(p, step, (steps) => steps * stepLen / sr)) {
+    const durationOf = tempoMap ? (steps: number) => durationAt(p, step, steps) : (steps: number) => steps * stepLen / sr;
+    for (const voice of compileStep(p, step, durationOf)) {
       const def = voice.sound;
       // A sampled sound whose instrument could not be loaded falls back to its synth parameters.
       if (def.instrumentId && instruments?.manifests.has(def.instrumentId)) {

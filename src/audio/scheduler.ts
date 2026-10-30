@@ -7,6 +7,8 @@ export interface SchedulerOptions {
   /** Steps per bar (grid resolution); defaults to 16. */
   stepsPerBar?: () => number;
   swingTemplate?: () => SwingTemplate;
+  /** Seconds that step `step` lasts (a tempo map); when set, it replaces bpm, stepsPerBar and swingTemplate. */
+  stepSeconds?: (step: number) => number;
   onStep: (step: number, time: number) => void;
   lookAhead?: number;
 }
@@ -30,10 +32,21 @@ export class Scheduler {
   private running = false;
   constructor(private o: SchedulerOptions) {}
 
-  start(): void {
+  start(fromStep = 0): void {
     this.running = true;
-    this.step = 0;
+    this.step = this.wrap(fromStep);
     this.nextTime = this.o.now();
+  }
+
+  /** Continue from another step (seek while playing); steps already scheduled still sound. */
+  jump(step: number): void {
+    this.step = this.wrap(step);
+    this.nextTime = Math.max(this.nextTime, this.o.now());
+  }
+
+  private wrap(step: number): number {
+    const total = Math.max(1, this.o.totalSteps());
+    return ((Math.floor(step) % total) + total) % total;
   }
 
   stop(): void {
@@ -45,7 +58,7 @@ export class Scheduler {
     const horizon = this.o.now() + (this.o.lookAhead ?? 0.1);
     while (this.nextTime < horizon) {
       this.o.onStep(this.step, this.nextTime);
-      this.nextTime += stepDurationWithSwing(
+      this.nextTime += this.o.stepSeconds ? this.o.stepSeconds(this.step) : stepDurationWithSwing(
         this.o.bpm(),
         this.o.stepsPerBar?.() ?? 16,
         this.o.swingTemplate?.() ?? 'straight',

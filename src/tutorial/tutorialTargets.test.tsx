@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_SOUNDS } from '../library/sounds';
 import { createRecognitionTake } from '../model/recognitionProject';
-import { createProject, addNote, type Project, type SoundDef } from '../model/project';
+import { createProject, addNote, setLoopBars, type Project, type SoundDef } from '../model/project';
 import type { SampleData } from '../library/sampleStorage';
 import { DEFAULT_SAMPLE_SETTINGS } from '../library/sampleProcessing';
 import { PianoRoll, SongEditor } from '../ui/CompositionEditor';
@@ -76,6 +76,9 @@ function TargetHarness() {
       project: defaultProject, channelId: defaultProject.channels[0]!.id, onChange: () => undefined,
     }),
     createElement(SongEditor, { project, onChange: () => undefined, onAudition: () => undefined, playing: false }),
+    createElement(SongEditor, {
+      project: setLoopBars(project, 4), onChange: () => undefined, onAudition: () => undefined, playing: false, onPlayFrom: () => undefined,
+    }),
     createElement(SoundDesigner, { onPreview: () => undefined, onSave: () => undefined }),
   );
 }
