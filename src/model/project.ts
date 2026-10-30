@@ -64,6 +64,8 @@ export interface Channel {
   chordEvents?: ChordEvent[];
   /** Chord row that generated this channel's `row-` chord events (guitar channels). */
   chordRow?: ChordRow;
+  /** Kit channel: the whole kit as lanes on one channel. Its own `steps` stay empty. */
+  lanes?: KitLane[];
   /** The recording a hummed or beatboxed track came from, and where it starts in the loop. */
   original?: { soundId: string; offsetSec: number };
   /** Play the original recording along with the track ("play what I sang"). */
@@ -117,6 +119,17 @@ export interface ChordEvent {
   humanise?: number;
   /** Capo fret: shapes are chosen for the chord a capo-ed guitarist would finger (sampled guitars). */
   capo?: number;
+}
+
+/** One drum of a kit channel (expansion.md E2b): its own sound and steps, sharing the channel's mixer. */
+export interface KitLane {
+  /** Stable lane id; also its drum-map role (kick, snare, hat-closed, …). */
+  id: string;
+  name: string;
+  soundId: string;
+  steps: boolean[];
+  mute?: boolean;
+  stepEventMetadata?: Record<number, StepEventMetadata>;
 }
 
 /** A guitar channel's chord row (expansion.md E4): chord symbols plus a strum pattern, compiled to chord events. */
@@ -234,7 +247,18 @@ function copyChannels(channels: Channel[]): Channel[] {
       ])),
     } : {}),
     ...(channel.chordEvents ? { chordEvents: channel.chordEvents.map((event) => ({ ...event })) } : {}),
+    ...(channel.lanes ? { lanes: channel.lanes.map(copyLane) } : {}),
   }));
+}
+
+function copyLane(lane: KitLane): KitLane {
+  return {
+    ...lane,
+    steps: [...lane.steps],
+    ...(lane.stepEventMetadata ? {
+      stepEventMetadata: Object.fromEntries(Object.entries(lane.stepEventMetadata).map(([step, metadata]) => [step, { ...metadata }])),
+    } : {}),
+  };
 }
 
 function syncCurrentPattern(p: Project, channels: Channel[], lengthSteps = totalSteps(p)): Project {
@@ -258,6 +282,15 @@ export function setLoopBars(p: Project, loopBars: LoopBars): Project {
       stepEventMetadata: Object.fromEntries(Object.entries(c.stepEventMetadata).filter(([step]) => Number(step) < len)),
     } : {}),
     chordEvents: (c.chordEvents ?? []).filter((event) => event.step < len),
+    ...(c.lanes ? {
+      lanes: c.lanes.map((lane) => ({
+        ...lane,
+        steps: Array.from({ length: len }, (_, i) => lane.steps[i] ?? false),
+        ...(lane.stepEventMetadata ? {
+          stepEventMetadata: Object.fromEntries(Object.entries(lane.stepEventMetadata).filter(([step]) => Number(step) < len)),
+        } : {}),
+      })),
+    } : {}),
   })), len);
   return { ...updated, loopBars };
 }
@@ -274,6 +307,18 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
   const updated = syncCurrentPattern(p, p.channels.map((c) => ({
     ...c,
     steps: resample(c.steps),
+    ...(c.lanes ? {
+      lanes: c.lanes.map((lane) => ({
+        ...lane,
+        steps: resample(lane.steps),
+        ...(lane.stepEventMetadata ? {
+          stepEventMetadata: Object.fromEntries(Object.entries(lane.stepEventMetadata).flatMap(([step, metadata]) => {
+            const position = (Number(step) * newLen) / oldLen;
+            return Number.isInteger(position) ? [[position, metadata]] : [];
+          })),
+        } : {}),
+      })),
+    } : {}),
     notes: (c.notes ?? []).flatMap((note) => {
       const position = (note.step * newLen) / oldLen;
       return Number.isInteger(position)
@@ -330,6 +375,13 @@ export function toggleStep(p: Project, channelId: string, step: number): Project
   return syncCurrentPattern(p, p.channels.map((c) =>
     c.id === channelId ? { ...c, steps: c.steps.map((s, i) => (i === step ? !s : s)) } : c,
   ));
+}
+
+export function toggleLaneStep(p: Project, channelId: string, laneId: string, step: number): Project {
+  return syncCurrentPattern(p, p.channels.map((c) => c.id !== channelId || !c.lanes ? c : {
+    ...c,
+    lanes: c.lanes.map((lane) => lane.id !== laneId ? lane : { ...lane, steps: lane.steps.map((on, i) => (i === step ? !on : on)) }),
+  }));
 }
 
 export function addChannel(p: Project, name: string, soundId: string): Project {

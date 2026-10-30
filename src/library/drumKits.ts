@@ -1,9 +1,16 @@
 import {
-  MAX_CHANNELS, addChannel, updateChannel, type DrumRole, type Project,
+  MAX_CHANNELS, addChannel, totalSteps, updateChannel, type DrumRole, type KitLane, type Project,
 } from '../model/project';
 
 export interface DrumKitChannel {
   role: DrumRole;
+  name: string;
+  soundId: string;
+}
+
+export interface DrumKitLane {
+  /** Drum-map role; lanes with the same id map onto each other when a kit channel changes kit. */
+  id: string;
   name: string;
   soundId: string;
 }
@@ -13,6 +20,8 @@ export interface DrumKit {
   name: string;
   group: string;
   channels: DrumKitChannel[];
+  /** The kit as one channel's lanes (expansion.md E2b). */
+  lanes: DrumKitLane[];
 }
 
 export const DRUM_KITS: DrumKit[] = [
@@ -28,6 +37,15 @@ export const DRUM_KITS: DrumKit[] = [
       { role: 'cymbal', name: 'Cymbal', soundId: 'cymbal-2' },
       { role: 'clap', name: 'Clap', soundId: 'clap-1' },
     ],
+    lanes: [
+      { id: 'kick', name: 'Kick', soundId: 'kick-1' },
+      { id: 'snare', name: 'Snare', soundId: 'snare-1' },
+      { id: 'hat-closed', name: 'Closed hat', soundId: 'hat-1' },
+      { id: 'hat-open', name: 'Open hat', soundId: 'hat-3' },
+      { id: 'tom-mid', name: 'Tom', soundId: 'tom-2' },
+      { id: 'crash', name: 'Cymbal', soundId: 'cymbal-2' },
+      { id: 'clap', name: 'Clap', soundId: 'clap-1' },
+    ],
   },
   {
     id: '808-kit',
@@ -40,6 +58,14 @@ export const DRUM_KITS: DrumKit[] = [
       { role: 'tom', name: 'Tom', soundId: 'tom-1' },
       { role: 'clap', name: 'Clap', soundId: 'clap-2' },
     ],
+    lanes: [
+      { id: 'kick', name: 'Kick', soundId: 'kick-6' },
+      { id: 'snare', name: 'Snare', soundId: 'snare-4' },
+      { id: 'hat-closed', name: 'Closed hat', soundId: 'hat-2' },
+      { id: 'hat-open', name: 'Open hat', soundId: 'hat-3' },
+      { id: 'tom-mid', name: 'Tom', soundId: 'tom-1' },
+      { id: 'clap', name: 'Clap', soundId: 'clap-2' },
+    ],
   },
   {
     id: 'percussion-kit',
@@ -49,6 +75,11 @@ export const DRUM_KITS: DrumKit[] = [
       { role: 'hand-percussion', name: 'Hand Percussion', soundId: 'perc-4' },
       { role: 'shaker', name: 'Shaker', soundId: 'perc-8' },
       { role: 'auxiliary', name: 'Cowbell', soundId: 'perc-2' },
+    ],
+    lanes: [
+      { id: 'hand-percussion', name: 'Hand percussion', soundId: 'perc-4' },
+      { id: 'shaker', name: 'Shaker', soundId: 'perc-8' },
+      { id: 'cowbell', name: 'Cowbell', soundId: 'perc-2' },
     ],
   },
   {
@@ -61,6 +92,19 @@ export const DRUM_KITS: DrumKit[] = [
       { role: 'hat', name: 'Hi-Hat', soundId: 'acoustic-hat-closed' },
       { role: 'tom', name: 'Tom', soundId: 'acoustic-tom-mid' },
       { role: 'cymbal', name: 'Crash', soundId: 'acoustic-crash' },
+    ],
+    lanes: [
+      { id: 'kick', name: 'Kick', soundId: 'acoustic-kick' },
+      { id: 'snare', name: 'Snare', soundId: 'acoustic-snare' },
+      { id: 'sidestick', name: 'Side stick', soundId: 'acoustic-sidestick' },
+      { id: 'hat-closed', name: 'Closed hat', soundId: 'acoustic-hat-closed' },
+      { id: 'hat-pedal', name: 'Pedal hat', soundId: 'acoustic-hat-pedal' },
+      { id: 'hat-open', name: 'Open hat', soundId: 'acoustic-hat-open' },
+      { id: 'tom-high', name: 'Tom high', soundId: 'acoustic-tom-high' },
+      { id: 'tom-mid', name: 'Tom mid', soundId: 'acoustic-tom-mid' },
+      { id: 'tom-low', name: 'Tom low', soundId: 'acoustic-tom-low' },
+      { id: 'crash', name: 'Crash', soundId: 'acoustic-crash' },
+      { id: 'ride', name: 'Ride', soundId: 'acoustic-ride' },
     ],
   },
 ];
@@ -136,4 +180,42 @@ export function applyDrumKit(project: Project, kit: DrumKit, confirmOverwrite = 
 
 export function findDrumKit(id: string): DrumKit | undefined {
   return DRUM_KITS.find((kit) => kit.id === id);
+}
+
+/** Lanes shown before "All lanes" is opened: the core of a kit plus any lane with hits. */
+export const CORE_LANES = ['kick', 'snare', 'hat-closed', 'hand-percussion', 'shaker'];
+
+/** Add one channel holding the whole kit as lanes. */
+export function addKitChannel(project: Project, kit: DrumKit): Project {
+  if (project.channels.length >= MAX_CHANNELS || !kit.lanes.length) return project;
+  const next = addChannel(project, kit.name, kit.lanes[0].soundId);
+  const channel = next.channels.at(-1);
+  if (next === project || !channel) return project;
+  const length = totalSteps(next);
+  const lanes: KitLane[] = kit.lanes.map((lane) => ({ ...lane, steps: new Array(length).fill(false) }));
+  return updateChannel(next, channel.id, { kitId: kit.id, lanes });
+}
+
+/**
+ * Switch a kit channel to another kit: lanes with the same role take the new kit's sound (their steps stay);
+ * lanes the new kit lacks keep their sound; the new kit's other lanes are added empty.
+ */
+export function setKitChannelKit(project: Project, channelId: string, kit: DrumKit): Project {
+  const channel = project.channels.find((item) => item.id === channelId);
+  if (!channel?.lanes) return project;
+  const length = channel.steps.length;
+  const byId = new Map(kit.lanes.map((lane) => [lane.id, lane]));
+  const lanes: KitLane[] = channel.lanes.map((lane) => {
+    const match = byId.get(lane.id);
+    return match ? { ...lane, name: match.name, soundId: match.soundId } : lane;
+  });
+  for (const lane of kit.lanes) {
+    if (!lanes.some((existing) => existing.id === lane.id)) lanes.push({ ...lane, steps: new Array(length).fill(false) });
+  }
+  // Keep the kit's own order, then any lanes it does not have.
+  const order = (id: string) => { const index = kit.lanes.findIndex((lane) => lane.id === id); return index < 0 ? kit.lanes.length : index; };
+  lanes.sort((a, b) => order(a.id) - order(b.id));
+  return updateChannel(project, channelId, {
+    kitId: kit.id, lanes, soundId: lanes[0]?.soundId ?? channel.soundId, name: channel.name === findDrumKit(channel.kitId ?? '')?.name ? kit.name : channel.name,
+  });
 }

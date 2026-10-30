@@ -33,6 +33,27 @@ describe('project storage migration', () => {
     expect(loadProject().seed).toBe(1);
   });
 
+  it('keeps kit lanes, chord rows and chord event options across save and load, and drops malformed ones', () => {
+    const project = createProject();
+    project.channels = [
+      { ...project.channels[0], id: 'kit', kitId: 'acoustic-kit', lanes: [
+        { id: 'kick', name: 'Kick', soundId: 'acoustic-kick', steps: [true, ...new Array(15).fill(false)] },
+        { id: 'kick', name: 'Dup', soundId: 'x', steps: [] },
+        { id: 'snare', name: 'Snare', soundId: 'acoustic-snare', steps: [false, true], mute: true },
+      ] },
+      { ...project.channels[0], id: 'gtr', soundId: 'nylon-chords',
+        chordRow: { chords: 'Am F', pattern: 'pop', strumMs: 999, humanise: 0.6, capo: 2 },
+        chordEvents: [{ id: 'row-0-0', step: 0, root: 57, quality: 'minor', articulation: 'down-strum', durationSteps: 4,
+          strings: [1, 9], strumMs: 30, humanise: 2, capo: 3 }] },
+    ];
+    saveProject(project);
+    const [kit, guitar] = loadProject().channels;
+    expect(kit.lanes!.map((lane) => [lane.id, lane.steps.length, lane.mute ?? false])).toEqual([['kick', 16, false], ['snare', 16, true]]);
+    expect(kit.lanes![1].steps.slice(0, 2)).toEqual([false, true]);
+    expect(guitar.chordRow).toEqual({ chords: 'Am F', pattern: 'pop', strumMs: 200, humanise: 0.6, capo: 2 });
+    expect(guitar.chordEvents![0]).toMatchObject({ strings: [1], strumMs: 30, humanise: 1, capo: 3 });
+  });
+
   it('loads legacy v1 projects without changing sound and sample references', () => {
     const project = createProject();
     project.channels[0].soundId = 'legacy-custom-id';

@@ -55,6 +55,11 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
       if (!sound) continue;
       const base = { sound, channelId: c.id, volume: c.volume, pan: c.pan };
       if (c.steps[source.localStep]) voices.push({ ...base, kind: 'hit', offsetSec: 0 });
+      for (const lane of c.lanes ?? []) {
+        if (lane.mute || !lane.steps[source.localStep]) continue;
+        const laneSound = findSound(p, lane.soundId);
+        if (laneSound) voices.push({ ...base, sound: laneSound, kind: 'hit', offsetSec: 0 });
+      }
       for (const note of c.notes ?? []) {
         if (note.step !== source.localStep) continue;
         voices.push({

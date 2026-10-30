@@ -167,7 +167,9 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .strip > input[type='range'] { padding: 0; margin: 0; }
 .strip > .generated-track-badge { flex: 1 1 100%; }
 .strip .sound-picker-trigger { min-width: 0; }
+.strip > .kit-select { min-width: 140px; max-width: 220px; }
 @media (max-width: 640px) {
+  .strip > .kit-select { flex: 1 1 calc(100% - 150px); max-width: none; min-width: 0; }
   .strip > label, .strip > .generated-track-badge { flex: 1 1 100%; }
   .strip .sound-picker-trigger { flex: 1 1 calc(100% - 150px); max-width: none; }
   .strip > button { flex: none; min-width: 44px; }
@@ -489,3 +491,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .chord-row-invalid { margin: 0; color: var(--danger); }
 .chord-row-shapes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-variant-numeric: tabular-nums; }
 @media (min-width: 700px) { .chord-row-editor { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Beat › kit channel lanes */
+.kit-lanes { display: flex; flex-direction: column; gap: 6px; }
+.kit-lane-name { display: block; font-size: .8rem; font-weight: 600; opacity: .85; margin: 0 0 2px 2px; }
+.kit-lanes-toggle { align-self: flex-start; min-height: 40px; }

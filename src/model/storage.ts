@@ -1,7 +1,7 @@
 import type { HearAsId } from './hearAs';
 import {
   createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
-  type Channel, type ChordEvent, type ChordRow, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
+  type Channel, type ChordEvent, type ChordRow, type KitLane, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 import type {
@@ -139,6 +139,26 @@ function normalizeChordEvent(event: ChordEvent): ChordEvent {
   };
 }
 
+function normalizeLanes(value: unknown[], length: number): KitLane[] {
+  const seen = new Set<string>();
+  return value.flatMap((raw): KitLane[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const lane = raw as Partial<KitLane>;
+    if (typeof lane.id !== 'string' || !lane.id || seen.has(lane.id) || typeof lane.soundId !== 'string') return [];
+    seen.add(lane.id);
+    const steps = Array.isArray(lane.steps) ? lane.steps : [];
+    return [{
+      id: lane.id,
+      name: typeof lane.name === 'string' ? lane.name : lane.id,
+      soundId: lane.soundId,
+      steps: Array.from({ length }, (_, i) => steps[i] === true),
+      ...(lane.mute === true ? { mute: true } : {}),
+      ...(lane.stepEventMetadata && typeof lane.stepEventMetadata === 'object'
+        ? { stepEventMetadata: normalizeStepEventMetadata(lane.stepEventMetadata, length) } : {}),
+    }];
+  });
+}
+
 function normalizeChordRow(value: unknown): ChordRow | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const row = value as Partial<ChordRow>;
@@ -227,6 +247,7 @@ function normalizeProject(raw: string): Project | undefined {
         ).map(normalizeChordEvent)
         : [],
       ...(normalizeChordRow(channel.chordRow) ? { chordRow: normalizeChordRow(channel.chordRow) } : { chordRow: undefined }),
+      ...(Array.isArray(channel.lanes) ? { lanes: normalizeLanes(channel.lanes, channel.steps?.length ?? 0) } : { lanes: undefined }),
     });
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({

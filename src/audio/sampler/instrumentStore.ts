@@ -35,6 +35,13 @@ export function instrumentNeeds(project: Project): Map<string, Set<number>> {
   const needs = new Map<string, Set<number>>();
   const channels: Channel[] = [...project.channels, ...project.patterns.flatMap((pattern) => pattern.channels)];
   for (const channel of channels) {
+    for (const lane of channel.lanes ?? []) {
+      const laneSound = findSound(project, lane.soundId);
+      if (!laneSound?.instrumentId || !lane.steps.some(Boolean)) continue;
+      const notes = needs.get(laneSound.instrumentId) ?? new Set<number>();
+      needs.set(laneSound.instrumentId, notes);
+      notes.add(laneSound.instrumentNote ?? 60);
+    }
     const sound = findSound(project, channel.soundId);
     if (!sound?.instrumentId) continue;
     const notes = needs.get(sound.instrumentId) ?? new Set<number>();
