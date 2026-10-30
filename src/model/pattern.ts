@@ -17,6 +17,7 @@ export function createPattern(id: string, name: string, channels: Channel[]): Pa
         ])),
       } : {}),
       ...(channel.chordEvents ? { chordEvents: channel.chordEvents.map((event) => ({ ...event })) } : {}),
+      ...(channel.lanes ? { lanes: channel.lanes.map((lane) => ({ ...lane, steps: [...lane.steps] })) } : {}),
     })),
     lengthSteps: Math.max(1, ...channels.map((channel) => channel.steps.length)),
   };

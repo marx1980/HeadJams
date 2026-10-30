@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
-  setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, updateChannel, type LoopBars, type NoteLength,
+  setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, toggleLaneStep, updateChannel, type LoopBars, type NoteLength,
   totalSteps, arrangementLength, type Channel, type Project, type SoundDef, type SynthParams,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
 import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
-import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
+import { addKitChannel, applyDrumKit, CORE_LANES, DRUM_KITS, findDrumKit, setKitChannelKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { startCapture, type CaptureResult } from '../audio/capture';
@@ -616,14 +616,23 @@ export function App() {
                         : c.generatedMetadata.kind === 'accompaniment-generation' ? 'Accompaniment' : 'Chords'}
                   </span>
                 )}
-                <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
+                {c.lanes ? (
+                  <select className="kit-select" aria-label={`Kit for ${c.name}`} value={c.kitId ?? ''}
+                    onChange={(e) => {
+                      const kit = findDrumKit(e.target.value);
+                      if (kit) setProject(setKitChannelKit(project, c.id, kit));
+                    }}>
+                    {!findDrumKit(c.kitId ?? '') && <option value="">Kit</option>}
+                    {DRUM_KITS.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
+                  </select>
+                ) : <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
                   loadingSoundIds={loadingSoundIds}
                   onPreview={(sound) => preview(sound, c.volume)}
                   onSelect={(sound) => {
                     setProject(updateChannel(project, c.id, { soundId: sound.id, name: sound.name }));
                     preview(sound, c.volume);
                     emit('sound-change');
-                  }} />
+                  }} />}
                 <button aria-pressed={c.solo} className={c.solo ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { solo: !c.solo }))}>S</button>
                 <button aria-pressed={c.mute} className={c.mute ? 'on' : ''} onClick={() => setProject(updateChannel(project, c.id, { mute: !c.mute }))}>M</button>
                 <button className="preview-btn" aria-label={`Preview ${c.name}`} onClick={() => preview(def, c.volume)}><Icon name="audio" className="inline-icon" /></button>
@@ -638,15 +647,21 @@ export function App() {
                     aria-label={`Play original recording with ${c.name}`} title="Original"
                     onClick={() => setProject(updateChannel(project, c.id, { playOriginal: !c.playOriginal }))}><Icon name="record" className="inline-icon" /></button>
                 )}
-                <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
-                  onClick={() => togglePiano(c.id)}><Icon name={pianoChannels.has(c.id) ? 'grid' : 'piano'} className="inline-icon" /> {pianoChannels.has(c.id) ? 'Grid' : 'Piano roll'}</button>
+                {!c.lanes && (
+                  <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
+                    onClick={() => togglePiano(c.id)}><Icon name={pianoChannels.has(c.id) ? 'grid' : 'piano'} className="inline-icon" /> {pianoChannels.has(c.id) ? 'Grid' : 'Piano roll'}</button>
+                )}
                 <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => {
                   const take = project.recognitionTakes.find((item) =>
                     item.channelIds.includes(c.id) || item.originalChannelId === c.id);
                   setProject(take ? removeRecognitionTake(project, take.id) : removeChannel(project, c.id));
                 }}><Icon name="close" className="inline-icon" /></button>
               </div>
-              {pianoChannels.has(c.id)
+              {c.lanes
+                ? <KitLanes channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
+                  onToggle={(laneId, step) => setProject(toggleLaneStep(project, c.id, laneId, step))}
+                  onKeyboardNavigate={() => emit('keyboard-nav')} />
+                : pianoChannels.has(c.id)
                 ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
                 : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
                   onToggle={(step) => setProject(toggleStep(project, c.id, step))}
@@ -659,6 +674,8 @@ export function App() {
           <div className="row">
             <button id="add-channel" disabled={project.channels.length >= MAX_CHANNELS}
               onClick={() => setProject(addChannel(project, STARTER_SOUNDS[4].name, STARTER_SOUNDS[4].id))}><Icon name="add" className="inline-icon" /> Add channel</button>
+            <button id="add-kit" className="secondary" disabled={project.channels.length >= MAX_CHANNELS}
+              onClick={() => setProject(addKitChannel(project, findDrumKit(drumKitId) ?? findDrumKit('acoustic-kit')!))}><Icon name="add" className="inline-icon" /> Add kit</button>
           </div>
           <details className="midi-details" open={midiOpen || !!tutorial || midiRecording} onToggle={(e) => setMidiOpen(e.currentTarget.open)}>
             <summary>MIDI keyboard (optional)</summary>
@@ -816,6 +833,39 @@ export function App() {
       {tutorial && <TutorialOverlay key={tutorial.id} tutorial={tutorial} state={{ project, base, events }} onExit={() => setTutorial(null)} onStep={onTutorialStep}
         onComplete={(t) => setDoneTutorials((d) => { const n = new Set(d).add(t.id); saveDone(n); return n; })} />}
     </main>
+  );
+}
+
+/** A kit channel's lanes, each a beat grid with its name (expansion.md E2b). */
+function KitLanes({
+  channel, loopBars, noteLength, playStep, onToggle, onKeyboardNavigate,
+}: {
+  channel: Channel;
+  loopBars: number;
+  noteLength: number;
+  playStep: number | null;
+  onToggle: (laneId: string, step: number) => void;
+  onKeyboardNavigate: () => void;
+}) {
+  const [allLanes, setAllLanes] = useState(false);
+  const lanes = channel.lanes ?? [];
+  const shown = allLanes ? lanes : lanes.filter((lane) => CORE_LANES.includes(lane.id) || lane.steps.some(Boolean));
+  return (
+    <div className="kit-lanes">
+      {shown.map((lane) => (
+        <div className="kit-lane" key={lane.id}>
+          <span className="kit-lane-name">{lane.name}</span>
+          <BeatGrid channel={{ ...channel, name: `${channel.name} ${lane.name}`, steps: lane.steps, stepEventMetadata: lane.stepEventMetadata }}
+            loopBars={loopBars} noteLength={noteLength} playStep={playStep}
+            onToggle={(step) => onToggle(lane.id, step)} onKeyboardNavigate={onKeyboardNavigate} />
+        </div>
+      ))}
+      {shown.length < lanes.length || allLanes ? (
+        <button className={`kit-lanes-toggle ${allLanes ? 'on' : 'secondary'}`} aria-pressed={allLanes} onClick={() => setAllLanes(!allLanes)}>
+          All lanes · {lanes.length}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
