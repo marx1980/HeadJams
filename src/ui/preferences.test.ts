@@ -20,8 +20,9 @@ describe('preferences', () => {
   });
   it('round-trips saved values', () => {
     const s = memoryStorage();
-    savePreferences({ reduceMotion: true, largeIcons: true, hints: false, recordingOffsetMs: 35 }, s);
-    expect(loadPreferences(s)).toEqual({ reduceMotion: true, largeIcons: true, hints: false, recordingOffsetMs: 35 });
+    const saved = { reduceMotion: true, largeIcons: true, hints: false, recordingOffsetMs: 35, voiceLanguage: 'hr-HR' as const, voiceOnline: true };
+    savePreferences(saved, s);
+    expect(loadPreferences(s)).toEqual(saved);
   });
   it('clamps the recording offset', () => {
     const s = memoryStorage({ 'musicmaker.preferences': JSON.stringify({ recordingOffsetMs: 9000 }) });

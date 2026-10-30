@@ -33,6 +33,7 @@ const HARMONY_SOUNDS: ReadonlyArray<{ id: string; label: string }> = [
 import { Icon } from './Icon';
 import { SuggestionSet } from './SuggestionSet';
 import { AskPanel } from './AskPanel';
+import type { VoiceAction } from '../library/commands';
 import { ChordRowEditor } from './ChordRowEditor';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -261,7 +262,9 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
 
 const KEY_CONFIDENCE = 0.5;
 
-export function SongEditor({ project, onChange, onAudition, playing }: {
+export function SongEditor({ project, onChange, onAudition, playing, voice, onAction }: {
+  voice?: { lang: string; allowOnline: boolean };
+  onAction?: (action: VoiceAction) => void;
   project: Project;
   onChange: (project: Project) => void;
   /** Play a temporary project (melody + chords) without saving it; undefined stops. */
@@ -439,7 +442,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   return (
     <section className="composition panel" aria-label="Song tools">
       <h2>Song</h2>
-      <AskPanel project={project} onChange={onChange} onAudition={onAudition} playing={playing} />
+      <AskPanel project={project} onChange={onChange} onAudition={onAudition} playing={playing} voice={voice} onAction={onAction} />
       <div className="composition-controls">
         <div className="pattern-controls">
           <strong>Patterns</strong>
