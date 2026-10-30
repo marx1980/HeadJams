@@ -2,6 +2,7 @@
 
 Source of truth for what to build next. Updated 2026-10-30.
 
+- Strategy: `strategy.md`. Reach features: `adoption.md`. Source documents `money.md` and `synthesisvAI_2.md` are kept as written; this file and `strategy.md` replace their roadmaps.
 - Product goal: `hum.md` (hum-to-music, adopted 2026-10-30). Sound engine: `expansion.md` (approved 2026-10-30).
 - How to work in this repo (git setup, PRs, preview, checks): `CLAUDE.md`.
 - UI layout rules: `skill.md`. Architecture: `docs/architecture.md`.
@@ -56,6 +57,29 @@ Rule: every step must keep the capture → recognise → play path working (see 
   - [x] `docs/instruments.md`: every bundled instrument's source, creator, licence, regions, download and decoded size, processing, how to rebuild, and backup (keep the FreePats nylon archive; everything else is on GitHub at a recorded commit).
   - [ ] Profile on your phone and laptop (load time, decoded memory, first-note latency, voices under UI load, loop recovery after backgrounding) and set final budgets; test the iOS audio unlock on a real iPhone. Needs your devices.
 
+## NEXT: bars, sharing and suggestions (replaces the 21-release roadmap in `synthesisvAI_2.md`)
+
+Direction: `strategy.md` (free, open, offline, no ads, no accounts). Reach features: `adoption.md`. No Events migration: add a bar layer on the existing model (a bar is a slice of a pattern, a bar family is a labelled pattern with a parent, a bar instance is an arrangement clip). The regression fingerprints protect existing projects.
+
+- [ ] **A Bars and Simple View.** Bar layer on patterns; Simple View (one card per bar: loop, duplicate, reorder, name); Pattern View gains ties; Advanced stays the piano roll.
+- [ ] **E Reach** (before C). Share link that plays a song and opens it to remix; social export (video of the idea becoming the song); offline check (network-off test, "make available offline" for instruments not yet played); install prompt; Croatian-first localisation. Details in `adoption.md`.
+- [ ] **B Capture polish.** Manual bar-boundary/downbeat correction; record over looped selected bars.
+- [ ] **C Suggestions.** Mood/feel input mapped to harmony styles (dreamy → maj7/sus, dark → minor/borrowed, bright → major); bar families (Echo/Answer/Twist as the engine); one shared A/B/C set with audition and Keep; optional hidden chord names.
+- [ ] **D Commands and offline acceptance.** A no-model command set (buttons and short phrases that call the existing engines: simpler bar, three harmonies, add bass, add drums, softer guitar, bigger chorus, keep my melody, make an ending); validator and undoable transactions; offline success test from `synthesisvAI_2.md` §54. An Ollama adapter is a later desktop-only option (needs `OLLAMA_ORIGINS`, a Chrome local-network prompt, no Safari or phone support).
+- Post-MVP: song grid with drag and drop, stems, contextual generation.
+
+## YOU: real-world tasks (I raise each at its stage, and stop before work that depends on it)
+| Stage | Task | Status |
+|---|---|---|
+| Now | Choose a new name: "MusicMaker" clashes with MAGIX's Music Maker trademark. Check EUIPO TMview and the Croatian IP office (DZIV). Renaming touches repo, Pages URL, manifest, store listing | open |
+| Now | Choose the code licence (MIT or Apache-2.0 if open). Irrevocable for anything already public. The repo has no LICENSE file, so today it is all rights reserved | open |
+| Before sharing widely | Privacy statement; contributor terms (CLA or DCO) before accepting outside PRs; check any new job contract's IP and side-project clause | open |
+| Before store release | Apple Developer ($99/yr) and Google Play ($25) accounts if you want store builds | open |
+| If you accept tips or grants | Business form (obrt or j.d.o.o.); accountant for VAT (threshold, EU OSS), fiscalisation and grant rules | open |
+| Only if you sell packs or schools | Merchant of Record (Paddle or Lemon Squeezy) or store billing; written licences for any sounds you did not record; terms of sale; move paid web hosting off GitHub Pages | not planned |
+| Only if you do Release or Label | Distribution partner contract; payouts and withholding; ISRC/UPC; ZAPRAF; HDS ZAMP; a lawyer | not planned |
+| Any time | Device profiling on your phone and laptop; iOS audio unlock test (E8) | open |
+
 ## OPEN (carried over)
 - UI check across all eight skins at small widths, and on a real iPhone.
 - Confirm that the iOS home-screen icon refresh (`icon-v2.png`) works on a device.
@@ -83,11 +107,13 @@ Rule: every step must keep the capture → recognise → play path working (see 
 - Hum-to-music is the product goal; the sampler serves it. Captured originals and raw detections are never overwritten; generated material is always a separate, marked track.
 - On-screen text is limited to labels and values (`skill.md`).
 - PRs are merged through the REST API (`CLAUDE.md`).
+- Strategy (2026-10-30): free, open, offline, no ads, no accounts, widest reach. Monetisation is later and light (own-recorded packs, school licences, tips, grants). `money.md` phases M2–M6 (Free/Full, Release, Label, publishing) are deferred; see `strategy.md`.
+- No Events migration: bars are a layer on patterns and arrangement clips.
 
 ## DEFERRED
-- Plain-language editing (needs a model decision and project undo first; typed, previewed, undoable operations only).
+- Free-text plain-language editing with a local model (milestone D ships the fixed command set first; undo now exists).
 - Reference audio and stem separation.
-- Accounts and cloud sync, a sample marketplace, and public sharing.
+- Accounts and cloud sync, a sample marketplace, ads, Release/Label/publishing services (`money.md` M4–M6).
 - Tempo map and automation, seek, AudioWorklet, and Tone.js.
 - Stem separation and song-to-MIDI transcription.
 
