@@ -25,6 +25,8 @@ interface VoiceBase {
 /** A one-shot trigger from the step grid. */
 export interface HitVoice extends VoiceBase {
   kind: 'hit';
+  /** Start this many seconds into the sound (a recording that began before the loop). */
+  skipSec?: number;
 }
 
 /** A pitched voice from a piano-roll note or one string of a chord. */
@@ -69,12 +71,14 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         });
       }
       if (c.playOriginal && c.original) {
-        const startStep = Math.max(0, Math.floor(c.original.offsetSec / durationOf(1) + 1e-9));
+        const offset = c.original.offsetSec;
+        const startStep = Math.max(0, Math.floor(offset / durationOf(1) + 1e-9));
         const originalSound = startStep === source.localStep ? findSound(p, c.original.soundId) : undefined;
         if (originalSound) {
           voices.push({
             sound: originalSound, channelId: c.id, kind: 'hit', volume: c.volume, pan: c.pan,
-            offsetSec: Math.max(0, c.original.offsetSec - durationOf(startStep)),
+            offsetSec: Math.max(0, offset - durationOf(startStep)),
+            ...(offset < 0 ? { skipSec: -offset } : {}),
           });
         }
       }

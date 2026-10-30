@@ -34,6 +34,7 @@ import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
+import { shiftTakeStart } from '../model/takeStart';
 import { OfflineInstruments } from './OfflineInstruments';
 import { decodeSong, songLink, songPayload } from '../model/songLink';
 import { recordVideo, videoSupported } from './videoExport';
@@ -1010,6 +1011,7 @@ export function App() {
         onRecognitionEdit={() => emit('recognition-edited')}
         onRemoveIdea={(takeId) => { setProject(removeRecognitionTake(projectRef.current, takeId)); flash('Idea removed', true); }}
         onHearAs={(takeId, id) => setProject(hearTakeAs(projectRef.current, takeId, id))}
+        onShiftStart={(takeId, steps) => setProject(shiftTakeStart(projectRef.current, takeId, steps))}
         onAudition={(preview) => void audition(preview)}
         playing={playStep !== null}
         onUseSound={(channelId, soundId) => { auditionRef.current = undefined; setProject(updateChannel(projectRef.current, channelId, { soundId })); }}

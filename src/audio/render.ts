@@ -222,7 +222,8 @@ export function renderProject(
             : def.sampleId ? new Float32Array() : renderSound(def.params, sr);
           cache.set(def.id, data);
         }
-        mix(data, start + Math.round(voice.offsetSec * sr), gl, gr);
+        mix(voice.skipSec ? data.subarray(Math.min(data.length, Math.round(voice.skipSec * sr))) : data,
+          start + Math.round(voice.offsetSec * sr), gl, gr);
       } else if (voice.origin === 'note') {
         const sample = def.sampleId ? samples.get(def.sampleId) : undefined;
         if (sample) {

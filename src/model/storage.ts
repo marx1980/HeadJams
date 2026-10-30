@@ -218,6 +218,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
       ...(normalizeApplied(take.applied) ? { applied: normalizeApplied(take.applied) } : {}),
       ...(Number.isFinite(take.alignmentSeconds) ? { alignmentSeconds: take.alignmentSeconds } : {}),
+      ...(Number.isInteger(take.startShiftSteps) && take.startShiftSteps ? { startShiftSteps: take.startShiftSteps } : {}),
       ...(take.source === 'mic' || take.source === 'import' ? { source: take.source } : {}),
       ...(typeof take.targetChannelId === 'string' ? { targetChannelId: take.targetChannelId } : {}),
       ...(['original', 'cleaned', 'tight'].includes(take.performance ?? '') ? { performance: take.performance } : {}),
