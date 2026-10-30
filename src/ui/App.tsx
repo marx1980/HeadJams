@@ -601,11 +601,9 @@ export function App() {
           emit('sample-updated');
           flash('Sample edits saved ✓');
         }}
-        onRecordStart={async (durationMs, bars) => {
+        onRecordStart={async (durationMs) => {
           emit('record-start');
-          const loopProject = setLoopBars(projectRef.current, bars as LoopBars);
-          projectRef.current = loopProject;
-          setProject(loopProject);
+          // Play the project as it is while recording; never change its loop (that used to delete content).
           if (!engine.playing) {
             await engine.start();
             recognitionPlaybackRef.current = true;
@@ -622,8 +620,8 @@ export function App() {
           if (recognitionPlaybackRef.current) engine.stop();
           recognitionPlaybackRef.current = false;
         }}
-        onRecognize={(take) => {
-          const updated = applyRecognitionTake(project, take);
+        onRecognize={(take, options) => {
+          const updated = applyRecognitionTake(project, take, undefined, options);
           if (!updated) {
             flash('There is not enough channel space for this recognition result. Remove a channel and try again.');
             return false;

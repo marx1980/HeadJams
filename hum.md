@@ -17,7 +17,8 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 2. **The original is sacred.** Every capture keeps its audio, the raw detection, the corrected version, and what was derived from it. Re-analysis or correction never overwrites the raw result. *Already true in code* (`RecognitionTake.originalEvents` / `quantisedEvents`, original audio in IndexedDB).
 3. **Transcription, correction and creation stay separate.** What you performed, what was corrected, and what was generated around it are separate tracks with provenance. *Already true for generated tracks* (`generatedMetadata`).
 4. **Choose by listening.** Offer 2–3 playable alternatives with Play and Use, rather than settings.
-5. **Labels and values only.** The original's on-screen sentences ("We found a few ways to accompany your melody…") become short labels, per the app's UI rule. For example: `Chords  A ▶ Use  B ▶ Use  C ▶ Use`.
+5. **Humming and hand editing are equal and linked.** The grid, piano roll, samples and sound designer remain a full way to make music. Capture is another way in, not a replacement. Hummed material lands as ordinary notes and steps you can edit; grid edits always win over later corrections; you can hum onto a track you choose; and you can always hear what you sang next to the notes.
+6. **Labels and values only.** The original's on-screen sentences ("We found a few ways to accompany your melody…") become short labels, per the app's UI rule. For example: `Chords  A ▶ Use  B ▶ Use  C ▶ Use`.
 
 ---
 
@@ -64,6 +65,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 | Draw a melody | **Missing** | Piano roll for manual entry only | Contour canvas → notes → audition |
 | Arrangement builder | **Partial** | Patterns, launcher, timeline | Section templates, density, preview before commit |
 | Suggest next phrase | **Missing** | — | Deterministic variations (#14) |
+| Hum, then edit on the grid | **Partial → fixed in H0** | Recognised notes and steps are ordinary grid content with provenance and confidence cues | Corrections used to rebuild the track and wipe grid edits; now edits are kept. Still to do: capture into a chosen track, play-what-I-sang toggle (H1) |
 | Undo / idea history | **Partial** | Undo inside the Sample editor and Recognition only | Project-level undo for capture, generation and arrangement |
 | Find the sound in my head | **Missing** | Tags exist on samples | Tags on instrument manifests; audition with your own phrase |
 | Plain-language edits | **Missing** | — | Last; needs a model decision (#13) |
@@ -75,7 +77,8 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 ## 4. Phases (H), interleaved with the engine phases (E) in `plan.md`
 
 ### H0. Safety and foundations
-- Recording no longer changes or truncates the project loop (#9), with a regression test.
+- ✅ Recording no longer changes or truncates the project loop (#9). Applying a take only grows the loop to fit it. Tests and a browser check.
+- ✅ Grid edits survive corrections: re-applying a take (timing, pitch, tempo, event edits) updates its tracks in place. Notes and hits the user moved, added or deleted are kept (tracked by event identity), and the track's sound, volume, pan and mute stay. "Reset track" discards edits to recognised notes on request; notes the user added are never removed. Older projects keep working: their current grid counts as unedited.
 - Mic constraints for capture (#8). Latency measurement and alignment of captured events (#7). Click on the engine clock.
 - Project-level undo and redo (snapshot history of the project document, capped) for capture, recognition apply, generation, kit apply and arrangement. Before any generative feature.
 - The idea record: `RecognitionTake` gains `role`, `source` (mic, import, tap, draw) and `label`. A migration test covers it.
@@ -83,6 +86,8 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 
 ### H1. Capture
 - Header **Capture** button opens a sheet: record (count-in optional), stop, then Melody / Bass / Beat with a pre-selected guess, then recognise and apply in one go. The original is stored before analysis, so a failed analysis never loses the idea.
+- **Capture into:** New track, or the selected channel (its notes and samples stay; hummed notes are added alongside, with provenance).
+- **Play what I sang:** a toggle on any hummed track that plays the original recording with the notes, for comparing by ear while editing. It replaces the separate muted Original channel.
 - Performance control **Original / Cleaned / Tight** maps onto the existing timing and pitch settings, with glide cleanup (#12). The existing detailed controls stay as the advanced view.
 - Library's Recognition section becomes **Ideas**: a list of takes with Play original, Play result, Hear as, Delete.
 - Done when: from launch, an idea is captured and playing as a track in 3 taps; the C D E G test phrase comes back without glide notes in Cleaned mode.
@@ -97,7 +102,8 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 
 ### H4. Layering, hum bass and beatbox kit
 - **Add part**: Hum melody, Hum bass, Beatbox, Tap rhythm, Chords, Harmony. Overdub loops the project, prompts for headphones, and applies latency alignment.
-- Beatbox takes write into one kit channel with lanes (from E2). Timing control Mine / Tighter / Grid. Tap a hit to reclassify.
+- Beatbox takes write into one kit channel with lanes (from E2), including an existing kit channel the user chose, keeping its programmed steps. Timing control Mine / Tighter / Grid. Tap a hit to reclassify.
+- Overdubs are recorded against the grid loop that is playing, so they land in time with what was programmed (needs the H0 latency alignment).
 - The original recording becomes a play-original toggle on the track. Raise the channel cap after measuring.
 
 ### H5. Tap rhythm and draw melody

@@ -4,7 +4,7 @@ import {
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 import type {
-  DetectedNoteEvent, PercussionEvent, RecognitionEvent, RecognitionTake,
+  AppliedSnapshot, DetectedNoteEvent, PercussionEvent, RecognitionEvent, RecognitionTake,
 } from './recognition';
 
 const KEY = 'musicmaker.project.v4';
@@ -102,6 +102,27 @@ function normalizeRecognitionEvents(value: unknown): RecognitionEvent[] {
   });
 }
 
+function normalizeApplied(value: unknown): AppliedSnapshot | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as AppliedSnapshot;
+  const applied: AppliedSnapshot = {};
+  if (raw.notes && typeof raw.notes === 'object') {
+    applied.notes = Object.fromEntries(Object.entries(raw.notes).filter(([, key]) => typeof key === 'string'));
+  }
+  if (raw.groups && typeof raw.groups === 'object') {
+    applied.groups = Object.fromEntries(Object.entries(raw.groups).filter(([, group]) =>
+      group && typeof group.channelId === 'string' && Array.isArray(group.steps))
+      .map(([key, group]) => [key, {
+        channelId: group.channelId,
+        steps: group.steps.map(Boolean),
+        ...(group.events && typeof group.events === 'object'
+          ? { events: Object.fromEntries(Object.entries(group.events).filter(([, step]) => Number.isInteger(step))) }
+          : {}),
+      }]));
+  }
+  return applied.notes || applied.groups ? applied : undefined;
+}
+
 function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((raw): RecognitionTake[] => {
@@ -141,6 +162,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       quantisedEvents: normalizeRecognitionEvents(take.quantisedEvents),
       channelIds: Array.isArray(take.channelIds) ? take.channelIds.filter((id) => typeof id === 'string') : [],
       ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
+      ...(normalizeApplied(take.applied) ? { applied: normalizeApplied(take.applied) } : {}),
     }];
   });
 }
