@@ -188,7 +188,8 @@ export interface Project {
 
 export const NOTE_LENGTHS: NoteLength[] = [4, 8, 16];
 export const LOOP_BARS: LoopBars[] = [1, 2, 4];
-export const MAX_CHANNELS = 8;
+/** Measured in H4: 12 busy channels (sampled piano triads in 16ths, bass, strings, strummed guitar, a kit) schedule with ≥97 ms to spare at 6× CPU throttling. */
+export const MAX_CHANNELS = 12;
 export const MAX_PITCH = 127;
 export const MIN_PITCH = 0;
 export const DEFAULT_EFFECTS: ProjectEffects = {

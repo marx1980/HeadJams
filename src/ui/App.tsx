@@ -532,7 +532,16 @@ export function App() {
       {openMenu === 'capture' && (
         <HeaderTile label="Capture" onClose={closeMenu}>
           <CaptureSheet
-            channels={project.channels.filter((channel) => findSound(project, channel.soundId)?.playbackMode !== 'one-shot')}
+            channels={project.channels.filter((channel) => !channel.lanes && findSound(project, channel.soundId)?.playbackMode !== 'one-shot')}
+            beatChannels={project.channels.filter((channel) => channel.lanes)}
+            hasSound={project.channels.some((channel) => !channel.mute && (channel.steps.some(Boolean) || channel.notes.length > 0
+              || (channel.chordEvents?.length ?? 0) > 0 || (channel.lanes ?? []).some((lane) => lane.steps.some(Boolean))))}
+            onOpenSong={(section) => {
+              closeMenu();
+              goTab('song');
+              window.setTimeout(() => document.querySelector(section === 'chords' ? '.chords-by-ear' : '.harmony-assistant')
+                ?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
+            }}
             start={startCaptureSession}
             stop={stopCaptureSession}
             onUse={applyCapture}

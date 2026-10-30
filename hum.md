@@ -100,7 +100,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 - 3 whole-progression alternatives (Simple / Different / Colour), scored on strong-beat chord tones, smoothness and repetition, with an optional half-bar rhythm.
 - Each alternative plays with the melody on the chosen accompaniment (guitar through the guitar engine, piano or strings through the sampler) before Use. "Use" creates a separate chord track.
 
-### H4. Layering, hum bass and beatbox kit
+### H4. Layering, hum bass and beatbox kit ✅ (tap-to-reclassify on the grid still open)
 - **Add part**: Hum melody, Hum bass, Beatbox, Tap rhythm, Chords, Harmony. Overdub loops the project, prompts for headphones, and applies latency alignment.
 - Beatbox takes write into one kit channel with lanes (from E2), including an existing kit channel the user chose, keeping its programmed steps. Timing control Mine / Tighter / Grid. Tap a hit to reclassify.
 - Overdubs are recorded against the grid loop that is playing, so they land in time with what was programmed (needs the H0 latency alignment).

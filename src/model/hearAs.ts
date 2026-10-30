@@ -1,4 +1,5 @@
 import { updateChannel, type Project } from './project';
+import { findDrumKit, setKitChannelKit } from '../library/drumKits';
 import type { PercussionClass, RecognitionMode, RecognitionTake } from './recognition';
 
 /** How a recognised idea is heard (hum.md H2). Melody and bass pick an instrument; beats pick a kit. */
@@ -87,6 +88,22 @@ export function hearTakeAs(project: Project, takeId: string, id: HearAsId): Proj
     for (const channelId of take.channelIds) if (exists(channelId)) next = updateChannel(next, channelId, { soundId });
     return next;
   }
+  if (take.kitLanes) {
+    const kit = findDrumKit(id === 'acoustic' ? 'acoustic-kit' : 'studio-kit');
+    const channelId = take.channelIds.find(exists);
+    const channel = next.channels.find((candidate) => candidate.id === channelId);
+    if (!kit || !channel?.lanes) return next;
+    // Lanes keyed by drum role switch with the kit; extra lanes from this take follow their class default.
+    next = setKitChannelKit(next, channel.id, kit);
+    const lanes = next.channels.find((candidate) => candidate.id === channel.id)!.lanes!.map((lane) => {
+      const entry = Object.entries(LANE_FOR_CLASS).find(([, laneInfo]) => laneInfo.id === lane.id);
+      const type = entry?.[0] as PercussionClass | undefined;
+      if (!type || kit.lanes.some((kitLane) => kitLane.id === lane.id)) return lane;
+      const defaults = [CLASSIC_SOUND_FOR_CLASS[type], ACOUSTIC_SOUND_FOR_CLASS[type]];
+      return defaults.includes(lane.soundId) ? { ...lane, soundId: soundForClass(updated, type) } : lane;
+    });
+    return updateChannel(next, channel.id, { lanes });
+  }
   for (const [key, group] of Object.entries(take.applied?.groups ?? {})) {
     const type = key.slice(0, key.indexOf(':')) as PercussionClass;
     const channel = next.channels.find((candidate) => candidate.id === group.channelId);
@@ -96,3 +113,16 @@ export function hearTakeAs(project: Project, takeId: string, id: HearAsId): Proj
   }
   return next;
 }
+
+/** Lane of a kit channel each beatbox class writes into (hum.md H4). */
+export const LANE_FOR_CLASS: Record<PercussionClass, { id: string; name: string }> = {
+  kick: { id: 'kick', name: 'Kick' },
+  snare: { id: 'snare', name: 'Snare' },
+  'closed-hat': { id: 'hat-closed', name: 'Closed hat' },
+  'open-hat': { id: 'hat-open', name: 'Open hat' },
+  clap: { id: 'clap', name: 'Clap' },
+  tom: { id: 'tom-mid', name: 'Tom' },
+  cymbal: { id: 'crash', name: 'Crash' },
+  bass: { id: 'beatbox-bass', name: 'Bass hit' },
+  unknown: { id: 'percussion', name: 'Percussion' },
+};

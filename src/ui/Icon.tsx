@@ -7,9 +7,10 @@ export type IconName =
   | 'brass' | 'synth' | 'fx' | 'sample' | 'custom' | 'favorite' | 'recent'
   | 'play' | 'stop' | 'audio' | 'piano' | 'grid' | 'duplicate' | 'close' | 'add'
   | 'search' | 'warning' | 'clock' | 'back' | 'record' | 'sparkle' | 'check' | 'step'
-  | 'chevron' | 'transpose-up' | 'bend' | 'forward';
+  | 'chevron' | 'transpose-up' | 'bend' | 'forward' | 'headphones';
 
 const paths: Record<IconName, ReactNode> = {
+  headphones: <><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="6" rx="1.5" /><rect x="17" y="14" width="4" height="6" rx="1.5" /></>,
   chevron: <path d="m6 9 6 6 6-6" />,
   forward: <path d="m10 5 7 7-7 7m7-7H4" />,
   'transpose-up': <><path d="M12 19V5m-6 6 6-6 6 6" /><path d="M4 21h16" /></>,

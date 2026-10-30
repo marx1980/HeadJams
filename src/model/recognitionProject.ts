@@ -8,7 +8,8 @@ import type {
 import { noteEventToSteps, percussionEventToStep, quantiseRecognitionEvents } from '../library/quantisation';
 import { SCALES, snapPitchToScale } from './music';
 import { alignEvents } from '../audio/alignment';
-import { CLASSIC_SOUND_FOR_CLASS, defaultHearAs, soundForClass, trackSoundFor } from './hearAs';
+import { CLASSIC_SOUND_FOR_CLASS, defaultHearAs, hearAsOf, LANE_FOR_CLASS, soundForClass, trackSoundFor } from './hearAs';
+import { addKitChannel, DRUM_KITS, findDrumKit } from '../library/drumKits';
 
 /** Classic sound per beatbox class; also the stable key for a class's track (see eventsByClass). */
 export const SOUND_FOR_CLASS = CLASSIC_SOUND_FOR_CLASS;
@@ -67,6 +68,7 @@ export function createRecognitionTake(
     channelIds: [],
     ...(alignmentSeconds ? { alignmentSeconds } : {}),
     hearAs: defaultHearAs(result.mode),
+    ...(result.mode === 'beat' ? { kitLanes: true } : {}),
   };
 }
 
@@ -200,7 +202,13 @@ export function applyRecognitionTake(
   const applied: AppliedSnapshot = {};
   const createdChannelIds: string[] = [];
 
-  if (isPercussion) {
+  if (isPercussion && take.kitLanes) {
+    const result = applyBeatToLanes(next, take, previous, bpm, options);
+    if (!result) return undefined;
+    next = result.project;
+    Object.assign(applied, result.applied);
+    createdChannelIds.push(...result.channelIds);
+  } else if (isPercussion) {
     const len = totalSteps(next);
     const groups = eventsByClass(take.quantisedEvents);
     // Map each event group to its channel. Older takes have no snapshot: their channels were created in group order.
@@ -367,6 +375,29 @@ export function removeRecognitionTake(project: Project, takeId: string): Project
   let next = project;
   for (const id of take.channelIds) {
     if (id !== take.targetChannelId) { next = removeChannel(next, id); continue; }
+    if (take.kitLanes) {
+      // Captured into the user's kit: clear only the hits this idea wrote and the user left in place.
+      const channel = next.channels.find((candidate) => candidate.id === id);
+      if (!channel?.lanes) continue;
+      const written = new Map<string, boolean[]>();
+      for (const group of Object.values(take.applied?.groups ?? {})) {
+        if (group.channelId !== id || !group.laneId) continue;
+        const steps = written.get(group.laneId) ?? [];
+        group.steps.forEach((on, i) => { if (on) steps[i] = true; });
+        written.set(group.laneId, steps);
+      }
+      next = updateChannel(next, id, {
+        lanes: channel.lanes.map((lane) => {
+          const mine = written.get(lane.id);
+          if (!mine) return lane;
+          const metadata = Object.fromEntries(Object.entries(lane.stepEventMetadata ?? {})
+            .filter(([, value]) => value.sourceTakeId !== take.id));
+          return { ...lane, steps: lane.steps.map((on, i) => on && !mine[i]), stepEventMetadata: metadata };
+        }),
+        ...(channel.original?.soundId === `recognition-original-${take.id}` ? { original: undefined, playOriginal: undefined } : {}),
+      });
+      continue;
+    }
     // Captured into the user's own channel: remove only this idea's notes and recording.
     const channel = next.channels.find((candidate) => candidate.id === id);
     if (!channel) continue;
@@ -378,4 +409,89 @@ export function removeRecognitionTake(project: Project, takeId: string): Project
   }
   if (take.originalChannelId) next = removeChannel(next, take.originalChannelId);
   return { ...next, recognitionTakes: next.recognitionTakes.filter((candidate) => candidate.id !== takeId) };
+}
+
+/** The drum kit a beat take's new kit channel uses. */
+export function kitForTake(take: Pick<RecognitionTake, 'mode' | 'hearAs'>): string {
+  return hearAsOf(take) === 'acoustic' ? 'acoustic-kit' : 'studio-kit';
+}
+
+/**
+ * Beatbox take → one kit channel with lanes (hum.md H4). Writes into the take's kit channel, the user's chosen
+ * kit channel (its programmed steps stay), or a new kit channel. Grid edits are kept exactly as for per-drum tracks.
+ */
+function applyBeatToLanes(
+  project: Project, take: RecognitionTake, previous: RecognitionTake | undefined, bpm: number, options: ApplyRecognitionOptions,
+): { project: Project; applied: AppliedSnapshot; channelIds: string[] } | undefined {
+  let next = project;
+  const exists = (id: string | undefined) => Boolean(id && next.channels.some((channel) => channel.id === id && channel.lanes));
+  const previousGroups = previous?.applied?.groups ?? {};
+  const known = previous?.channelIds.find((id) => exists(id));
+  if (previous && previous.channelIds.length && !known) {
+    // The user deleted the kit channel: keep it deleted.
+    return { project: next, applied: { groups: previousGroups }, channelIds: [...previous.channelIds] };
+  }
+  let channelId = known ?? (exists(take.targetChannelId) ? take.targetChannelId : undefined);
+  const groups = eventsByClass(take.quantisedEvents);
+  if (!channelId) {
+    if (!groups.size) return { project: next, applied: {}, channelIds: [] };
+    if (next.channels.length >= MAX_CHANNELS) return undefined;
+    const kit = findDrumKit(kitForTake(take)) ?? DRUM_KITS[0];
+    next = addKitChannel(next, kit);
+    channelId = next.channels.at(-1)!.id;
+  }
+  const len = totalSteps(next);
+  const applied: AppliedSnapshot = { groups: {} };
+  const deletedEvents = new Set<string>();
+  const channelNow = () => next.channels.find((candidate) => candidate.id === channelId)!;
+  for (const group of Object.values(previousGroups)) {
+    const lane = channelNow().lanes?.find((candidate) => candidate.id === group.laneId);
+    for (const [id, step] of Object.entries(group.events ?? {})) {
+      if (!options.discardEdits && (step < 0 || (lane && !lane.steps[step]))) deletedEvents.add(id);
+    }
+  }
+  const keys = [...new Set([...Object.keys(previousGroups), ...groups.keys()])];
+  for (const key of keys) {
+    const group = groups.get(key);
+    const last = previousGroups[key];
+    const type = (group?.type ?? key.slice(0, key.indexOf(':'))) as PercussionClass;
+    const assigned = group?.events[0]?.assignedSoundId;
+    const base = LANE_FOR_CLASS[type] ?? LANE_FOR_CLASS.unknown;
+    const laneId = last?.laneId ?? (assigned && assigned !== soundForClass(take, type) ? `${base.id}-${assigned}` : base.id);
+    let lanes = channelNow().lanes ?? [];
+    if (!lanes.some((lane) => lane.id === laneId)) {
+      if (!group) continue;
+      lanes = [...lanes, { id: laneId, name: base.name, soundId: assigned ?? soundForClass(take, type), steps: new Array(len).fill(false) }];
+    }
+    const lane = lanes.find((candidate) => candidate.id === laneId)!;
+    const writes: { id: string; step: number; confidence?: number }[] = [];
+    const events: Record<string, number> = {};
+    for (const event of group?.events ?? []) {
+      if (deletedEvents.has(event.id)) { events[event.id] = -1; continue; }
+      const step = percussionEventToStep(event, bpm, next.noteLength, take.quantisation.strength, take.quantisation.subdivision) % len;
+      writes.push({ id: event.id, step, confidence: event.confidence });
+      events[event.id] = step;
+    }
+    const generated = new Array(len).fill(false);
+    const metadata: Record<number, { confidence?: number; sourceTakeId: string }> = {};
+    for (const write of writes) {
+      generated[write.step] = true;
+      metadata[write.step] = { confidence: write.confidence, sourceTakeId: take.id };
+    }
+    const user = Array.from({ length: len }, (_, i) => lane.steps[i] ?? false);
+    const wroteLast = Array.from({ length: len }, (_, i) => last?.steps[i] ?? false);
+    // Keep the user's own steps (programmed before or added since), clear what this take wrote last time, write this pass.
+    // "Reset" (discardEdits) only brings back hits the user deleted; the kit's programmed steps always stay.
+    const steps = user.map((on, i) => generated[i] || (on && !wroteLast[i]));
+    const stepEventMetadata = { ...(lane.stepEventMetadata ?? {}) };
+    for (let i = 0; i < len; i++) {
+      if (stepEventMetadata[i]?.sourceTakeId === take.id && !generated[i]) delete stepEventMetadata[i];
+      if (metadata[i]) stepEventMetadata[i] = metadata[i];
+    }
+    next = updateChannel(next, channelId, {
+      lanes: lanes.map((candidate) => candidate.id === laneId ? { ...candidate, steps, stepEventMetadata } : candidate),
+    });
+    applied.groups![key] = { channelId, laneId, steps: generated, events };
+  }
+  return { project: next, applied, channelIds: [channelId] };
 }
