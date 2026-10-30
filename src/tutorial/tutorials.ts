@@ -87,6 +87,7 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'confidence-cues', label: 'Confidence and source-take cues' }, { id: 'keyboard-navigation', label: 'Keyboard navigation' },
   { id: 'library-tools', label: 'Search and tags' },
   { id: 'midi-keyboard', label: 'MIDI keyboard input' },
+  { id: 'capture', label: 'Capture an idea' },
 ];
 
 export const TUTORIALS: Tutorial[] = [
@@ -131,6 +132,14 @@ export const TUTORIALS: Tutorial[] = [
     steps: [
       { text: 'Your work saves automatically. Tap Save Project to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
       { menu: 'file', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
+    ],
+  },
+  {
+    id: 'capture-idea', title: 'Capture an idea', tab: 'library', group: 'Recording', level: 'beginner', estMinutes: 1,
+    summary: 'Hum, sing, whistle or beatbox and get it on the grid.', features: ['capture'], doneMessage: 'Your idea is on the grid. Edit it like any other notes.',
+    requires: ['microphone'],
+    steps: [
+      { text: 'Tap Capture, then Record, and hum a short tune. Tap Stop when you are done.', target: '#capture-btn', fallback: 'Capture needs a microphone and permission.', done: (s) => s.events.has('capture') },
     ],
   },
   {
@@ -347,8 +356,8 @@ export const WORKFLOWS: Workflow[] = [
   { id: 'make-song', title: 'Make a song from scratch', outcome: 'You will have a playable, exported song.', tutorialIds: ['first-beat', 'add-channel', 'composition', 'timeline', 'save-export'] },
   { id: 'midi-keyboard', title: 'Play a part with a MIDI keyboard', outcome: 'Record a keyboard performance into a pattern.', tutorialIds: ['midi-keyboard'] },
   { id: 'own-sound', title: 'Record and use your own sound', outcome: 'Your own sample plays in a beat.', tutorialIds: ['record-sample', 'sample-editor', 'add-channel'] },
-  { id: 'sing-melody', title: 'Sing or hum a melody into a track', outcome: 'Your voice becomes an editable track with chords and bass.', tutorialIds: ['record-sample', 'recognize', 'recognition-edit', 'arrangement-assist'] },
-  { id: 'beatbox', title: 'Beatbox a drum loop', outcome: 'Your beatbox becomes a drum track.', tutorialIds: ['record-sample', 'recognize', 'recognition-edit'] },
+  { id: 'sing-melody', title: 'Sing or hum a melody into a track', outcome: 'Your voice becomes an editable track with chords and bass.', tutorialIds: ['capture-idea', 'recognition-edit', 'arrangement-assist'] },
+  { id: 'beatbox', title: 'Beatbox a drum loop', outcome: 'Your beatbox becomes a drum track.', tutorialIds: ['capture-idea', 'recognition-edit'] },
   { id: 'design-instrument', title: 'Design your own instrument', outcome: 'A custom sound with effects, used on a channel.', tutorialIds: ['sound-designer', 'effects', 'add-channel'] },
   { id: 'share', title: 'Share your work', outcome: 'A saved project and a high-quality WAV.', tutorialIds: ['save-export', 'export-options', 'privacy-offline'] },
 ];

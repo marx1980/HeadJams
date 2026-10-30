@@ -165,6 +165,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       ...(normalizeApplied(take.applied) ? { applied: normalizeApplied(take.applied) } : {}),
       ...(Number.isFinite(take.alignmentSeconds) ? { alignmentSeconds: take.alignmentSeconds } : {}),
       ...(take.source === 'mic' || take.source === 'import' ? { source: take.source } : {}),
+      ...(typeof take.targetChannelId === 'string' ? { targetChannelId: take.targetChannelId } : {}),
       ...(['original', 'cleaned', 'tight'].includes(take.performance ?? '') ? { performance: take.performance } : {}),
       ...(typeof take.label === 'string' && take.label.trim() ? { label: take.label.trim().slice(0, 60) } : {}),
     }];

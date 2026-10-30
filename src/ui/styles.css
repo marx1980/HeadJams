@@ -445,3 +445,24 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .toast.nudge { top: auto; bottom: calc(120px + env(safe-area-inset-bottom)); }
 .performance-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .performance-modes button { min-height: 40px; }
+/* Capture (hum.md H1) */
+.capture-btn { color: var(--danger, #e5484d); }
+.capture-btn.on { background: var(--danger, #e5484d); color: #fff; }
+.capture-main .inline-icon { color: var(--danger, #e5484d); }
+.capture-main.recording .inline-icon { color: #fff; }
+.capture-sheet { display: flex; flex-direction: column; gap: 10px; }
+.capture-options { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.capture-options select { width: 100%; box-sizing: border-box; height: 40px; }
+.capture-options .check-label { min-height: 40px; }
+.capture-main { min-height: 56px; font-size: 1.1rem; font-weight: 700; }
+.capture-main.recording { background: var(--danger, #e5484d); color: #fff; }
+.capture-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.capture-kinds button { min-height: 48px; }
+.capture-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.capture-actions button { min-height: 40px; }
+.capture-status { margin: 0; }
+.idea-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.idea-item { display: flex; align-items: center; gap: 6px; }
+.idea-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.idea-item button { min-height: 40px; min-width: 44px; }
+@media (max-width: 380px) { button.play { min-width: 84px; padding: 4px 8px; } }

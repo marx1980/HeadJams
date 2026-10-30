@@ -13,3 +13,5 @@
 - Sound tab: the top tile is "Shape a sound" (swing and effects) and the bottom tile "Make a sound" (the designer) is always shown, with no toggle button or Close.
 - Status toasts sit above the sticky header (z-index 30) at the top right; the first-visit "New here?" bubble sits above the bottom tab bar so the two never overlap.
 - Undo/Redo live at the top of the File tile (the header has no room at 320–390px); big one-shot actions add an Undo button to their toast.
+- Header row: File, Settings, Help, then a red Capture (record) button, with Play at the right end. At ≤380px Play narrows to fit; the row must fit at 320px.
+- Library's third section is **Ideas** (captured takes with play and delete), above the advanced recognition controls.

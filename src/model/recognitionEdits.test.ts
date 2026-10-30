@@ -173,3 +173,21 @@ describe('idea fields', () => {
     expect(loaded.label).toBeUndefined();
   });
 });
+
+describe('capture into an existing channel', () => {
+  it('adds the hummed notes next to the channel\'s own notes and removes only them when the idea is deleted', async () => {
+    const { removeRecognitionTake } = await import('./recognitionProject');
+    let project = createProject();
+    project = updateChannel(project, 'ch1', { soundId: 'bass-1', name: 'My bass', notes: [{ id: 'own', step: 4, pitch: 40, durationSteps: 2 }] });
+    const take = { ...createRecognitionTake('sample-1', melody(), exact, 120, 16, 'take-1'), targetChannelId: 'ch1' };
+    const applied = applyRecognitionTake(project, take)!;
+    expect(applied.channels).toHaveLength(1);
+    const channel = applied.channels[0];
+    expect(channel).toMatchObject({ soundId: 'bass-1', name: 'My bass', original: { soundId: 'recognition-original-take-1' } });
+    expect(channel.notes.map((n) => n.id).sort()).toEqual(['a', 'b', 'c', 'own']);
+    const removed = removeRecognitionTake(applied, 'take-1');
+    expect(removed.channels).toHaveLength(1);
+    expect(removed.channels[0].notes.map((n) => n.id)).toEqual(['own']);
+    expect(removed.channels[0].original).toBeUndefined();
+  });
+});
