@@ -156,3 +156,29 @@ export function formatChordSymbol(root: Pitch, quality: ChordQuality, articulati
 export function pitchToFrequency(pitch: Pitch): number {
   return 440 * 2 ** ((pitch - 69) / 12);
 }
+
+const LETTER_PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const SUFFIX_QUALITY: ReadonlyArray<[RegExp, ChordQuality, boolean?]> = [
+  [/^(maj7|M7|Δ7?|ma7)$/, 'major7'],
+  [/^(m7|min7|-7)$/, 'minor7'],
+  [/^7$/, 'seventh'],
+  [/^(m|min|-)$/, 'minor'],
+  [/^(dim|°|o)$/, 'diminished'],
+  [/^(aug|\+)$/, 'augmented'],
+  [/^sus2$/, 'sus2'],
+  [/^(sus4|sus)$/, 'sus4'],
+  [/^5$/, 'major', true],
+  [/^(maj|M)?$/, 'major'],
+];
+
+/** Parse a chord symbol such as "Am", "F#m7", "Bb", "Gsus4", "E5" (power chord). Root is in the C3 octave (48–59). */
+export function parseChordSymbol(text: string): { root: Pitch; quality: ChordQuality; power: boolean } | undefined {
+  const match = /^\s*([A-Ga-g])([#♯b♭]?)(.*?)\s*$/.exec(text);
+  if (!match) return undefined;
+  const [, letter, accidental, suffix] = match;
+  const pitchClass = (LETTER_PITCH[letter.toUpperCase()] + (accidental === '#' || accidental === '♯' ? 1 : accidental ? -1 : 0) + 12) % 12;
+  for (const [pattern, quality, power] of SUFFIX_QUALITY) {
+    if (pattern.test(suffix)) return { root: 48 + pitchClass, quality, power: Boolean(power) };
+  }
+  return undefined;
+}

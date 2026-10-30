@@ -79,14 +79,21 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
       }
       for (const event of c.chordEvents ?? []) {
         if (event.step !== source.localStep) continue;
-        const pitches = guitarChordPitches(event.root, event.quality, event.articulation);
+        const all = guitarChordPitches(event.root, event.quality, event.articulation);
+        // Chord-row arpeggios pick strings (1 = lowest); older events have no subset and play every string.
+        const pitches = event.strings?.length
+          ? [...new Set(event.strings.map((index) => Math.max(1, Math.min(all.length, Math.round(index)))))].map((index) => all[index - 1])
+          : all;
         if (event.articulation === 'up-strum') pitches.reverse();
         const muted = event.articulation === 'muted';
         const strummed = event.articulation === 'down-strum' || event.articulation === 'up-strum';
         const duration = muted ? Math.min(MUTED_CHORD_MAX_SEC, durationOf(event.durationSteps)) : durationOf(event.durationSteps);
         const velocity = (event.velocity ?? 1) * (muted ? MUTED_CHORD_VELOCITY : 1);
         for (let index = 0; index < pitches.length; index++) {
-          const stagger = strummed ? index * STRUM_STAGGER_SEC : 0;
+          const gap = event.strumMs !== undefined && Number.isFinite(event.strumMs) && pitches.length > 1
+            ? Math.max(0, Math.min(200, event.strumMs)) / 1000 / (pitches.length - 1)
+            : STRUM_STAGGER_SEC;
+          const stagger = strummed ? index * gap : 0;
           voices.push({
             ...base, kind: 'pitched', origin: 'chord', offsetSec: stagger, pitch: pitches[index],
             durationSec: Math.max(0.01, duration - stagger), velocity,

@@ -16,3 +16,4 @@
 - Header row: File, Settings, Help, then a red Capture (record) button, with Play at the right end. At ≤380px Play narrows to fit; the row must fit at 320px.
 - Library's third section is **Ideas**: one 40px row per captured take (name, Hear as select, play, delete), above the advanced recognition controls; at ≤380px the select narrows so the name stays readable at 320px.
 - Song › Chords by ear: Key, Rhythm and Play on selects and Find chords follow the 40px two-column control grid; each progression is one row (name and chords on the left, wrapping under the name when narrow; 44px Play and 64px Use on the right).
+- Beat › piano roll › Chord row (guitar chord channels): Chords input full width, then Pattern/Strum and Humanise/Capo in a two-column 40px grid (four columns from 700px), then Apply (fills the row), Advanced and remove; chord shapes list below when Advanced is on.
