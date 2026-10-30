@@ -6,6 +6,7 @@ import { RecognitionPanel } from './RecognitionPanel';
 import { FindSound } from './FindSound';
 import { MakeInstrument } from './MakeInstrument';
 import type { PersonalSample, RecordedChord } from '../model/personalInstrument';
+import { MAX_START_SHIFT } from '../model/takeStart';
 import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
@@ -16,7 +17,7 @@ const SECTION = { name: 'library-section' } as Record<string, string>;
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onHearAs, onLibraryAction, onAudition, playing, onUseSound, onMakeInstrument, onMakeChords,
+  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onHearAs, onShiftStart, onLibraryAction, onAudition, playing, onUseSound, onMakeInstrument, onMakeChords,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -38,6 +39,7 @@ export function SampleLibrary({
   onRecognitionEdit: () => void;
   onRemoveIdea: (takeId: string) => void;
   onHearAs: (takeId: string, id: HearAsId) => void;
+  onShiftStart: (takeId: string, steps: number) => void;
   onAudition: (preview?: Project) => void;
   playing: boolean;
   onUseSound: (channelId: string, soundId: string) => void;
@@ -165,6 +167,16 @@ export function SampleLibrary({
                   <button className="secondary" aria-label={`Play ${take.label ?? 'idea'} recording`} disabled={!sample}
                     onClick={() => sample && onPreviewSample({ ...sample, samples: sample.originalSamples ?? sample.samples })}><Icon name="play" className="inline-icon" /></button>
                   <button className="secondary" aria-label={`Delete ${take.label ?? 'idea'}`} onClick={() => onRemoveIdea(take.id)}><Icon name="close" className="inline-icon" /></button>
+                  {take.channelIds.length > 0 && (
+                    <div className="idea-start">
+                      <span>Start</span>
+                      <button className="secondary" aria-label={`Start ${take.label ?? 'idea'} earlier`} disabled={(take.startShiftSteps ?? 0) <= -MAX_START_SHIFT}
+                        onClick={() => onShiftStart(take.id, -1)}><Icon name="back" className="inline-icon" /></button>
+                      <span className="idea-start-value" aria-label="Start shift in steps">{(take.startShiftSteps ?? 0) > 0 ? '+' : ''}{take.startShiftSteps ?? 0}</span>
+                      <button className="secondary" aria-label={`Start ${take.label ?? 'idea'} later`} disabled={(take.startShiftSteps ?? 0) >= MAX_START_SHIFT}
+                        onClick={() => onShiftStart(take.id, 1)}><Icon name="forward" className="inline-icon" /></button>
+                    </div>
+                  )}
                 </li>
               );
             })}

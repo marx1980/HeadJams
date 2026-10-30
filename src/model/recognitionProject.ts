@@ -353,7 +353,7 @@ export function applyRecognitionTake(
     const track = next.channels.find((channel) => channel.id === trackId);
     if (track) {
       next = updateChannel(next, track.id, {
-        original: { soundId, offsetSec: Math.max(0, take.alignmentSeconds ?? 0) },
+        original: { soundId, offsetSec: take.alignmentSeconds ?? 0 },
         playOriginal: track.playOriginal ?? false,
       });
     }

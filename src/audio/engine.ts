@@ -262,7 +262,7 @@ export class Engine {
     this.reverbWet.gain.setTargetAtTime(effects.reverb * 0.45, now, 0.02);
   }
 
-  private play(def: SoundDef, time: number, volume: number, pan: number) {
+  private play(def: SoundDef, time: number, volume: number, pan: number, skipSec = 0) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     const buffer = this.buffer(def);
@@ -274,7 +274,8 @@ export class Engine {
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
     src.connect(gain).connect(panner).connect(this.master!);
-    src.start(time);
+    if (skipSec > 0 && skipSec >= buffer.duration) return;
+    src.start(time, skipSec > 0 ? skipSec : 0);
   }
 
   private stopPreview() {
@@ -503,7 +504,7 @@ export class Engine {
           if (voice.sound.instrumentId && this.instruments?.status(voice.sound.instrumentId)?.state !== 'error') {
             this.playSampled(voice, time + voice.offsetSec);
           }
-          else if (voice.kind === 'hit') this.play(voice.sound, time + voice.offsetSec, voice.volume, voice.pan);
+          else if (voice.kind === 'hit') this.play(voice.sound, time + voice.offsetSec, voice.volume, voice.pan, voice.skipSec);
           else {
             this.playPitch(voice.sound, voice.pitch, time + voice.offsetSec, voice.durationSec, voice.volume, voice.pan,
               voice.velocity, voice.pitchBend);

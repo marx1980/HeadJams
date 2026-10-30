@@ -78,6 +78,8 @@ export interface RecognitionTake {
   hearAs?: import('./hearAs').HearAsId;
   /** Seconds added to recording times to place events in project time (microphone alignment). */
   alignmentSeconds?: number;
+  /** Grid steps the user moved the idea's start by (Ideas › Start); already included in `alignmentSeconds`. */
+  startShiftSteps?: number;
   /** What recognition last wrote to the project, so user edits on the grid can be told apart and kept. */
   applied?: AppliedSnapshot;
 }
