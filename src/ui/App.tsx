@@ -37,6 +37,7 @@ import { BarsView } from './BarsView';
 import { confineTakeToBar, shiftTakeStart } from '../model/takeStart';
 import { barPreview } from '../model/bars';
 import { OfflineInstruments } from './OfflineInstruments';
+import { voiceLanguage } from '../platform/voice';
 import { decodeSong, songLink, songPayload } from '../model/songLink';
 import { recordVideo, videoSupported } from './videoExport';
 import type { VideoShape } from '../library/videoPlan';
@@ -45,7 +46,7 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
 import { recordedMidiEvent, type MidiMessage, type RecordedMidiNote } from '../platform/midi';
 import { clearAllSamples } from '../library/sampleStorage';
-import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY } from './preferences';
+import { clearAppData, loadPreferences, savePreferences, MIDI_INPUT_KEY, type VoiceLanguage } from './preferences';
 import { HeaderTile } from './Popover';
 import { loadExportDefaults, saveExportDefaults } from './exportDefaults';
 import { Icon, type IconName } from './Icon';
@@ -648,6 +649,16 @@ export function App() {
                   <input id="recording-offset" type="number" min={-500} max={500} step={5} value={prefs.recordingOffsetMs}
                     onChange={(e) => updatePrefs({ recordingOffsetMs: Math.max(-500, Math.min(500, Math.round(Number(e.target.value) || 0))) })} />
                 </label>
+                <h3>Voice</h3>
+                <label>Voice language
+                  <select id="voice-language" value={prefs.voiceLanguage} onChange={(e) => updatePrefs({ voiceLanguage: e.target.value as VoiceLanguage })}>
+                    <option value="auto">Auto</option>
+                    <option value="en-US">English</option>
+                    <option value="hr-HR">Hrvatski</option>
+                  </select>
+                </label>
+                <label className="check-label"><input id="voice-online" type="checkbox" checked={prefs.voiceOnline}
+                  onChange={(e) => updatePrefs({ voiceOnline: e.target.checked })} /> Online recognition (browser service)</label>
                 <h3>Offline</h3>
                 <OfflineInstruments onMessage={flash} />
                 <h3>Data and privacy</h3>
@@ -1048,7 +1059,14 @@ export function App() {
 
         <div id="pane-song" role="tabpanel" aria-labelledby="tab-song" className={`pane pane-song${view === 'song' ? ' active' : ''}`}>
           <SongEditor project={project} onChange={(next) => { auditionRef.current = undefined; setProject(next); }}
-            onAudition={(preview) => void audition(preview)} playing={playStep !== null} />
+            onAudition={(preview) => void audition(preview)} playing={playStep !== null}
+            voice={{ lang: voiceLanguage(prefs.voiceLanguage, navigator.languages ?? [navigator.language]), allowOnline: prefs.voiceOnline }}
+            onAction={(action) => {
+              if (action === 'play') { if (!engine.playing) void togglePlay(); }
+              else if (action === 'stop') { if (engine.playing) void togglePlay(); }
+              else if (action === 'undo') undo();
+              else setOpenMenu('capture');
+            }} />
         </div>
       </div>
 

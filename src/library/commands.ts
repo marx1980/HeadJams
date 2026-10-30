@@ -61,7 +61,15 @@ const TARGETS: ReadonlyArray<{ id: Target; words: RegExp }> = [
  * Read a request. "Keep my melody" is always true here (no command changes the melody's pitches or
  * rhythm except Simpler, which only removes notes), so it is accepted and needs no action.
  */
-export function parseCommand(text: string): { commands: Command[]; keepMelody: boolean } {
+export type VoiceAction = 'play' | 'stop' | 'undo' | 'record';
+const ACTIONS: ReadonlyArray<{ id: VoiceAction; words: RegExp }> = [
+  { id: 'stop', words: /^(stop|stani|zaustavi|dosta)\b/ },
+  { id: 'play', words: /^(play|start|sviraj|pusti|kreni)\b/ },
+  { id: 'undo', words: /^(undo|poništi|vrati)\b/ },
+  { id: 'record', words: /^(record|capture|snimi|snimaj)\b/ },
+];
+
+export function parseCommand(text: string): { commands: Command[]; keepMelody: boolean; action?: VoiceAction } {
   const lower = text.toLowerCase();
   const barMatch = /\b(?:bar|takt|taktu)\s*(\d+)/.exec(lower);
   const bar = barMatch ? Math.max(0, Number(barMatch[1]) - 1) : undefined;
@@ -71,7 +79,9 @@ export function parseCommand(text: string): { commands: Command[]; keepMelody: b
   const commands = ids.filter((id) => !(id === 'drums' && (ids.includes('softer') || ids.includes('louder'))))
     .filter((id) => !(id === 'bass' && (ids.includes('softer') || ids.includes('louder'))))
     .map((id): Command => ({ id, ...(bar !== undefined ? { bar } : {}), ...((id === 'softer' || id === 'louder') ? { target: target ?? 'all' } : {}) }));
-  return { commands, keepMelody: /\b(keep|leave|zadrž\w*|ostavi)\b.*\b(melod\w*|tune)/.test(lower) };
+  // Transport words ("play", "stop", "undo", "record") count only when they start a request without a command.
+  const action = commands.length ? undefined : ACTIONS.find((item) => item.words.test(lower.trim()))?.id;
+  return { commands, keepMelody: /\b(keep|leave|zadrž\w*|ostavi)\b.*\b(melod\w*|tune)/.test(lower), ...(action ? { action } : {}) };
 }
 
 export interface CommandOption { id: string; label: string; detail?: string; project: Project }

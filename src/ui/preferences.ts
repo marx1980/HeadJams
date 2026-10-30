@@ -1,10 +1,15 @@
-export interface Preferences { reduceMotion: boolean; largeIcons: boolean; hints: boolean; recordingOffsetMs: number }
+export type VoiceLanguage = 'auto' | 'en-US' | 'hr-HR';
+export interface Preferences {
+  reduceMotion: boolean; largeIcons: boolean; hints: boolean; recordingOffsetMs: number;
+  /** Voice commands: language, and whether the browser's online recognition may be used when on-device is not available. */
+  voiceLanguage: VoiceLanguage; voiceOnline: boolean;
+}
 
 export const PREFERENCES_KEY = 'musicmaker.preferences';
 export const MIDI_INPUT_KEY = 'musicmaker.midiInput';
 
 export function defaultPreferences(): Preferences {
-  return { reduceMotion: false, largeIcons: false, hints: true, recordingOffsetMs: 0 };
+  return { reduceMotion: false, largeIcons: false, hints: true, recordingOffsetMs: 0, voiceLanguage: 'auto', voiceOnline: false };
 }
 
 export function loadPreferences(storage: Pick<Storage, 'getItem'> = globalThis.localStorage): Preferences {
@@ -17,6 +22,8 @@ export function loadPreferences(storage: Pick<Storage, 'getItem'> = globalThis.l
       largeIcons: raw.largeIcons === true,
       hints: raw.hints !== false,
       recordingOffsetMs: Number.isFinite(raw.recordingOffsetMs) ? Math.max(-500, Math.min(500, Math.round(raw.recordingOffsetMs!))) : 0,
+      voiceLanguage: raw.voiceLanguage === 'en-US' || raw.voiceLanguage === 'hr-HR' ? raw.voiceLanguage : 'auto',
+      voiceOnline: raw.voiceOnline === true,
     };
   } catch {
     return base;
