@@ -15,3 +15,4 @@
 - Undo/Redo live at the top of the File tile (the header has no room at 320–390px); big one-shot actions add an Undo button to their toast.
 - Header row: File, Settings, Help, then a red Capture (record) button, with Play at the right end. At ≤380px Play narrows to fit; the row must fit at 320px.
 - Library's third section is **Ideas**: one 40px row per captured take (name, Hear as select, play, delete), above the advanced recognition controls; at ≤380px the select narrows so the name stays readable at 320px.
+- Song › Chords by ear: Key, Rhythm and Play on selects and Find chords follow the 40px two-column control grid; each progression is one row (name and chords on the left, wrapping under the name when narrow; 44px Play and 64px Use on the right).

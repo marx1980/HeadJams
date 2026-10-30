@@ -95,7 +95,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 ### H2. Hear as real instruments (needs E3 and E5a)
 - ✅ Recognised melody defaults to sampled piano, bass to sampled bass, beat to the sampled kit. A **Hear as** row on the track (Piano, Guitar, Bass, Strings, Synth) switches instrument without re-analysis.
 
-### H3. Chords by ear
+### H3. Chords by ear ✅
 - Key detection from melody pitch classes (with a confidence; the scale setting is only a fallback).
 - 3 whole-progression alternatives (Simple / Different / Colour), scored on strong-beat chord tones, smoothness and repetition, with an optional half-bar rhythm.
 - Each alternative plays with the melody on the chosen accompaniment (guitar through the guitar engine, piano or strings through the sampler) before Use. "Use" creates a separate chord track.

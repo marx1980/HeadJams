@@ -17,6 +17,8 @@ import {
   replaceGeneratedArrangementChannel, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from '../model/arrangement';
 import { ARRANGEMENT_STYLES, generateChordAccompaniment, generateHarmonyFromMelody } from '../library/arrangementStyles';
+import { detectKey, suggestProgressions, type Progression } from '../library/progressions';
+import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
 import { Icon } from './Icon';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -242,7 +244,15 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
   );
 }
 
-export function SongEditor({ project, onChange }: { project: Project; onChange: (project: Project) => void }) {
+const KEY_CONFIDENCE = 0.5;
+
+export function SongEditor({ project, onChange, onAudition, playing }: {
+  project: Project;
+  onChange: (project: Project) => void;
+  /** Play a temporary project (melody + chords) without saving it; undefined stops. */
+  onAudition: (preview?: Project) => void;
+  playing: boolean;
+}) {
   const [sourceChannelId, setSourceChannelId] = useState('');
   const [useOriginalPerformance, setUseOriginalPerformance] = useState(false);
   const [suggestions, setSuggestions] = useState<ChordSuggestion[] | null>(null);
@@ -252,7 +262,13 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   const [arrangementMode, setArrangementMode] = useState<'harmony' | 'accompaniment'>('harmony');
   const [arrangementStyleId, setArrangementStyleId] = useState(ARRANGEMENT_STYLES[0].id);
   const [arrangementPreview, setArrangementPreview] = useState<NoteEvent[] | null>(null);
-  useEffect(() => { setSuggestions(null); setBassPreview(null); setArrangementPreview(null); }, [project]);
+  const [keyChoice, setKeyChoice] = useState('auto');
+  const [rhythm, setRhythm] = useState<'auto' | 'bar' | 'half'>('auto');
+  const [accompaniment, setAccompaniment] = useState<Accompaniment>('guitar');
+  const [progressions, setProgressions] = useState<Progression[] | null>(null);
+  const [auditionId, setAuditionId] = useState('');
+  useEffect(() => { setSuggestions(null); setBassPreview(null); setArrangementPreview(null); setProgressions(null); }, [project]);
+  useEffect(() => { if (!playing) setAuditionId(''); }, [playing]);
   const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
   const sourceChannels = project.channels.filter((channel) =>
     !channel.generatedMetadata && (channel.notes?.length ?? 0) > 0,
@@ -282,6 +298,34 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
   );
   const allGeneratedChannels = project.channels.filter((channel) => channel.generatedMetadata);
   const updatePattern = (id: string) => onChange(selectPattern(project, id));
+  const detected = useMemo(() => detectKey(inputNotes, project.noteLength), [inputNotes, project.noteLength]);
+  const projectKey = {
+    root: project.scaleRoot,
+    scaleId: (project.scaleId.startsWith('minor') ? 'minor' : 'major') as 'major' | 'minor',
+  };
+  const autoKey = detected && detected.confidence >= KEY_CONFIDENCE ? detected : projectKey;
+  const key = keyChoice === 'auto'
+    ? autoKey
+    : { root: Number(keyChoice.split(':')[0]), scaleId: keyChoice.split(':')[1] as 'major' | 'minor' };
+  const keyName = (root: number, scaleId: string) => `${NOTE_NAMES[((root % 12) + 12) % 12]} ${scaleId}`;
+  const halfBar = rhythm === 'half' || (rhythm === 'auto' && project.loopBars <= 2);
+  const findProgressions = () => {
+    if (!sourceChannel) return;
+    setProgressions(suggestProgressions(inputNotes, key, project.noteLength, project.loopBars, { halfBar }));
+  };
+  const toggleAudition = (progression: Progression) => {
+    if (auditionId === progression.id && playing) { onAudition(undefined); setAuditionId(''); return; }
+    const preview = sourceChannel && auditionProject(project, sourceChannel.id, progression, accompaniment);
+    if (!preview) return;
+    setAuditionId(progression.id);
+    onAudition(preview);
+  };
+  const useProgression = (progression: Progression) => {
+    if (!sourceChannel) return;
+    if (auditionId) onAudition(undefined);
+    const updated = addProgressionTrack(project, sourceChannel.id, progression, accompaniment);
+    if (updated !== project) onChange(updated);
+  };
   const generateSuggestions = () => {
     if (!sourceChannel) return;
     setSuggestions(suggestChordsFromNotes(
@@ -431,6 +475,53 @@ export function SongEditor({ project, onChange }: { project: Project; onChange: 
           <button className="secondary" disabled={!sourceChannel || !inputNotes.length} onClick={generateSuggestions}>
             <Icon name="sparkle" className="inline-icon" /> Suggest chords
           </button>
+        </div>
+        <div className="bass-assistant chords-by-ear">
+          <h4>Chords by ear</h4>
+          <div className="arrangement-assistant-controls">
+            <label>Key
+              <select id="progression-key" value={keyChoice} onChange={(event) => { setKeyChoice(event.target.value); setProgressions(null); }}>
+                <option value="auto">Auto · {keyName(autoKey.root, autoKey.scaleId)}</option>
+                {(['major', 'minor'] as const).flatMap((scaleId) => NOTE_NAMES.map((_, root) => (
+                  <option key={`${root}:${scaleId}`} value={`${root}:${scaleId}`}>{keyName(root, scaleId)}</option>
+                )))}
+              </select>
+            </label>
+            <label>Rhythm
+              <select id="progression-rhythm" value={rhythm} onChange={(event) => { setRhythm(event.target.value as typeof rhythm); setProgressions(null); }}>
+                <option value="auto">Auto · {halfBar ? 'Half bar' : 'Bar'}</option>
+                <option value="bar">Bar</option>
+                <option value="half">Half bar</option>
+              </select>
+            </label>
+            <label>Play on
+              <select id="progression-instrument" value={accompaniment}
+                onChange={(event) => { setAccompaniment(event.target.value as Accompaniment); if (auditionId) onAudition(undefined); }}>
+                {ACCOMPANIMENTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <button id="find-chords" disabled={!sourceChannel || !inputNotes.length} onClick={findProgressions}>
+              <Icon name="sparkle" className="inline-icon" /> Find chords
+            </button>
+          </div>
+          {progressions && (
+            <ul className="progression-list" aria-label="Chord progressions">
+              {progressions.map((progression) => (
+                <li key={progression.id} className="progression-item">
+                  <div className="progression-text">
+                    <span className="progression-name">{progression.label}</span>
+                    <span className="progression-chords">{progression.chords.map((chord) => formatChordSymbol(chord.root, chord.quality)).join(' · ')}</span>
+                  </div>
+                  <button className="secondary" aria-label={`${auditionId === progression.id && playing ? 'Stop' : 'Play'} ${progression.label}`}
+                    onClick={() => toggleAudition(progression)}>
+                    <Icon name={auditionId === progression.id && playing ? 'stop' : 'play'} className="inline-icon" />
+                  </button>
+                  <button aria-label={`Use ${progression.label}`} disabled={project.channels.length >= MAX_CHANNELS}
+                    onClick={() => useProgression(progression)}>Use</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         {suggestions && (
           <div className="chord-suggestions" aria-live="polite">

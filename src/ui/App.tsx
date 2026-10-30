@@ -100,7 +100,9 @@ export function App() {
   const sampleDataRef = useRef(sampleData);
   sampleDataRef.current = sampleData;
   const engineRef = useRef<Engine | undefined>(undefined);
-  engineRef.current ??= new Engine(() => projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id), instrumentStore);
+  /** A temporary project being auditioned (Song › Chords by ear); playback uses it instead of the project. */
+  const auditionRef = useRef<Project | undefined>(undefined);
+  engineRef.current ??= new Engine(() => auditionRef.current ?? projectRef.current, setPlayStep, (id) => sampleDataRef.current.get(id), instrumentStore);
   const engine = engineRef.current;
   midiTargetChannelRef.current = midiTargetChannelId;
 
@@ -200,8 +202,13 @@ export function App() {
   ]), [sounds, samplesLoaded, instrumentVersion]);
 
   const togglePlay = async () => {
-    if (engine.playing) engine.stop();
-    else { await engine.start(); emit('play'); }
+    if (engine.playing) { engine.stop(); auditionRef.current = undefined; }
+    else { auditionRef.current = undefined; await engine.start(); emit('play'); }
+  };
+  const audition = async (preview?: Project) => {
+    engine.stop();
+    auditionRef.current = preview;
+    if (preview) await engine.start();
   };
 
   const recordMidiNote = (voiceId: string, note: RecordedMidiNote, endedAt: number) => {
@@ -800,7 +807,8 @@ export function App() {
         </div>
 
         <div id="pane-song" role="tabpanel" aria-labelledby="tab-song" className={`pane pane-song${view === 'song' ? ' active' : ''}`}>
-          <SongEditor project={project} onChange={setProject} />
+          <SongEditor project={project} onChange={(next) => { auditionRef.current = undefined; setProject(next); }}
+            onAudition={(preview) => void audition(preview)} playing={playStep !== null} />
         </div>
       </div>
 
