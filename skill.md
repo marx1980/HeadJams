@@ -30,3 +30,4 @@
 - Suggestion sets (Chords by ear, Next phrase, Harmony, Bars › Vary): one row per alternative — name (and value, wrapping under it when narrow) on the left, 44px Play and 64px Use/Add/Keep on the right. Harmony: Generate and Play on in the control grid, then Subtle/Warm/Wide rows.
 - Song › Ask (top of the Song tab): the text field with a 44px Speak button (only where the browser has speech recognition) and a 44px Go button, quick buttons in an auto-fill grid (two per row at 320px), then each answer as its name over a suggestion set (Keep), or over a one-line value when it cannot be done.
 - Settings › Voice: Voice language select, then the Online recognition checkbox.
+- File tile: Undo/Redo, then Project name (full width), Save and Save as new side by side, Projects (one row per saved project: name over date, 64px Open, 44px delete; the open project's name in the accent colour), New project, then Share and Export.

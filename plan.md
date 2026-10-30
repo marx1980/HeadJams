@@ -111,7 +111,7 @@ Direction: `strategy.md` (free, open, offline, no ads, no accounts). Reach featu
 - **Sounds:** 67 synthesised Classic sounds; sampled instruments (Acoustic Kit, Nylon and Clean Electric guitars with strummed chord sounds, Grand Piano, Electric Piano, Electric Bass, Strings, Brass; see `docs/instruments.md`); personal instruments; user samples in IndexedDB. Four drum kits (each also as lanes), four templates.
 - **Audio:** Web Audio look-ahead scheduler and master effects; one performance compiler for playback and export; a sampler with velocity layers, round robins, loops, choke groups and voice stealing, lazy loading with memory budgets and a service-worker cache; guitar performer (chord shapes, strums, humanise). WAV export (44.1/48/96 kHz, 16/24-bit, optional normalise) in a Web Worker. Regression renders in `npm test`.
 - **Tutorials:** 29 tutorials and 7 workflows; Help opens a hub per screen.
-- **Storage:** project in localStorage (versioned, normalised on load); samples and preferences separately; project-level undo/redo. No cloud sync.
+- **Storage:** the working project autosaves in localStorage (versioned, normalised on load); File › **Project name**, **Save** (Saved when nothing changed) and **Save as new** keep named projects in IndexedDB (`src/model/projectLibrary.ts`), listed under **Projects** newest first with Open and delete, plus **New project**; leaving unsaved changes asks first; templates and song links start unsaved projects; your own sample sounds stay available in every project. Samples and preferences separately; project-level undo/redo. No cloud sync.
 
 ## DECISIONS
 - Web/PWA first; Capacitor for native shells.

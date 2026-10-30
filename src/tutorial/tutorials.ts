@@ -130,7 +130,7 @@ export const TUTORIALS: Tutorial[] = [
     id: 'save-export', title: '5. Save and export', tab: 'global', group: 'Export', level: 'beginner', estMinutes: 1,
     summary: 'Save your project and download it as a WAV file.', features: ['save-export'], doneMessage: 'Saved and exported!',
     steps: [
-      { text: 'Your work saves automatically. Tap Save Project to be sure.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
+      { text: 'Your work saves automatically. Name the project and tap Save to keep it in your list.', menu: 'file', target: '#save-btn', done: (s) => s.events.has('save') },
       { menu: 'file', text: 'Tap Export WAV to download your loop as an audio file.', target: '#export-btn', done: (s) => s.events.has('export') },
     ],
   },

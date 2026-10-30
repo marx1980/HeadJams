@@ -3,9 +3,14 @@ import {
   LOOP_BARS, MAX_CHANNELS, NOTE_LENGTHS, addChannel, addCustomSound, addNote, addSampleSound, duplicateChannel, removeChannel, setBpm, setLoopBars,
   setEffects, setNoteLength, selectPattern, setSwingTemplate, SWING_TEMPLATES, toggleStep, toggleLaneStep, updateChannel, type LoopBars, type NoteLength,
   totalSteps, arrangementLength, type Channel, type Project, type SoundDef, type SynthParams,
+  createProject,
 } from '../model/project';
 import { TEMPLATES } from '../model/templates';
 import { loadProject, saveProject } from '../model/storage';
+import {
+  browserProjectLibrary, clearProjectLibrary, copyName, CURRENT_PROJECT_KEY, deleteNamedProject, listProjects, openNamedProject,
+  projectJson, saveNamedProject, type SavedProjectEntry,
+} from '../model/projectLibrary';
 import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { addKitChannel, applyDrumKit, CORE_LANES, DRUM_KITS, findDrumKit, setKitChannelKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
@@ -135,6 +140,71 @@ export function App() {
   };
 
   useEffect(() => { saveProject(project); }, [project]);
+
+  // Named projects: the working project autosaves; Save stores it under its name in the library.
+  const [projectId, setProjectIdState] = useState<string | undefined>(() => {
+    try { return localStorage.getItem(CURRENT_PROJECT_KEY) ?? undefined; } catch { return undefined; }
+  });
+  const setProjectId = (id: string | undefined) => {
+    setProjectIdState(id);
+    try { if (id) localStorage.setItem(CURRENT_PROJECT_KEY, id); else localStorage.removeItem(CURRENT_PROJECT_KEY); } catch { /* storage unavailable */ }
+  };
+  const [savedJson, setSavedJson] = useState<string>();
+  const [savedProjects, setSavedProjects] = useState<SavedProjectEntry[]>([]);
+  const refreshProjects = () => { void listProjects(browserProjectLibrary).then(setSavedProjects, () => setSavedProjects([])); };
+  useEffect(() => {
+    refreshProjects();
+    if (projectId) void openNamedProject(browserProjectLibrary, projectId).then((saved) => setSavedJson(saved?.json), () => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const dirty = useMemo(() => !projectId || savedJson !== projectJson(project), [project, projectId, savedJson]);
+  const confirmLeave = () => !dirty || countNotes(project) === 0 || window.confirm('Leave this project? Unsaved changes are lost.');
+  const saveNamed = async (asNew: boolean) => {
+    try {
+      const target = asNew ? { ...project, name: copyName(project.name, savedProjects.map((entry) => entry.name)) } : project;
+      const { id } = await saveNamedProject(browserProjectLibrary, target, asNew ? undefined : projectId);
+      if (asNew) setProject(target);
+      setProjectId(id);
+      setSavedJson(projectJson(target));
+      refreshProjects();
+      emit('save');
+      flash(`${target.name.trim() || 'Untitled'} saved ✓`);
+    } catch {
+      flash('Could not save · storage full?');
+    }
+  };
+  const openSaved = async (id: string) => {
+    if (id === projectId && !dirty) return;
+    if (!confirmLeave()) return;
+    const saved = await openNamedProject(browserProjectLibrary, id).catch(() => undefined);
+    if (!saved) { flash('Could not open project'); refreshProjects(); return; }
+    engine.stop();
+    auditionRef.current = undefined;
+    const own = projectRef.current.customSounds.filter((sound) => sound.assetSource === 'user-sample'
+      && !saved.project.customSounds.some((item) => item.id === sound.id));
+    const opened = own.length ? { ...saved.project, customSounds: [...saved.project.customSounds, ...own] } : saved.project;
+    setProject(opened);
+    setProjectId(id);
+    setSavedJson(own.length ? projectJson(opened) : saved.json);
+    closeMenu();
+    flash(`${saved.project.name} opened`);
+  };
+  const newProject = () => {
+    if (!confirmLeave()) return;
+    engine.stop();
+    auditionRef.current = undefined;
+    const fresh = createProject('Untitled');
+    setProject({ ...fresh, customSounds: projectRef.current.customSounds.filter((sound) => sound.assetSource === 'user-sample') });
+    setProjectId(undefined);
+    setSavedJson(undefined);
+    closeMenu();
+  };
+  const removeSaved = async (entry: SavedProjectEntry) => {
+    if (!window.confirm(`Delete ${entry.name}?`)) return;
+    await deleteNamedProject(browserProjectLibrary, entry.id).catch(() => undefined);
+    if (entry.id === projectId) { setProjectId(undefined); setSavedJson(undefined); }
+    refreshProjects();
+  };
 
   // Song links: a project in the URL fragment opens as a song to hear, then open to remix.
   const [incoming, setIncoming] = useState<Project>();
@@ -526,6 +596,8 @@ export function App() {
     if (countNotes(project) > 0 && !window.confirm('Replace your current beat with this template?')) return;
     engine.stop();
     setProject({ ...t.make(), customSounds: project.customSounds });
+    setProjectId(undefined);
+    setSavedJson(undefined);
     emit('template');
     flash(`${t.label} loaded`, true);
   };
@@ -579,7 +651,30 @@ export function App() {
                   <button id="undo-btn" className="secondary" disabled={!history.canUndo(project)} onClick={undo}>Undo</button>
                   <button id="redo-btn" className="secondary" disabled={!history.canRedo(project)} onClick={redo}>Redo</button>
                 </div>
-                              <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
+                <label>Project name
+                  <input id="project-name" value={project.name} maxLength={60} onChange={(event) => setProject({ ...project, name: event.target.value })} />
+                </label>
+                <div className="row save-row">
+                  <button id="save-btn" disabled={!dirty} onClick={() => void saveNamed(false)}>{dirty ? 'Save' : 'Saved'}</button>
+                  <button id="save-as-btn" className="secondary" disabled={!projectId} onClick={() => void saveNamed(true)}>Save as new</button>
+                </div>
+                <h3>Projects</h3>
+                {savedProjects.length > 0 && (
+                  <ul className="project-list" aria-label="Saved projects">
+                    {savedProjects.map((entry) => (
+                      <li key={entry.id} className={entry.id === projectId ? 'current' : ''}>
+                        <span className="project-entry">
+                          <span className="project-entry-name">{entry.name}</span>
+                          <span className="project-entry-date">{new Date(entry.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        </span>
+                        <button className="secondary" aria-label={`Open ${entry.name}`} disabled={entry.id === projectId && !dirty}
+                          onClick={() => void openSaved(entry.id)}>Open</button>
+                        <button className="secondary" aria-label={`Delete ${entry.name}`} onClick={() => void removeSaved(entry)}><Icon name="close" className="inline-icon" /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button id="new-project" className="secondary" onClick={newProject}><Icon name="add" className="inline-icon" /> New project</button>
                 <h3>Share</h3>
                 <button id="share-link" className="secondary" onClick={() => {
                   void songLink(project, window.location.origin + import.meta.env.BASE_URL).then(async (url) => {
@@ -669,7 +764,7 @@ export function App() {
                 }}>Clear saved samples</button>
                 <button className="secondary" onClick={() => {
                   if (!window.confirm('Reset MusicMaker? This deletes your saved project, settings and progress.')) return;
-                  void clearAllSamples().catch(() => undefined).finally(() => { clearAppData(); window.location.reload(); });
+                  void clearAllSamples().catch(() => undefined).then(() => clearProjectLibrary()).finally(() => { clearAppData(); window.location.reload(); });
                 }}>Reset all app data</button>
               </HeaderTile>
             )}
@@ -690,6 +785,8 @@ export function App() {
                 const own = projectRef.current.customSounds.filter((sound) => sound.assetSource === 'user-sample'
                   && !incoming.customSounds.some((item) => item.id === sound.id));
                 setProject({ ...incoming, customSounds: [...incoming.customSounds, ...own] });
+                setProjectId(undefined);
+                setSavedJson(undefined);
                 setIncomingPlaying(false);
                 setIncoming(undefined);
                 closeMenu();
