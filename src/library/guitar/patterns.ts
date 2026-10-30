@@ -76,7 +76,9 @@ export function layoutChordRow(text: string, stepsPerBar: number, bars: number):
 
 /** Compile a chord row into chord events (ids start with "row-") on a loop of `bars` bars. */
 export function compileChordRow(row: ChordRow, stepsPerBar: number, bars: number): ChordEvent[] {
-  const pattern = STRUM_PATTERNS.find((item) => item.id === row.pattern) ?? STRUM_PATTERNS[0];
+  const custom = row.pattern === 'custom' && row.customBar && /^[DdUuPpxk1-6.]{16}$/.test(row.customBar)
+    ? { id: 'custom', label: 'Tapped', bar: row.customBar } : undefined;
+  const pattern = custom ?? STRUM_PATTERNS.find((item) => item.id === row.pattern) ?? STRUM_PATTERNS[0];
   const { chords } = layoutChordRow(row.chords, stepsPerBar, bars);
   const scale = stepsPerBar / 16;
   // Stroke positions in steps from the bar start (sixteenths that fall between steps are skipped).

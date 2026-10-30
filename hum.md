@@ -106,7 +106,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 - Overdubs are recorded against the grid loop that is playing, so they land in time with what was programmed (needs the H0 latency alignment).
 - The original recording becomes a play-original toggle on the track. Raise the channel cap after measuring.
 
-### H5. Tap rhythm and draw melody
+### H5. Tap rhythm and draw melody ✅
 - Tap pad: record taps, store them as a rhythm pattern (beats and strengths), then "Use for" Drums, Bass, Strum (E4) or Pulses.
 - Draw pad: contour → smoothed segments → notes snapped by Original/Cleaned/Tight → audition. Higher/Lower nudges per note.
 

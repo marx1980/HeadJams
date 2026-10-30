@@ -502,3 +502,25 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .capture-headphones { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; opacity: .85; }
 .capture-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .capture-more button { min-height: 40px; }
+
+/* Capture › Tap rhythm and Draw melody */
+.tap-pad-wrap { display: flex; flex-direction: column; gap: 10px; }
+.tap-pad { min-height: 160px; font-size: 2rem; font-weight: 800; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.tap-pad:active { background: var(--accent); color: var(--accent-contrast); }
+.tap-result { display: flex; flex-direction: column; gap: 10px; }
+.tap-steps { display: grid; gap: 3px; }
+.tap-steps span { height: 18px; border-radius: 4px; background: var(--surface-muted); }
+.tap-steps span.on { background: var(--accent); }
+.draw-pad { display: flex; flex-direction: column; gap: 8px; }
+.draw-canvas { width: 100%; height: 220px; background: var(--surface-muted); border-radius: var(--control-radius); touch-action: none; cursor: crosshair; }
+.draw-line { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.draw-tonic { stroke: var(--border-strong); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.draw-bar { stroke: var(--border-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.draw-note { fill: var(--accent); opacity: .55; }
+.draw-note.active { opacity: .95; }
+.draw-stroke { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; opacity: .7; }
+.draw-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.draw-nudge { display: grid; grid-template-columns: 44px 1fr 44px 1fr 1fr; gap: 6px; align-items: center; }
+.draw-note-label { text-align: center; font-variant-numeric: tabular-nums; }
+.draw-actions { display: grid; grid-template-columns: 44px 44px 1fr; gap: 6px; }
+.draw-pad button, .tap-result button { min-height: 40px; }

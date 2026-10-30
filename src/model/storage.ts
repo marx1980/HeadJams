@@ -172,6 +172,7 @@ function normalizeChordRow(value: unknown): ChordRow | undefined {
     strumMs: number(row.strumMs, 30, 0, 200),
     humanise: number(row.humanise, 0.6, 0, 1),
     capo: Math.round(number(row.capo, 0, 0, 9)),
+    ...(typeof row.customBar === 'string' && /^[DdUuPpxk1-6.]{16}$/.test(row.customBar) ? { customBar: row.customBar } : {}),
   };
 }
 

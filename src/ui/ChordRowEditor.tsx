@@ -56,6 +56,7 @@ export function ChordRowEditor({ project, channel, onChange }: {
       </label>
       <label>Pattern
         <select id="chord-row-pattern" value={row.pattern} onChange={(event) => change({ pattern: event.target.value })}>
+          {row.customBar && <option value="custom">Tapped</option>}
           {STRUM_PATTERNS.map((pattern) => <option key={pattern.id} value={pattern.id}>{pattern.label}</option>)}
         </select>
       </label>
