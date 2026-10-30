@@ -57,9 +57,11 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
       const sound = findSound(p, c.soundId);
       if (!sound) continue;
       const base = { sound, channelId: c.id, volume: c.volume, pan: c.pan };
-      if (c.steps[source.localStep]) voices.push({ ...base, kind: 'hit', offsetSec: 0 });
+      // A track with a shorter Length repeats its grid steps (and kit lanes) across the loop.
+      const gridStep = c.lengthSteps ? source.localStep % c.lengthSteps : source.localStep;
+      if (c.steps[gridStep]) voices.push({ ...base, kind: 'hit', offsetSec: 0 });
       for (const lane of c.lanes ?? []) {
-        if (lane.mute || !lane.steps[source.localStep]) continue;
+        if (lane.mute || !lane.steps[gridStep]) continue;
         const laneSound = findSound(p, lane.soundId);
         if (laneSound) voices.push({ ...base, sound: laneSound, kind: 'hit', offsetSec: 0 });
       }

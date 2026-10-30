@@ -75,6 +75,10 @@ export interface Channel {
   generatedMetadata?: GeneratedTrackMetadata;
   kitId?: string;
   role?: DrumRole;
+  /** Grid steps (and kit lanes) repeat every this many steps instead of the whole loop; steps beyond it are kept but not played. */
+  lengthSteps?: number;
+  /** Steps per bar the grid shows for this track (a coarser view of the project grid; display only). */
+  viewSteps?: NoteLength;
 }
 
 export interface GeneratedTrackMetadata {
@@ -290,9 +294,17 @@ function syncCurrentPattern(p: Project, channels: Channel[], lengthSteps = total
   };
 }
 
+/** Keep a track's Length and Steps view valid for the grid: Length divides the loop and is shorter than it; Steps divides the bar. */
+export function fitTrackGrid(c: Channel, stepsPerBar: number, total: number): Channel {
+  const { lengthSteps, viewSteps, ...rest } = c;
+  const lengthOk = Number.isInteger(lengthSteps) && lengthSteps! > 0 && lengthSteps! < total && total % lengthSteps! === 0;
+  const viewOk = viewSteps !== undefined && NOTE_LENGTHS.includes(viewSteps) && viewSteps < stepsPerBar && stepsPerBar % viewSteps === 0;
+  return { ...rest, ...(lengthOk ? { lengthSteps } : {}), ...(viewOk ? { viewSteps } : {}) } as Channel;
+}
+
 export function setLoopBars(p: Project, loopBars: LoopBars): Project {
   const len = p.noteLength * loopBars;
-  const updated = syncCurrentPattern(p, p.channels.map((c) => ({
+  const updated = syncCurrentPattern(p, p.channels.map((c) => fitTrackGrid({
     ...c,
     steps: Array.from({ length: len }, (_, i) => c.steps[i] ?? false),
     notes: (c.notes ?? []).filter((note) => note.step < len),
@@ -309,7 +321,7 @@ export function setLoopBars(p: Project, loopBars: LoopBars): Project {
         } : {}),
       })),
     } : {}),
-  })), len);
+  }, p.noteLength, len)), len);
   return { ...updated, loopBars };
 }
 
@@ -322,8 +334,9 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
       const pos = (j * oldLen) / newLen;
       return Number.isInteger(pos) ? steps[pos] ?? false : false;
     });
-  const updated = syncCurrentPattern(p, p.channels.map((c) => ({
+  const updated = syncCurrentPattern(p, p.channels.map((c) => fitTrackGrid({
     ...c,
+    ...(c.lengthSteps ? { lengthSteps: (c.lengthSteps * noteLength) / p.noteLength } : {}),
     steps: resample(c.steps),
     ...(c.lanes ? {
       lanes: c.lanes.map((lane) => ({
@@ -360,7 +373,7 @@ export function setNoteLength(p: Project, noteLength: NoteLength): Project {
         ? [{ ...event, step: position, durationSteps: Math.max(1, Math.round((event.durationSteps * newLen) / oldLen)) }]
         : [];
     }),
-  })), newLen);
+  }, noteLength, newLen)), newLen);
   return { ...updated, noteLength };
 }
 

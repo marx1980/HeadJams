@@ -70,6 +70,66 @@ function rowBars(text: string, per: number, bars: number): string[] {
     .map((chord) => chord.symbol).join(' '));
 }
 
+function rearrangeChannel(channel: Channel, order: readonly (number | null)[], per: number, length: number, moved: boolean): Channel {
+  const metadata = sliceMetadata(channel.stepEventMetadata, order, per);
+  return {
+    ...channel,
+    steps: sliceSteps(channel.steps, order, per),
+    notes: sliceEvents<NoteEvent>(channel.notes ?? [], order, per, length),
+    ...(metadata ? { stepEventMetadata: metadata } : {}),
+    chordEvents: sliceEvents((channel.chordEvents ?? []).filter((event) => !event.id.startsWith('row-')), order, per, length),
+    ...(channel.lanes ? {
+      lanes: channel.lanes.map((lane) => {
+        const laneMetadata = sliceMetadata(lane.stepEventMetadata, order, per);
+        return { ...lane, steps: sliceSteps(lane.steps, order, per), ...(laneMetadata ? { stepEventMetadata: laneMetadata } : {}) };
+      }),
+    } : {}),
+    ...(moved && channel.playOriginal ? { playOriginal: false } : {}),
+  };
+}
+
+/** Guitar chord rows: the symbols follow their bars; an empty bar holds the chord before it. */
+function reorderChordRow(next: Project, channel: Channel, order: readonly (number | null)[], oldBars: number): Project {
+  if (!channel.chordRow) return next;
+  const symbols = rowBars(channel.chordRow.chords, next.noteLength, oldBars);
+  let last = symbols.find(Boolean) ?? '';
+  const text = order.map((source) => {
+    const value = source === null ? last : symbols[source] || last;
+    last = value || last;
+    return value;
+  }).filter(Boolean).join(' | ');
+  return setChordRow(next, channel.id, { ...channel.chordRow, chords: text || channel.chordRow.chords });
+}
+
+/**
+ * One track only (Beat › track bar tools): bar i of the track takes old bar `order[i]` (null = empty);
+ * the loop length and the other tracks stay as they are.
+ */
+export function rearrangeTrackBars(p: Project, channelId: string, order: readonly (number | null)[]): Project {
+  const channel = p.channels.find((item) => item.id === channelId);
+  if (!channel || order.length !== p.loopBars || order.some((source) => source !== null && (source < 0 || source >= p.loopBars))) return p;
+  const per = p.noteLength;
+  const moved = order.some((source, bar) => source !== bar);
+  const changed = rearrangeChannel(channel, order, per, p.loopBars * per, moved);
+  const next = setLoopBars({ ...p, channels: p.channels.map((item) => item.id === channelId ? changed : item) }, p.loopBars);
+  return reorderChordRow(next, channel, order, p.loopBars);
+}
+
+/** Repeat one bar of a track across the whole loop. */
+export const fillTrackFromBar = (p: Project, channelId: string, bar: number) =>
+  bar < 0 || bar >= p.loopBars ? p : rearrangeTrackBars(p, channelId, Array.from({ length: p.loopBars }, () => bar));
+export function copyTrackBar(p: Project, channelId: string, from: number, to: number): Project {
+  if (from === to) return p;
+  const order: (number | null)[] = Array.from({ length: p.loopBars }, (_, bar) => bar);
+  order[to] = from;
+  return rearrangeTrackBars(p, channelId, order);
+}
+export function clearTrackBar(p: Project, channelId: string, bar: number): Project {
+  const order: (number | null)[] = Array.from({ length: p.loopBars }, (_, index) => index);
+  order[bar] = null;
+  return rearrangeTrackBars(p, channelId, order);
+}
+
 /**
  * Rebuild the loop from bars of the current loop: `order[i]` is the old bar that becomes bar i (null = empty bar).
  * The loop becomes `order.length` bars, which must be 1, 2 or 4.
@@ -81,42 +141,14 @@ export function rearrangeBars(p: Project, order: readonly (number | null)[]): Pr
   const length = bars * per;
   // The recording a track came from still plays where it was sung, so it only stays on when its bars did not move.
   const moved = order.slice(0, p.loopBars).some((source, bar) => source !== bar);
-  const channels: Channel[] = p.channels.map((channel) => {
-    const metadata = sliceMetadata(channel.stepEventMetadata, order, per);
-    return {
-      ...channel,
-      steps: sliceSteps(channel.steps, order, per),
-      notes: sliceEvents<NoteEvent>(channel.notes ?? [], order, per, length),
-      ...(metadata ? { stepEventMetadata: metadata } : {}),
-      chordEvents: sliceEvents((channel.chordEvents ?? []).filter((event) => !event.id.startsWith('row-')), order, per, length),
-      ...(channel.lanes ? {
-        lanes: channel.lanes.map((lane) => {
-          const laneMetadata = sliceMetadata(lane.stepEventMetadata, order, per);
-          return { ...lane, steps: sliceSteps(lane.steps, order, per), ...(laneMetadata ? { stepEventMetadata: laneMetadata } : {}) };
-        }),
-      } : {}),
-      ...(moved && channel.playOriginal ? { playOriginal: false } : {}),
-    };
-  });
+  const channels: Channel[] = p.channels.map((channel) => rearrangeChannel(channel, order, per, length, moved));
   const names = barNames(p);
   let next = setLoopBars({ ...p, channels }, bars);
   next = {
     ...next,
     barNames: { ...(p.barNames ?? {}), [barsKey(p)]: order.map((source) => source === null ? '' : names[source]) },
   };
-  // Guitar chord rows: the symbols follow their bars; an empty bar holds the chord before it.
-  for (const channel of p.channels) {
-    if (!channel.chordRow) continue;
-    const symbols = rowBars(channel.chordRow.chords, per, p.loopBars);
-    const fallback = symbols.find(Boolean) ?? '';
-    let last = fallback;
-    const text = order.map((source) => {
-      const value = source === null ? last : symbols[source] || last;
-      last = value || last;
-      return value;
-    }).filter(Boolean).join(' | ');
-    next = setChordRow(next, channel.id, { ...channel.chordRow, chords: text || channel.chordRow.chords });
-  }
+  for (const channel of p.channels) next = reorderChordRow(next, channel, order, p.loopBars);
   return next;
 }
 

@@ -113,6 +113,7 @@ describe('tutorial target selectors', () => {
       container.querySelector<HTMLButtonElement>('.sample-edit-list button')?.click();
       container.querySelector<HTMLButtonElement>('.sound-picker-trigger')?.click();
       container.querySelector<HTMLButtonElement>('#make-sound')?.click();
+      container.querySelector<HTMLButtonElement>('[aria-label^="Pattern tools for"]')?.click();
     });
     await act(async () => {
       const arrangementPart = container.querySelector<HTMLSelectElement>('[aria-label="Arrangement part"]');

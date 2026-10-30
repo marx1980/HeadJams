@@ -88,6 +88,7 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'library-tools', label: 'Search and tags' },
   { id: 'midi-keyboard', label: 'MIDI keyboard input' },
   { id: 'capture', label: 'Capture an idea' },
+  { id: 'track-pattern', label: 'Track pattern tools (Length, Steps, Fill, Copy and Paste)' },
 ];
 
 export const TUTORIALS: Tutorial[] = [
@@ -113,8 +114,22 @@ export const TUTORIALS: Tutorial[] = [
     summary: 'Make your loop 1, 2 or 4 bars long.', features: ['loops'], doneMessage: 'Your loop is longer now.',
     steps: [
       { view: 'beat', text: 'Choose how many bars your loop lasts.', target: '#loop-bars', done: (s) => s.project.loopBars !== s.base.loopBars },
-      { view: 'beat', text: 'Place a beat in the new bars (the extra rows).', target: '.step', done: (s) => s.project.channels.some((c) => c.steps.some((on, i) => on && i >= s.project.noteLength)) },
+      { view: 'beat', text: 'Place a beat in the new bars (the extra rows; on a phone, › above the tracks shows the next bar).', target: '.step', done: (s) => s.project.channels.some((c) => c.steps.some((on, i) => on && i >= s.project.noteLength)) },
       { text: 'Press Play. The playhead loops back to the start.', target: '#play-btn', done: (s) => s.events.has('play') },
+    ],
+  },
+  {
+    id: 'track-pattern', title: 'Repeat and shorten a pattern', tab: 'beat', group: 'Grid & timing', level: 'beginner', estMinutes: 1,
+    summary: 'Make a short pattern repeat, show fewer squares, and copy a pattern to another track.', features: ['track-pattern'],
+    doneMessage: 'Program one bar and let it repeat.',
+    steps: [
+      { view: 'beat', text: 'Tap the sliders button on a track to open its pattern tools.', target: '[aria-label^="Pattern tools for"]', done: (s) => s.events.has('pattern-tools') },
+      { view: 'beat', text: 'Choose a shorter Length. That part of the grid repeats across the whole loop.', target: '[aria-label^="Length of"]',
+        done: (s) => anyChannel(s, (c, b) => c.lengthSteps !== b?.lengthSteps) },
+      { view: 'beat', text: 'Choose fewer Steps (1/8 or 1/4) for bigger squares. Hits between squares stay and show as a dot.', target: '[aria-label^="Steps of"]',
+        done: (s) => anyChannel(s, (c, b) => c.viewSteps !== b?.viewSteps) },
+      info('Copy and Paste move a pattern to another track or project. With several bars, Fill repeats one bar and Clear empties it.', { view: 'beat', target: '[aria-label$=" pattern"]' }),
+      { text: 'Press Play to hear it.', target: '#play-btn', done: (s) => s.events.has('play') },
     ],
   },
   {

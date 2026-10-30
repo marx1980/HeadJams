@@ -6,7 +6,7 @@
 - Keep every control in the Beat tab's options row (Template, BPM, Note length, Loop, Pattern, Drum kit, Apply kit) the same height and font size; they share `--option-control-height` in `.beat-options`.
 - Select dropdowns use `appearance: none` with a CSS chevron; iOS Safari ignores `height`/`min-height` on native-styled selects, so never remove it.
 - In each channel strip, align controls to the bottom edge and keep every control 40px tall so Track name and the sound picker line up.
-- Channel strip order is: Track name, then [sound picker, S (solo), M (mute), preview], then Volume/Pan, then [duplicate, Piano roll/Grid, remove]. On phones each group is its own row (picker takes the remaining width), so nothing can wrap alone.
+- Channel strip order is: Track name, then [sound picker, S (solo), M (mute), preview], then Volume/Pan, then [duplicate, Piano roll/Grid, Pattern tools (sliders icon, grid tracks only), remove]. On phones each group is its own row (picker takes the remaining width), so nothing can wrap alone.
 - Library: Sounds, Find the sound, Sample editor and Ideas (with Recognition) are exclusive accordion sections (`<details name="library-section">`); search/tag/channel filters live inside Sounds. Sound tiles stay two columns, with Play above Use on the right, no inner scroll, grouped by category as an exclusive accordion: every group starts collapsed, opening one collapses the previous, and a search or tag filter opens the first matching group. Tutorials open any collapsed section that contains their target.
 - Library, Song and Sound controls are 40px and arranged in two-column grids (`.record-controls`, `.recognition-controls`, `.effect-controls`); a select and its action button share a row and stack full width when they do not fit.
 - Do not add explanatory paragraphs to the Library, Song or Sound tabs; labels and values only.
@@ -31,3 +31,5 @@
 - Song › Ask (top of the Song tab): the text field with a 44px Speak button (only where the browser has speech recognition) and a 44px Go button, quick buttons in an auto-fill grid (two per row at 320px), then each answer as its name over a suggestion set (Keep), or over a one-line value when it cannot be done.
 - Settings › Voice: Voice language select, then the Online recognition checkbox.
 - File tile: Undo/Redo, then Project name (full width), Save and Save as new side by side, Projects (one row per saved project: name over date, 64px Open, 44px delete; the open project's name in the accent colour), New project, then Share and Export.
+- Beat › Pattern tools (under the strip when open): a 40px control grid, four columns (two at ≤600px): Length, Steps, Bar, To bar, Fill, Clear, Copy, Paste, then To track spanning two columns. Bar, To bar, Fill and Clear appear only when the track is longer than one bar; Length only on tracks without notes.
+- Beat › bar pager (≤600px, loops of several bars): ‹ Bar n/N › above the tracks, 44px arrows; every grid shows that one bar.

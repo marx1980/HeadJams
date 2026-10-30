@@ -54,7 +54,7 @@ export function AskPanel({ project, onChange, onAudition, playing, voice, onActi
         {canListen && (
           <button id="ask-voice" type="button" className={listening ? 'on' : 'secondary'} aria-pressed={listening}
             aria-label={listening ? 'Stop listening' : 'Speak'} onClick={() => void listen()}>
-            <Icon name={listening ? 'stop' : 'record'} className="inline-icon" /></button>
+            <Icon name={listening ? 'stop' : 'sample'} className="inline-icon" /></button>
         )}
         <button id="ask-go" type="submit" disabled={!text.trim()} aria-label="Go"><Icon name="sparkle" className="inline-icon" /></button>
       </form>
