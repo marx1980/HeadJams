@@ -599,3 +599,13 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 /* File › Export video */
 .video-export { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end; }
 .video-export button { font-variant-numeric: tabular-nums; }
+
+/* Song › Ask */
+.ask-panel { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.ask-panel h3 { margin: 0; }
+.ask-row { display: grid; grid-template-columns: 1fr 44px; gap: 6px; }
+.ask-row input { min-width: 0; box-sizing: border-box; height: 40px; }
+.ask-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.ask-chips button { min-height: 40px; }
+.ask-result { display: flex; flex-direction: column; gap: 4px; }
+.ask-message { margin: 0; color: var(--text-muted); }

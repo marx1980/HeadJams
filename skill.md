@@ -28,3 +28,4 @@
 - File › Share: a full-width Share link button, then the link in a read-only field once made. Song (opened from a link): name, "BPM · tracks", then 44px Play and a wide Open.
 - File › Export: after Export WAV, a two-column row: Video select (Vertical, Square) and Export video ("Recording n/N s" while recording). Video frames carry the song name and one label at the bottom (Hummed, the section, or BPM) only.
 - Suggestion sets (Chords by ear, Next phrase, Harmony, Bars › Vary): one row per alternative — name (and value, wrapping under it when narrow) on the left, 44px Play and 64px Use/Add/Keep on the right. Harmony: Generate and Play on in the control grid, then Subtle/Warm/Wide rows.
+- Song › Ask (top of the Song tab): the text field with a 44px Go button, quick buttons in an auto-fill grid (two per row at 320px), then each answer as its name over a suggestion set (Keep), or over a one-line value when it cannot be done.
