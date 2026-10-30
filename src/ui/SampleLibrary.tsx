@@ -4,6 +4,8 @@ import type { SampleData } from '../library/sampleStorage';
 import { SampleEditor } from './SampleEditor';
 import { RecognitionPanel } from './RecognitionPanel';
 import { FindSound } from './FindSound';
+import { MakeInstrument } from './MakeInstrument';
+import type { PersonalSample } from '../model/personalInstrument';
 import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
@@ -14,7 +16,7 @@ const SECTION = { name: 'library-section' } as Record<string, string>;
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onHearAs, onLibraryAction, onAudition, playing, onUseSound,
+  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onHearAs, onLibraryAction, onAudition, playing, onUseSound, onMakeInstrument,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -39,6 +41,7 @@ export function SampleLibrary({
   onAudition: (preview?: Project) => void;
   playing: boolean;
   onUseSound: (channelId: string, soundId: string) => void;
+  onMakeInstrument: (name: string, picked: PersonalSample[]) => void;
   onLibraryAction: (event: 'library-search' | 'library-tag') => void;
 }) {
   const [query, setQuery] = useState('');
@@ -141,6 +144,7 @@ export function SampleLibrary({
         onImport={onImport}
         onEdit={onEdit}
       />
+      <MakeInstrument sounds={sounds} samples={sampleData} onMake={onMakeInstrument} />
       </details>
       <details className="library-section" {...SECTION}>
         <summary>Ideas</summary>

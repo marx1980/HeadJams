@@ -23,6 +23,7 @@ import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { hearTakeAs } from '../model/hearAs';
 import { refreshChordRows } from '../model/chordRow';
 import { applyRhythm } from '../model/rhythmUse';
+import { addPersonalInstrument, personalAudio, personalManifest } from '../model/personalInstrument';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -183,6 +184,13 @@ export function App() {
   const sounds = useMemo(() => allSounds(project), [project]);
   const [instrumentVersion, setInstrumentVersion] = useState(0);
   useEffect(() => instrumentStore.subscribe(() => setInstrumentVersion((version) => version + 1)), []);
+  // Personal instruments are built from saved samples and registered with the sampler (expansion.md E6).
+  useEffect(() => {
+    if (!samplesLoaded) return;
+    for (const instrument of project.personalInstruments ?? []) {
+      instrumentStore.register(personalManifest(instrument), personalAudio(instrument, sampleData));
+    }
+  }, [project.personalInstruments, sampleData, samplesLoaded]);
   useEffect(() => {
     // Load sampled instruments the project uses in the background, so Play starts without waiting.
     const timer = window.setTimeout(() => void instrumentStore.prepare(instrumentNeeds(project)), 250);
@@ -858,6 +866,12 @@ export function App() {
         onAudition={(preview) => void audition(preview)}
         playing={playStep !== null}
         onUseSound={(channelId, soundId) => { auditionRef.current = undefined; setProject(updateChannel(projectRef.current, channelId, { soundId })); }}
+        onMakeInstrument={(name, picked) => {
+          const { project: next, sound } = addPersonalInstrument(projectRef.current, name, picked);
+          if (!sound) return;
+          setProject(next);
+          flash(`${sound.name} added`, true);
+        }}
         onLibraryAction={emit}
       />
 

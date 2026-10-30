@@ -169,6 +169,25 @@ export class InstrumentStore {
     return !failure;
   }
 
+  /**
+   * Register an instrument built in the app (a personal instrument): its manifest and audio are given directly,
+   * not fetched. Re-registering replaces the manifest and every region, so a re-recorded sample takes effect.
+   */
+  register(manifest: InstrumentManifest, audio: ReadonlyMap<string, DecodedRegion>): void {
+    for (const key of [...this.regions.keys()]) if (this.regions.get(key)!.instrumentId === manifest.id) this.regions.delete(key);
+    this.manifests.set(manifest.id, manifest);
+    this.manifestRequests.set(manifest.id, Promise.resolve(manifest));
+    let missing = false;
+    for (const region of manifest.regions) {
+      const decoded = audio.get(region.file);
+      if (!decoded) { missing = true; continue; }
+      const key = this.regionKey(manifest, region);
+      this.regions.set(key, { audio: decoded, bytes: decoded.data.length * 4, instrumentId: manifest.id, lastUsed: ++this.clock });
+      this.pinned.add(key);
+    }
+    this.setStatus(manifest.id, missing ? { state: 'error', message: 'A sample of this instrument is missing' } : { state: 'ready' });
+  }
+
   /** Manifests and decoded audio for WAV export (copies, safe to transfer to a worker). */
   exportAudio(ids: Iterable<string>): { manifests: InstrumentManifest[]; regions: { key: string; sampleRate: number; data: Float32Array }[] } {
     const manifests: InstrumentManifest[] = [];

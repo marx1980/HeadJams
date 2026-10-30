@@ -22,3 +22,4 @@
 - Capture › Tap rhythm: one large pad (≥160px) while tapping, then a step strip, Use for / Into side by side, and Again / Use. Draw melody: a full-width 220px pad, Original/Cleaned/Tight in thirds, the note stepper row (← n/N → Lower Higher), then clear, play and a wide Use.
 - Song › Song builder: Template + Sections in the control grid; one 40px row per section (name, pattern select only when there are several patterns, −, size, +, remove), then add / play / wide Use.
 - Library › Find the sound: Track select full width, description words as 40px toggle buttons in an auto-fill grid (two per row at 320px), then result rows (name over matched words; 44px Play, 64px Use showing a check when it is the track's sound).
+- Library › Sample editor › Make an instrument: one 40px row per saved sample (checkbox + name, then a 96px note select once ticked), Name input, full-width Make instrument.
