@@ -620,3 +620,14 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .project-entry-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-entry-date { font-size: 0.75rem; color: var(--text-muted); }
 #project-name { box-sizing: border-box; width: 100%; height: 40px; }
+
+/* Beat › Pattern tools, bar pager, coarse steps */
+.track-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: end; margin-bottom: 6px; }
+.track-tools select, .track-tools button { width: 100%; min-width: 0; box-sizing: border-box; height: 40px; }
+.track-tools-wide { grid-column: span 2; }
+@media (max-width: 600px) { .track-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bar-pager { display: grid; grid-template-columns: 44px 1fr 44px; gap: 6px; align-items: center; margin-top: 12px; }
+.bar-pager span { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step.hidden-hits { position: relative; }
+.step.hidden-hits::after { content: ''; position: absolute; right: 4px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--color, var(--accent)); }
+.step.on.hidden-hits::after { background: var(--text); }

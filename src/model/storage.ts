@@ -1,6 +1,6 @@
 import type { HearAsId } from './hearAs';
 import {
-  createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
+  createProject, fitTrackGrid, NOTE_LENGTHS, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
   type Channel, type ChordEvent, type ChordRow, type KitLane, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
@@ -239,7 +239,7 @@ export function normalizeProject(raw: string): Project | undefined {
     const p = JSON.parse(raw) as Project;
     if (!p || !Array.isArray(p.channels) || typeof p.bpm !== 'number') return undefined;
     if (Number.isInteger(p.formatVersion) && p.formatVersion > CURRENT_PROJECT_FORMAT_VERSION) return undefined;
-    const normalizeChannel = (channel: Channel): Channel => ({
+    const normalizeChannel = (channel: Channel): Channel => fitTrackGrid({
       ...channel,
       notes: Array.isArray(channel.notes) ? channel.notes.map(normalizeNote) : [],
       stepEventMetadata: normalizeStepEventMetadata(channel.stepEventMetadata, channel.steps?.length ?? 0),
@@ -254,7 +254,7 @@ export function normalizeProject(raw: string): Project | undefined {
         : [],
       ...(normalizeChordRow(channel.chordRow) ? { chordRow: normalizeChordRow(channel.chordRow) } : { chordRow: undefined }),
       ...(Array.isArray(channel.lanes) ? { lanes: normalizeLanes(channel.lanes, channel.steps?.length ?? 0) } : { lanes: undefined }),
-    });
+    }, NOTE_LENGTHS.includes(p.noteLength) ? p.noteLength : 16, channel.steps?.length ?? 0);
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({
         ...pattern,

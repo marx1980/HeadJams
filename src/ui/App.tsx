@@ -39,6 +39,8 @@ import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
+import { TrackPatternTools } from './TrackPatternTools';
+import { gridCells } from '../model/trackPattern';
 import { confineTakeToBar, shiftTakeStart } from '../model/takeStart';
 import { barPreview } from '../model/bars';
 import { OfflineInstruments } from './OfflineInstruments';
@@ -84,6 +86,27 @@ export function App() {
   const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
   const [midiOpen, setMidiOpen] = useState(false);
+  const [toolChannels, setToolChannels] = useState<ReadonlySet<string>>(new Set());
+  const toggleTools = (id: string) => {
+    if (!toolChannels.has(id)) emit('pattern-tools');
+    setToolChannels((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  // Phones show one bar of every grid at a time, with a bar pager above the tracks.
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 600px)').matches === true);
+  useEffect(() => {
+    const query = window.matchMedia?.('(max-width: 600px)');
+    if (!query) return;
+    const update = () => setNarrow(query.matches);
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
+  }, []);
+  const [viewBar, setViewBar] = useState(0);
+  const pagerBar = Math.min(viewBar, project.loopBars - 1);
+  const shownBar = narrow && project.loopBars > 1 ? pagerBar : undefined;
   const [beatView, setBeatView] = useState<'tracks' | 'bars'>(() => {
     try { return localStorage.getItem(BEAT_VIEW_KEY) === 'bars' ? 'bars' : 'tracks'; } catch { return 'tracks'; }
   });
@@ -910,6 +933,13 @@ export function App() {
               onChange={setProject}
               onAudition={(preview) => void audition(preview)} />
           ) : (<>
+          {shownBar !== undefined && (
+            <div className="bar-pager" role="group" aria-label="Bar shown">
+              <button className="secondary" aria-label="Previous bar" disabled={pagerBar === 0} onClick={() => setViewBar(pagerBar - 1)}><Icon name="back" className="inline-icon" /></button>
+              <span id="bar-pager-value">Bar {pagerBar + 1}/{project.loopBars}</span>
+              <button className="secondary" aria-label="Next bar" disabled={pagerBar >= project.loopBars - 1} onClick={() => setViewBar(pagerBar + 1)}><Icon name="forward" className="inline-icon" /></button>
+            </div>
+          )}
           <section className="channels">
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
@@ -964,19 +994,26 @@ export function App() {
                   <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
                     onClick={() => togglePiano(c.id)}><Icon name={pianoChannels.has(c.id) ? 'grid' : 'piano'} className="inline-icon" /> {pianoChannels.has(c.id) ? 'Grid' : 'Piano roll'}</button>
                 )}
+                {!pianoChannels.has(c.id) && (
+                  <button className={toolChannels.has(c.id) ? 'on' : 'secondary'} aria-pressed={toolChannels.has(c.id)}
+                    aria-label={`Pattern tools for ${c.name}`} onClick={() => toggleTools(c.id)}><Icon name="custom" className="inline-icon" /></button>
+                )}
                 <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => {
                   const take = project.recognitionTakes.find((item) =>
                     item.channelIds.includes(c.id) || item.originalChannelId === c.id);
                   setProject(take ? removeRecognitionTake(project, take.id) : removeChannel(project, c.id));
                 }}><Icon name="close" className="inline-icon" /></button>
               </div>
+              {toolChannels.has(c.id) && !pianoChannels.has(c.id) && (
+                <TrackPatternTools project={project} channel={c} shownBar={shownBar} onChange={setProject} onMessage={(text) => flash(text)} />
+              )}
               {c.lanes
-                ? <KitLanes channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
+                ? <KitLanes channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBar={shownBar}
                   onToggle={(laneId, step) => setProject(toggleLaneStep(project, c.id, laneId, step))}
                   onKeyboardNavigate={() => emit('keyboard-nav')} />
                 : pianoChannels.has(c.id)
                 ? <PianoRoll project={project} onChange={setProject} channelId={c.id} onKeyboardNavigate={() => emit('piano-keyboard-nav')} />
-                : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep}
+                : <BeatGrid channel={c} loopBars={project.loopBars} noteLength={project.noteLength} playStep={playStep} shownBar={shownBar}
                   onToggle={(step) => setProject(toggleStep(project, c.id, step))}
                   onKeyboardNavigate={() => emit('keyboard-nav')} />}
             </div>
@@ -1175,12 +1212,13 @@ export function App() {
 
 /** A kit channel's lanes, each a beat grid with its name (expansion.md E2b). */
 function KitLanes({
-  channel, loopBars, noteLength, playStep, onToggle, onKeyboardNavigate,
+  channel, loopBars, noteLength, playStep, shownBar, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
+  shownBar?: number;
   onToggle: (laneId: string, step: number) => void;
   onKeyboardNavigate: () => void;
 }) {
@@ -1193,7 +1231,7 @@ function KitLanes({
         <div className="kit-lane" key={lane.id}>
           <span className="kit-lane-name">{lane.name}</span>
           <BeatGrid channel={{ ...channel, name: `${channel.name} ${lane.name}`, steps: lane.steps, stepEventMetadata: lane.stepEventMetadata }}
-            loopBars={loopBars} noteLength={noteLength} playStep={playStep}
+            loopBars={loopBars} noteLength={noteLength} playStep={playStep} shownBar={shownBar}
             onToggle={(step) => onToggle(lane.id, step)} onKeyboardNavigate={onKeyboardNavigate} />
         </div>
       ))}
@@ -1207,66 +1245,64 @@ function KitLanes({
 }
 
 function BeatGrid({
-  channel, loopBars, noteLength, playStep, onToggle, onKeyboardNavigate,
+  channel, loopBars, noteLength, playStep, shownBar, onToggle, onKeyboardNavigate,
 }: {
   channel: Channel;
   loopBars: number;
   noteLength: number;
   playStep: number | null;
+  /** On narrow screens, the one bar shown (wraps for tracks shorter than the loop); undefined shows every bar. */
+  shownBar?: number;
   onToggle: (step: number) => void;
   onKeyboardNavigate: () => void;
 }) {
   const [focusedStep, setFocusedStep] = useState(0);
   const steps = channel.steps;
-  const activeFocus = Math.min(focusedStep, Math.max(0, steps.length - 1));
+  const total = loopBars * noteLength;
+  const length = channel.lengthSteps && channel.lengthSteps < total ? channel.lengthSteps : total;
+  const view = channel.viewSteps && channel.viewSteps < noteLength ? channel.viewSteps : noteLength;
+  const every = noteLength / view;
+  const trackBars = Math.max(1, Math.ceil(length / noteLength));
+  const bars = shownBar === undefined ? Array.from({ length: trackBars }, (_, bar) => bar) : [shownBar % trackBars];
+  const rows = bars.map((bar) => {
+    const start = bar * noteLength;
+    const end = Math.min(length, start + noteLength);
+    return { bar, cells: gridCells(steps.slice(start, end), end - start, noteLength, view).map((cell) => ({ ...cell, step: cell.step + start })) };
+  });
+  const visible = rows.flatMap((row) => row.cells.map((cell) => cell.step));
+  const activeFocus = visible.includes(focusedStep) ? focusedStep : visible[0] ?? 0;
+  const playing = playStep === null ? null : (playStep % total) % length;
   const moveFocus = (event: React.KeyboardEvent<HTMLButtonElement>, step: number) => {
-    const offsets: Record<string, number> = {
-      ArrowLeft: -1,
-      ArrowRight: 1,
-      ArrowUp: -noteLength,
-      ArrowDown: noteLength,
-    };
-    if (event.key === 'Home') {
-      event.preventDefault();
-      onKeyboardNavigate();
-      setFocusedStep(0);
-      event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>('[data-step="0"]')?.focus();
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      onKeyboardNavigate();
-      const last = Math.max(0, steps.length - 1);
-      setFocusedStep(last);
-      event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${last}"]`)?.focus();
-      return;
-    }
-    const offset = offsets[event.key];
-    if (offset === undefined) return;
+    const index = visible.indexOf(step);
+    const target = event.key === 'Home' ? 0 : event.key === 'End' ? visible.length - 1
+      : event.key === 'ArrowLeft' ? index - 1 : event.key === 'ArrowRight' ? index + 1
+        : event.key === 'ArrowUp' ? index - view : event.key === 'ArrowDown' ? index + view : undefined;
+    if (target === undefined) return;
     event.preventDefault();
     onKeyboardNavigate();
-    const next = Math.max(0, Math.min(steps.length - 1, step + offset));
+    const next = visible[Math.max(0, Math.min(visible.length - 1, target))];
     setFocusedStep(next);
     event.currentTarget.closest('.grid')?.querySelector<HTMLButtonElement>(`[data-step="${next}"]`)?.focus();
   };
 
   return (
     <div className="grid" role="grid" aria-label={`${channel.name} beat grid`}>
-      {Array.from({ length: loopBars }, (_, bar) => (
-        <div className="bar-row" role="row" key={bar} style={{ gridTemplateColumns: `repeat(${noteLength}, 1fr)` }}>
-          {steps.slice(bar * noteLength, (bar + 1) * noteLength).map((on, j) => {
-            const step = bar * noteLength + j;
+      {rows.map(({ bar, cells }) => (
+        <div className="bar-row" role="row" key={bar} style={{ gridTemplateColumns: `repeat(${view}, 1fr)` }}>
+          {cells.map(({ step, on, hidden }, j) => {
             const metadata = channel.stepEventMetadata?.[step];
             const confidence = metadata?.confidence;
             const details = [
               confidence === undefined ? '' : `${confidence < 0.7 ? 'low confidence ' : 'confidence '}${Math.round(confidence * 100)}%`,
               metadata?.sourceTakeId ? `source take ${metadata.sourceTakeId}` : '',
+              hidden ? 'hits between steps' : '',
             ].filter(Boolean).join(', ');
+            const isPlaying = playing !== null && playing >= step && playing < step + every;
             return (
               <button key={step} data-step={step} role="gridcell" tabIndex={activeFocus === step ? 0 : -1}
                 aria-label={`${channel.name} step ${step + 1}${details ? `, ${details}` : ''}`} aria-pressed={on}
                 title={details || undefined}
-                className={`step${on ? ' on' : ''}${j % Math.max(1, noteLength / 4) === 0 ? ' group' : ''}${playStep === step ? ' playing' : ''}${confidence !== undefined ? ' recognized' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}`}
+                className={`step${on ? ' on' : ''}${hidden ? ' hidden-hits' : ''}${j % Math.max(1, view / 4) === 0 ? ' group' : ''}${isPlaying ? ' playing' : ''}${confidence !== undefined ? ' recognized' : ''}${confidence !== undefined && confidence < 0.7 ? ' low-confidence' : ''}`}
                 onClick={() => onToggle(step)} onKeyDown={(event) => moveFocus(event, step)}>
                 {confidence !== undefined && confidence < 0.7 ? <span className="confidence-indicator" aria-hidden="true">!</span> : null}
               </button>
