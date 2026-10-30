@@ -19,7 +19,7 @@ import {
 import { ARRANGEMENT_STYLES, generateChordAccompaniment } from '../library/arrangementStyles';
 import { detectKey, MOODS, suggestProgressions, type Mood, type Progression } from '../library/progressions';
 import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
-import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type HarmonyPreset, type PhraseVariation } from '../library/phrases';
+import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type PhraseVariation } from '../library/phrases';
 import { withNextPhrase } from '../model/phraseProject';
 import { buildSong, DENSITIES, SONG_TEMPLATES, templateSections, type SongSection, type SongTemplate } from '../model/songBuilder';
 import { createChannel } from '../model/project';
@@ -31,6 +31,7 @@ const HARMONY_SOUNDS: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'brass', label: 'Brass' },
 ];
 import { Icon } from './Icon';
+import { SuggestionSet } from './SuggestionSet';
 import { ChordRowEditor } from './ChordRowEditor';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
@@ -282,7 +283,6 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   const [accompaniment, setAccompaniment] = useState<Accompaniment>('guitar');
   const [progressions, setProgressions] = useState<Progression[] | null>(null);
   const [auditionId, setAuditionId] = useState('');
-  const [harmonyPreset, setHarmonyPreset] = useState<HarmonyPreset>('subtle');
   const [harmonySound, setHarmonySound] = useState(HARMONY_SOUNDS[0].id);
   const [phrases, setPhrases] = useState<{ id: PhraseVariation; label: string; notes: NoteEvent[] }[] | null>(null);
   const [songTemplate, setSongTemplate] = useState<SongTemplate>('full');
@@ -333,16 +333,8 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
     if (!sourceChannel) return;
     setProgressions(suggestProgressions(inputNotes, key, project.noteLength, project.loopBars, { halfBar, mood }));
   };
-  const toggleAudition = (progression: Progression) => {
-    if (auditionId === progression.id && playing) { onAudition(undefined); setAuditionId(''); return; }
-    const preview = sourceChannel && auditionProject(project, sourceChannel.id, progression, accompaniment);
-    if (!preview) return;
-    setAuditionId(progression.id);
-    onAudition(preview);
-  };
   const useProgression = (progression: Progression) => {
     if (!sourceChannel) return;
-    if (auditionId) onAudition(undefined);
     const updated = addProgressionTrack(project, sourceChannel.id, progression, accompaniment);
     if (updated !== project) onChange(updated);
   };
@@ -389,25 +381,17 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   const replaceableArrangementChannels = generatedArrangementChannels.filter((channel) =>
     channel.generatedMetadata?.kind === arrangementKind,
   );
-  const harmonyNotes = () => harmonyFor(inputNotes, { root: key.root, scaleId: key.scaleId }, harmonyPreset, totalSteps(project));
   const generateArrangementPreview = () => {
-    const notes = arrangementMode === 'harmony'
-      ? harmonyNotes()
-      : generateChordAccompaniment(suggestions ?? [], selectedStyle, project.noteLength, totalSteps(project));
+    const notes = generateChordAccompaniment(suggestions ?? [], selectedStyle, project.noteLength, totalSteps(project));
     setArrangementPreview(notes);
   };
-  /** Audition: the melody plus some notes on a sound, without saving. */
-  const auditionNotes = (id: string, notes: NoteEvent[], soundId: string) => {
-    if (auditionId === id && playing) { onAudition(undefined); setAuditionId(''); return; }
-    if (!sourceChannel || !notes.length) return;
-    setAuditionId(id);
-    onAudition({
-      ...project,
-      arrangement: [],
-      channels: [{ ...sourceChannel, mute: false, solo: false },
-        { ...createChannel('audition-part', 'Part', soundId, totalSteps(project)), notes }],
-    });
-  };
+  /** The melody plus some notes on a sound, for auditioning without saving. */
+  const partProject = (notes: NoteEvent[], soundId: string): Project | undefined => sourceChannel && notes.length ? {
+    ...project,
+    arrangement: [],
+    channels: [{ ...sourceChannel, mute: false, solo: false },
+      { ...createChannel('audition-part', 'Part', soundId, totalSteps(project)), notes }],
+  } : undefined;
   const makePhrases = () => {
     if (!sourceChannel) return;
     setPhrases(PHRASE_VARIATIONS.map((variation) => ({
@@ -423,7 +407,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
     const updated = addGeneratedArrangementChannel(
       project,
       sourceChannel.id,
-      `${isHarmony ? `${HARMONY_PRESETS.find((preset) => preset.id === harmonyPreset)!.label} harmony` : `${selectedStyle.name} accompaniment`} · ${sourceChannel.name}`,
+      `${isHarmony ? 'Harmony' : `${selectedStyle.name} accompaniment`} · ${sourceChannel.name}`,
       isHarmony ? harmonySound : selectedStyle.soundId,
       arrangementKind,
       arrangementPreview,
@@ -603,7 +587,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
             </label>
             <label>Play on
               <select id="progression-instrument" value={accompaniment}
-                onChange={(event) => { setAccompaniment(event.target.value as Accompaniment); if (auditionId) onAudition(undefined); }}>
+                onChange={(event) => { setAccompaniment(event.target.value as Accompaniment); if (playing) onAudition(undefined); }}>
                 {ACCOMPANIMENTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
               </select>
             </label>
@@ -614,22 +598,15 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
             </button>
           </div>
           {progressions && (
-            <ul className="progression-list" aria-label="Chord progressions">
-              {progressions.map((progression) => (
-                <li key={progression.id} className="progression-item">
-                  <div className="progression-text">
-                    <span className="progression-name">{progression.label}</span>
-                    {chordNames && <span className="progression-chords">{progression.chords.map((chord) => formatChordSymbol(chord.root, chord.quality)).join(' · ')}</span>}
-                  </div>
-                  <button className="secondary" aria-label={`${auditionId === progression.id && playing ? 'Stop' : 'Play'} ${progression.label}`}
-                    onClick={() => toggleAudition(progression)}>
-                    <Icon name={auditionId === progression.id && playing ? 'stop' : 'play'} className="inline-icon" />
-                  </button>
-                  <button aria-label={`Use ${progression.label}`} disabled={project.channels.length >= MAX_CHANNELS}
-                    onClick={() => useProgression(progression)}>Use</button>
-                </li>
-              ))}
-            </ul>
+            <SuggestionSet label="Chord progressions" playing={playing} onAudition={onAudition}
+              items={progressions.map((progression) => ({
+                id: progression.id,
+                label: progression.label,
+                ...(chordNames ? { detail: progression.chords.map((chord) => formatChordSymbol(chord.root, chord.quality)).join(' · ') } : {}),
+                preview: () => sourceChannel && auditionProject(project, sourceChannel.id, progression, accompaniment),
+                keep: () => useProgression(progression),
+                disabled: project.channels.length >= MAX_CHANNELS,
+              }))} />
           )}
         </div>
         {suggestions && (
@@ -684,25 +661,14 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
             </button>
           </div>
           {phrases && (
-            <ul className="progression-list" aria-label="Next phrases">
-              {phrases.map((phrase) => (
-                <li key={phrase.id} className="progression-item">
-                  <div className="progression-text">
-                    <span className="progression-name">{phrase.label}</span>
-                    <span className="progression-chords">{phrase.notes.slice(0, 8).map((note) => NOTE_NAMES[note.pitch % 12]).join(' ')}{phrase.notes.length > 8 ? ' …' : ''}</span>
-                  </div>
-                  <button className="secondary" aria-label={`${auditionId === phrase.id && playing ? 'Stop' : 'Play'} ${phrase.label}`}
-                    onClick={() => {
-                      if (auditionId === phrase.id && playing) { onAudition(undefined); setAuditionId(''); return; }
-                      setAuditionId(phrase.id);
-                      onAudition(phraseProject(phrase));
-                    }}>
-                    <Icon name={auditionId === phrase.id && playing ? 'stop' : 'play'} className="inline-icon" />
-                  </button>
-                  <button aria-label={`Use ${phrase.label}`} onClick={() => { if (auditionId) onAudition(undefined); onChange(phraseProject(phrase)); }}>Use</button>
-                </li>
-              ))}
-            </ul>
+            <SuggestionSet label="Next phrases" playing={playing} onAudition={onAudition}
+              items={phrases.map((phrase) => ({
+                id: phrase.id,
+                label: phrase.label,
+                detail: `${phrase.notes.slice(0, 8).map((note) => NOTE_NAMES[note.pitch % 12]).join(' ')}${phrase.notes.length > 8 ? ' …' : ''}`,
+                preview: () => phraseProject(phrase),
+                keep: () => onChange(phraseProject(phrase)),
+              }))} />
           )}
         </div>
         <div className="bass-assistant">
@@ -769,24 +735,11 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
               </select>
             </label>
             {arrangementMode === 'harmony' && (
-              <>
-                <label>Preset
-                  <select id="harmony-preset" value={harmonyPreset}
-                    onChange={(event) => { setHarmonyPreset(event.target.value as HarmonyPreset); setArrangementPreview(null); }}>
-                    {HARMONY_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-                  </select>
-                </label>
-                <label>Play on
-                  <select id="harmony-sound" value={harmonySound} onChange={(event) => setHarmonySound(event.target.value)}>
-                    {HARMONY_SOUNDS.map((sound) => <option key={sound.id} value={sound.id}>{sound.label}</option>)}
-                  </select>
-                </label>
-                <button id="harmony-play" className="secondary" disabled={!sourceChannel || !inputNotes.length}
-                  aria-label={auditionId === 'harmony' && playing ? 'Stop harmony' : 'Play harmony'}
-                  onClick={() => auditionNotes('harmony', harmonyNotes(), harmonySound)}>
-                  <Icon name={auditionId === 'harmony' && playing ? 'stop' : 'play'} className="inline-icon" />
-                </button>
-              </>
+              <label>Play on
+                <select id="harmony-sound" value={harmonySound} onChange={(event) => setHarmonySound(event.target.value)}>
+                  {HARMONY_SOUNDS.map((sound) => <option key={sound.id} value={sound.id}>{sound.label}</option>)}
+                </select>
+              </label>
             )}
             {arrangementMode === 'accompaniment' && (
               <label>Style
@@ -796,10 +749,28 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
                 </select>
               </label>
             )}
-            <button className="secondary"
-              disabled={!sourceChannel || (arrangementMode === 'harmony' ? !inputNotes.length : !suggestions?.length)}
-              onClick={generateArrangementPreview}>Preview {arrangementMode === 'harmony' ? 'harmony' : 'accompaniment'}</button>
+            {arrangementMode === 'accompaniment' && (
+              <button className="secondary" disabled={!sourceChannel || !suggestions?.length}
+                onClick={generateArrangementPreview}>Preview accompaniment</button>
+            )}
           </div>
+          {arrangementMode === 'harmony' && sourceChannel && inputNotes.length > 0 && (
+            <SuggestionSet label="Harmony" playing={playing} onAudition={onAudition} keepLabel="Add"
+              items={HARMONY_PRESETS.map((preset) => {
+                const notes = harmonyFor(inputNotes, { root: key.root, scaleId: key.scaleId }, preset.id, totalSteps(project));
+                return {
+                  id: `harmony-${preset.id}`,
+                  label: preset.label,
+                  preview: () => partProject(notes, harmonySound),
+                  keep: () => {
+                    const updated = addGeneratedArrangementChannel(project, sourceChannel.id, `${preset.label} harmony · ${sourceChannel.name}`,
+                      harmonySound, 'harmony-generation', notes);
+                    if (updated !== project) onChange(updated);
+                  },
+                  disabled: !notes.length || project.channels.length >= MAX_CHANNELS,
+                };
+              })} />
+          )}
           {arrangementPreview && (
             <>
               <p className="hint" aria-live="polite">

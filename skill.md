@@ -27,3 +27,4 @@
 - Settings › Offline: a full-width Install app button only when the browser offers it, then one row, "Instruments n/N" on the left and a 120px Download all button (shows files done/total while downloading, Downloaded when complete).
 - File › Share: a full-width Share link button, then the link in a read-only field once made. Song (opened from a link): name, "BPM · tracks", then 44px Play and a wide Open.
 - File › Export: after Export WAV, a two-column row: Video select (Vertical, Square) and Export video ("Recording n/N s" while recording). Video frames carry the song name and one label at the bottom (Hummed, the section, or BPM) only.
+- Suggestion sets (Chords by ear, Next phrase, Harmony, Bars › Vary): one row per alternative — name (and value, wrapping under it when narrow) on the left, 44px Play and 64px Use/Add/Keep on the right. Harmony: Generate and Play on in the control grid, then Subtle/Warm/Wide rows.
