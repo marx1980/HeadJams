@@ -10,6 +10,7 @@ import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
+import { UndoHistory } from '../model/history';
 import { recordingOffsetSeconds } from '../audio/alignment';
 import { stepDuration } from '../audio/scheduler';
 import { instrumentStore } from '../audio/sampler/browser';
@@ -70,6 +71,8 @@ export function App() {
   const toggleMenu = (m: HeaderMenu) => setOpenMenu((cur) => (cur === m ? null : m));
   const [pianoChannels, setPianoChannels] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState('');
+  const [toastUndo, setToastUndo] = useState(false);
+  const toastTimerRef = useRef<number | undefined>(undefined);
   const [sampleData, setSampleData] = useState<Map<string, SampleData>>(() => new Map());
   const [samplesLoaded, setSamplesLoaded] = useState(false);
   const [drumKitId, setDrumKitId] = useState('');
@@ -105,6 +108,38 @@ export function App() {
   };
 
   useEffect(() => { saveProject(project); }, [project]);
+  const historyRef = useRef<UndoHistory<Project> | undefined>(undefined);
+  historyRef.current ??= new UndoHistory(project);
+  const history = historyRef.current;
+  const historyTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    // Coalesce rapid edits (slider drags, typing) into one undo step.
+    window.clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = window.setTimeout(() => history.commit(projectRef.current), 400);
+    return () => window.clearTimeout(historyTimerRef.current);
+  }, [project, history]);
+  const undo = useCallback(() => {
+    window.clearTimeout(historyTimerRef.current);
+    const previous = history.undo(projectRef.current);
+    if (previous) { engineRef.current?.stopLiveNotes(); setProject(previous); setMessage(''); }
+  }, [history]);
+  const redo = useCallback(() => {
+    window.clearTimeout(historyTimerRef.current);
+    const next = history.redo(projectRef.current);
+    if (next) setProject(next);
+  }, [history]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey) { event.preventDefault(); undo(); }
+      else if ((key === 'z' && event.shiftKey) || key === 'y') { event.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
   useEffect(() => {
     saveTheme(theme);
     document.documentElement.dataset.theme = theme;
@@ -235,7 +270,7 @@ export function App() {
     }
     setProject(result.project);
     emit('kit-applied');
-    flash(`${kit.name} applied · patterns preserved ✓`);
+    flash(`${kit.name} applied · patterns preserved ✓`, true);
   };
 
   const exportWav = async () => {
@@ -285,7 +320,13 @@ export function App() {
     }
   };
 
-  const flash = (m: string) => { setMessage(m); setTimeout(() => setMessage(''), 2500); };
+  /** Show a short status message; `undoable` adds an Undo action for big one-shot changes. */
+  const flash = (m: string, undoable = false) => {
+    window.clearTimeout(toastTimerRef.current);
+    setMessage(m);
+    setToastUndo(undoable);
+    toastTimerRef.current = window.setTimeout(() => { setMessage(''); setToastUndo(false); }, undoable ? 5000 : 2500);
+  };
   const preview = (d: SoundDef | undefined, vol?: number) => { if (d) { void engine.preview(d, vol); emit('preview'); } };
 
   const loadTemplate = (id: string) => {
@@ -295,6 +336,7 @@ export function App() {
     engine.stop();
     setProject({ ...t.make(), customSounds: project.customSounds });
     emit('template');
+    flash(`${t.label} loaded`, true);
   };
 
   const goTab = (v: View) => {
@@ -340,6 +382,10 @@ export function App() {
       </header>
             {openMenu === 'file' && (
               <HeaderTile label="File" onClose={closeMenu}>
+                <div className="row undo-row">
+                  <button id="undo-btn" className="secondary" disabled={!history.canUndo(project)} onClick={undo}>Undo</button>
+                  <button id="redo-btn" className="secondary" disabled={!history.canRedo(project)} onClick={redo}>Redo</button>
+                </div>
                               <button id="save-btn" onClick={() => { saveProject(project); emit('save'); flash('Saved ✓'); closeMenu(); }}>Save Project</button>
                 <h3>Export</h3>
                 <label>WAV sample rate
@@ -403,7 +449,7 @@ export function App() {
           onResetProgress={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); }}
           onClose={closeMenu} />
       )}
-      {message && <div className="toast" role="status">{message}</div>}
+      {message && <div className="toast" role="status">{message}{toastUndo && <button className="toast-undo" onClick={() => { undo(); setMessage(''); setToastUndo(false); }}>Undo</button>}</div>}
 
 
       <nav className={`tabs${openMenu ? ' covered' : ''}`} role="tablist" aria-label="Screens" onKeyDown={onTabKey}>
@@ -644,7 +690,7 @@ export function App() {
             return false;
           }
           setProject(updated);
-          flash(`${take.mode === 'beat' ? 'Percussion' : take.mode === 'bass' ? 'Bass' : 'Melody'} track added ✓`);
+          flash(`${take.mode === 'beat' ? 'Percussion' : take.mode === 'bass' ? 'Bass' : 'Melody'} track updated ✓`, true);
           return true;
         }}
         onRecognitionBpmChange={(bpm, take) => {

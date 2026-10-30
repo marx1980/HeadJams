@@ -150,3 +150,26 @@ describe('applied snapshot storage', () => {
     expect(loaded.recognitionTakes[0].applied).toEqual(project.recognitionTakes[0].applied);
   });
 });
+
+describe('idea fields', () => {
+  const values = new Map<string, string>();
+  beforeEach(() => {
+    values.clear();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k, v), removeItem: (k: string) => values.delete(k) },
+    });
+  });
+  afterEach(() => { delete (globalThis as { localStorage?: Storage }).localStorage; });
+
+  it('keeps source, label and alignment through save and reload, and drops invalid values', () => {
+    const { project } = setup(melody());
+    const take = { ...project.recognitionTakes[0], source: 'mic' as const, label: '  Melody 1 ', alignmentSeconds: 0.04 };
+    saveProject({ ...project, recognitionTakes: [take] });
+    expect(loadProject().recognitionTakes[0]).toMatchObject({ source: 'mic', label: 'Melody 1', alignmentSeconds: 0.04 });
+    saveProject({ ...project, recognitionTakes: [{ ...take, source: 'radio' as never, label: '' }] });
+    const loaded = loadProject().recognitionTakes[0];
+    expect(loaded.source).toBeUndefined();
+    expect(loaded.label).toBeUndefined();
+  });
+});

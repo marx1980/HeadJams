@@ -64,6 +64,10 @@ export interface RecognitionTake {
   quantisedEvents: RecognitionEvent[];
   channelIds: string[];
   originalChannelId?: string;
+  /** Where the idea came from. */
+  source?: 'mic' | 'import';
+  /** Short name shown in the ideas list. */
+  label?: string;
   /** Seconds added to recording times to place events in project time (microphone alignment). */
   alignmentSeconds?: number;
   /** What recognition last wrote to the project, so user edits on the grid can be told apart and kept. */

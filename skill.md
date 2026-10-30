@@ -11,3 +11,5 @@
 - Library, Song and Sound controls are 40px and arranged in two-column grids (`.record-controls`, `.recognition-controls`, `.effect-controls`); a select and its action button share a row and stack full width when they do not fit.
 - Do not add explanatory paragraphs to the Library, Song or Sound tabs; labels and values only.
 - Sound tab: the top tile is "Shape a sound" (swing and effects) and the bottom tile "Make a sound" (the designer) is always shown, with no toggle button or Close.
+- Status toasts sit above the sticky header (z-index 30) at the top right; the first-visit "New here?" bubble sits above the bottom tab bar so the two never overlap.
+- Undo/Redo live at the top of the File tile (the header has no room at 320–390px); big one-shot actions add an Undo button to their toast.
