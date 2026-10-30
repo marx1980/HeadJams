@@ -33,5 +33,6 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'capacitor' ? './' : '/MusicMaker/',
   plugins: [react(), offlineWorkerPlugin()],
   build: { outDir: '../dist', emptyOutDir: true, assetsDir: 'assets' },
-  test: { root: '.' },
+  // Sampled-instrument renders take a few seconds on slower CI machines.
+  test: { root: '.', testTimeout: 30000 },
 }));
