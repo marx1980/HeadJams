@@ -284,7 +284,8 @@ export function applyRecognitionTake(
     }
   } else {
     const generated = generatedNotes(take, bpm, next.noteLength);
-    const channelId = previous?.channelIds.find((id) => exists(id));
+    const target = !previous && take.targetChannelId && exists(take.targetChannelId) ? take.targetChannelId : undefined;
+    const channelId = previous?.channelIds.find((id) => exists(id)) ?? target;
     const needsChannel = !channelId && generated.length && !(previous && previous.channelIds.length) ? 1 : 0;
     if (next.channels.length + needsChannel > MAX_CHANNELS) return undefined;
     if (channelId) {
@@ -371,7 +372,17 @@ export function removeRecognitionTake(project: Project, takeId: string): Project
   const take = project.recognitionTakes.find((candidate) => candidate.id === takeId);
   if (!take) return project;
   let next = project;
-  for (const id of take.channelIds) next = removeChannel(next, id);
+  for (const id of take.channelIds) {
+    if (id !== take.targetChannelId) { next = removeChannel(next, id); continue; }
+    // Captured into the user's own channel: remove only this idea's notes and recording.
+    const channel = next.channels.find((candidate) => candidate.id === id);
+    if (!channel) continue;
+    const ownOriginal = channel.original?.soundId === `recognition-original-${take.id}`;
+    next = updateChannel(next, id, {
+      notes: channel.notes.filter((note) => note.sourceTakeId !== take.id),
+      ...(ownOriginal ? { original: undefined, playOriginal: undefined } : {}),
+    });
+  }
   if (take.originalChannelId) next = removeChannel(next, take.originalChannelId);
   return { ...next, recognitionTakes: next.recognitionTakes.filter((candidate) => candidate.id !== takeId) };
 }

@@ -12,7 +12,7 @@ const SECTION = { name: 'library-section' } as Record<string, string>;
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onLibraryAction,
+  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onLibraryAction,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -32,6 +32,7 @@ export function SampleLibrary({
   onImport: () => void;
   onEdit: () => void;
   onRecognitionEdit: () => void;
+  onRemoveIdea: (takeId: string) => void;
   onLibraryAction: (event: 'library-search' | 'library-tag') => void;
 }) {
   const [query, setQuery] = useState('');
@@ -132,7 +133,22 @@ export function SampleLibrary({
       />
       </details>
       <details className="library-section" {...SECTION}>
-        <summary>Recognition</summary>
+        <summary>Ideas</summary>
+        {project.recognitionTakes.length > 0 && (
+          <ul className="idea-list" aria-label="Ideas">
+            {[...project.recognitionTakes].reverse().map((take) => {
+              const sample = sampleData.get(take.sourceSampleId);
+              return (
+                <li key={take.id} className="idea-item">
+                  <span className="idea-name">{take.label ?? (take.mode === 'beat' ? 'Beat' : take.mode === 'bass' ? 'Bass' : 'Melody')}</span>
+                  <button className="secondary" aria-label={`Play ${take.label ?? 'idea'} recording`} disabled={!sample}
+                    onClick={() => sample && onPreviewSample({ ...sample, samples: sample.originalSamples ?? sample.samples })}><Icon name="play" className="inline-icon" /></button>
+                  <button className="secondary" aria-label={`Delete ${take.label ?? 'idea'}`} onClick={() => onRemoveIdea(take.id)}><Icon name="close" className="inline-icon" /></button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       <RecognitionPanel
         project={project}
         samples={sampleData}

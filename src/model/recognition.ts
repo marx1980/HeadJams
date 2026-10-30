@@ -66,6 +66,8 @@ export interface RecognitionTake {
   originalChannelId?: string;
   /** Original / Cleaned / Tight preset last applied (undefined = custom settings). */
   performance?: 'original' | 'cleaned' | 'tight';
+  /** Existing channel the idea was captured into (melody/bass); its own notes and sound stay. */
+  targetChannelId?: string;
   /** Where the idea came from. */
   source?: 'mic' | 'import';
   /** Short name shown in the ideas list. */

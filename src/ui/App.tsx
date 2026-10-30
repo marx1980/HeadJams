@@ -10,12 +10,17 @@ import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
 import { applyDrumKit, DRUM_KITS, findDrumKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
+import { startCapture, type CaptureResult } from '../audio/capture';
+import { CaptureSheet } from './CaptureSheet';
+import { localRecognitionAdapter } from '../library/recognitionAdapter';
+import { applyPerformanceMode } from '../model/performanceModes';
+import type { RecognitionMode } from '../model/recognition';
 import { UndoHistory } from '../model/history';
 import { recordingOffsetSeconds } from '../audio/alignment';
 import { stepDuration } from '../audio/scheduler';
 import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
-import { applyRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
+import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
@@ -39,7 +44,7 @@ import './styles.css';
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
-type HeaderMenu = 'file' | 'settings' | 'help';
+type HeaderMenu = 'file' | 'settings' | 'help' | 'capture';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
   { id: 'beat', icon: 'beat', label: 'Beat' },
@@ -321,6 +326,75 @@ export function App() {
   };
 
   /** Show a short status message; `undoable` adds an Undo action for big one-shot changes. */
+  const recordingOffsetFor = (recorderStartMs: number, inputLatencySec: number) => {
+    const beatZeroAudibleMs = engine.playbackBeatZeroMs;
+    if (beatZeroAudibleMs === undefined) return undefined;
+    const p = projectRef.current;
+    return recordingOffsetSeconds({
+      beatZeroAudibleMs, recorderStartMs, inputLatencySec, userOffsetMs: prefs.recordingOffsetMs,
+      loopSeconds: (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
+    });
+  };
+  const captureEngineRef = useRef(false);
+  const startCaptureSession = async (metronome: boolean) => {
+    engine.setMetronome(metronome);
+    if (!engine.playing) { await engine.start(); captureEngineRef.current = true; }
+    try {
+      return await startCapture(recordingOffsetFor);
+    } catch (reason) {
+      stopCaptureSession();
+      throw reason;
+    }
+  };
+  const stopCaptureSession = () => {
+    engine.setMetronome(false);
+    if (captureEngineRef.current) engine.stop();
+    captureEngineRef.current = false;
+  };
+  const applyCapture = async (capture: CaptureResult, kind: RecognitionMode, into: string | undefined) => {
+    const current = projectRef.current;
+    const kindLabel = kind === 'beat' ? 'Beat' : kind === 'bass' ? 'Bass' : 'Melody';
+    const label = `${kindLabel} ${current.recognitionTakes.filter((take) => take.mode === kind).length + 1}`;
+    const sample: SampleData = {
+      id: globalThis.crypto?.randomUUID?.() ?? `sample-${Date.now().toString(36)}`,
+      samples: capture.samples,
+      originalSamples: capture.samples,
+      sampleRate: capture.sampleRate,
+      recordedAt: Date.now(),
+      source: 'mic',
+      ...(capture.recordingOffsetSeconds === undefined ? {} : { recordingOffsetSeconds: capture.recordingOffsetSeconds }),
+      metadataVersion: 2,
+    };
+    // Keep the recording before analysis, so a failed analysis never loses the idea.
+    await saveSample(sample);
+    const samples = new Map(sampleDataRef.current);
+    samples.set(sample.id, sample);
+    sampleDataRef.current = samples;
+    setSampleData(samples);
+    const withSound = addSampleSound(projectRef.current, label, sample.id, ['idea']);
+    const result = await localRecognitionAdapter.recognize(sample.samples, sample.sampleRate, kind);
+    if (!result.events.length) {
+      setProject(withSound);
+      flash(`${label} saved · nothing to put on the grid`, true);
+      return;
+    }
+    const created = createRecognitionTake(sample.id, result, { enabled: true, strength: 0.5, subdivision: 'sixteenth' },
+      withSound.bpm, withSound.noteLength, undefined, 0.5, false, withSound.scaleRoot, withSound.scaleId, sample.recordingOffsetSeconds ?? 0);
+    const take = {
+      ...applyPerformanceMode(created, 'cleaned', withSound.bpm, withSound.noteLength, withSound.scaleRoot, withSound.scaleId),
+      source: 'mic' as const, label, ...(into ? { targetChannelId: into } : {}),
+    };
+    const updated = applyRecognitionTake(withSound, take);
+    if (!updated) {
+      setProject(withSound);
+      flash('No room for another track. Remove a channel or capture into an existing one.');
+      return;
+    }
+    setProject(updated);
+    emit('capture');
+    closeMenu();
+    flash(`${label} added`, true);
+  };
   const flash = (m: string, undoable = false) => {
     window.clearTimeout(toastTimerRef.current);
     setMessage(m);
@@ -375,6 +449,8 @@ export function App() {
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'settings'} aria-label="Settings" title="Settings" onClick={() => toggleMenu('settings')}><Icon name="settings" /></button>
           </div>
           <button className="secondary icon-btn help-btn" aria-label="Help" title="Help" aria-haspopup="true" aria-expanded={openMenu === 'help'} onClick={() => toggleMenu('help')}><Icon name="help" /></button>
+          <button id="capture-btn" className={`icon-btn capture-btn${openMenu === 'capture' ? ' on' : ' secondary'}`} aria-label="Capture" title="Capture"
+            aria-haspopup="true" aria-expanded={openMenu === 'capture'} onClick={() => toggleMenu('capture')}><Icon name="record" /></button>
           <button id="play-btn" className="play" onClick={togglePlay} aria-label={playStep === null ? 'Play' : 'Stop'}>
             <Icon name={playStep === null ? 'play' : 'stop'} className="inline-icon" /> {playStep === null ? 'Play' : 'Stop'}
           </button>
@@ -444,6 +520,17 @@ export function App() {
                 }}>Reset all app data</button>
               </HeaderTile>
             )}
+      {openMenu === 'capture' && (
+        <HeaderTile label="Capture" onClose={closeMenu}>
+          <CaptureSheet
+            channels={project.channels.filter((channel) => findSound(project, channel.soundId)?.playbackMode !== 'one-shot')}
+            start={startCaptureSession}
+            stop={stopCaptureSession}
+            onUse={applyCapture}
+            onPlay={(capture) => void engine.previewSample({ id: 'capture', samples: capture.samples, sampleRate: capture.sampleRate })}
+          />
+        </HeaderTile>
+      )}
       {openMenu === 'help' && (
         <TutorialMenu tab={view} done={doneTutorials} onPick={startTutorial}
           onResetProgress={() => { const empty = new Set<string>(); setDoneTutorials(empty); saveDone(empty); }}
@@ -672,15 +759,7 @@ export function App() {
             }, durationMs);
           }
         }}
-        recordingOffset={(recorderStartMs, inputLatencySec) => {
-          const beatZeroAudibleMs = engine.playbackBeatZeroMs;
-          if (beatZeroAudibleMs === undefined) return undefined;
-          const p = projectRef.current;
-          return recordingOffsetSeconds({
-            beatZeroAudibleMs, recorderStartMs, inputLatencySec, userOffsetMs: prefs.recordingOffsetMs,
-            loopSeconds: (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
-          });
-        }}
+        recordingOffset={recordingOffsetFor}
         onRecordStop={() => {
           engine.setMetronome(false);
           window.clearTimeout(recognitionPlaybackTimerRef.current);
@@ -712,6 +791,7 @@ export function App() {
         onImport={() => emit('sample-imported')}
         onEdit={() => emit('sample-edited')}
         onRecognitionEdit={() => emit('recognition-edited')}
+        onRemoveIdea={(takeId) => { setProject(removeRecognitionTake(projectRef.current, takeId)); flash('Idea removed', true); }}
         onLibraryAction={emit}
       />
 
