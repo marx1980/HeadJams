@@ -81,7 +81,7 @@ export function RecognitionPanel({
       const takeId = replaceResult && activeTake?.mode === mode ? activeTake.id : undefined;
       const take = createRecognitionTake(
         sample.id, result, options, project.bpm, project.noteLength, takeId, pitchCorrection,
-        scaleAwarePitch, project.scaleRoot, project.scaleId,
+        scaleAwarePitch, project.scaleRoot, project.scaleId, sample.recordingOffsetSeconds ?? 0,
       );
       if (!onApply(take)) {
         setError('There is not enough channel space for this recognition result. Remove a channel and try again.');

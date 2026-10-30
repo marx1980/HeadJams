@@ -38,7 +38,40 @@ export class Engine {
   private sampledVoices = new Map<number, { source: AudioBufferSourceNode; cut: GainNode }>();
   private nextVoiceId = 0;
   private regionBuffers = new WeakMap<Float32Array, AudioBuffer>();
+  private metronome = false;
+  private beatZeroAudibleMs: number | undefined;
   playing = false;
+
+  /** Click on every beat (accent on the bar) while playing, scheduled on the engine clock. */
+  setMetronome(on: boolean) {
+    this.metronome = on;
+  }
+
+  /** performance.now() when step 0 of the current playback was audible, or undefined when stopped. */
+  get playbackBeatZeroMs(): number | undefined {
+    return this.playing ? this.beatZeroAudibleMs : undefined;
+  }
+
+  private contextTimeToAudibleMs(ctx: AudioContext, time: number): number {
+    const stamp = typeof ctx.getOutputTimestamp === 'function' ? ctx.getOutputTimestamp() : undefined;
+    if (stamp?.contextTime !== undefined && stamp.performanceTime !== undefined && stamp.performanceTime > 0) {
+      return stamp.performanceTime + (time - stamp.contextTime) * 1000;
+    }
+    const latency = (ctx as AudioContext & { outputLatency?: number }).outputLatency || ctx.baseLatency || 0;
+    return performance.now() + (time - ctx.currentTime + latency) * 1000;
+  }
+
+  private click(time: number, accent: boolean) {
+    const ctx = this.ctx!;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.frequency.value = accent ? 1000 : 700;
+    gain.gain.setValueAtTime(0.13, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
+    oscillator.connect(gain).connect(this.previewBus!);
+    oscillator.start(time);
+    oscillator.stop(time + 0.04);
+  }
 
   constructor(
     private getProject: () => Project,
@@ -424,6 +457,7 @@ export class Engine {
     if (this.instruments) await this.instruments.prepare(instrumentNeeds(this.getProject()));
     if (this.playing) return;
     this.playing = true;
+    this.beatZeroAudibleMs = undefined;
     this.roundRobin = new RoundRobin(this.getProject().seed);
     this.tracker = new VoiceTracker();
     this.sampledVoices.clear();
@@ -437,6 +471,9 @@ export class Engine {
       onStep: (step, time) => {
         const p = this.getProject();
         this.updateEffects();
+        if (step === 0 && this.beatZeroAudibleMs === undefined) this.beatZeroAudibleMs = this.contextTimeToAudibleMs(ctx, time);
+        const stepsPerBeat = Math.max(1, p.noteLength / 4);
+        if (this.metronome && step % stepsPerBeat === 0) this.click(time, step % p.noteLength === 0);
         const stepLen = stepDuration(p.bpm, p.noteLength);
         for (const voice of compileStep(p, step, (steps) => stepLen * steps)) {
           if (voice.sound.instrumentId) this.playSampled(voice, time + voice.offsetSec);
