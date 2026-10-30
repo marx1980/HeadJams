@@ -180,6 +180,8 @@ export interface Project {
   loopBars: LoopBars;
   channels: Channel[];
   customSounds: SoundDef[];
+  /** Instruments built from the user's own samples (expansion.md E6). */
+  personalInstruments?: import('./personalInstrument').PersonalInstrument[];
   scaleRoot: number;
   scaleId: string;
   patterns: Pattern[];

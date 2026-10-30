@@ -285,6 +285,17 @@ function normalizeProject(raw: string): Project | undefined {
       swingTemplate: normalizeSwingTemplate(p.swingTemplate),
       recognitionTakes: normalizeRecognitionTakes(p.recognitionTakes),
       seed: Number.isInteger(p.seed) && p.seed >= 0 ? p.seed : 1,
+      personalInstruments: Array.isArray(p.personalInstruments)
+        ? p.personalInstruments.flatMap((item) => item && typeof item.id === 'string' && /^mine-\d+$/.test(item.id) && Array.isArray(item.samples)
+          ? [{
+            id: item.id,
+            name: typeof item.name === 'string' ? item.name.slice(0, 60) : item.id,
+            samples: item.samples.filter((sample) => sample && typeof sample.sampleId === 'string'
+              && Number.isInteger(sample.rootMidi) && sample.rootMidi >= 0 && sample.rootMidi <= 127)
+              .map((sample) => ({ sampleId: sample.sampleId, rootMidi: sample.rootMidi })),
+          }]
+          : [])
+        : undefined,
     };
   } catch { /* corrupt data: try the legacy key or fall back */ }
   return undefined;

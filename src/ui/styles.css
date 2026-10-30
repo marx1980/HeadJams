@@ -549,3 +549,12 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .find-result-text { min-width: 0; display: flex; flex-direction: column; }
 .find-result-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .find-result-words { font-size: .8rem; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Library › Sample editor › Make an instrument */
+.make-instrument { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.make-instrument-samples { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.make-instrument-samples li { display: grid; grid-template-columns: 1fr 96px; gap: 6px; align-items: center; min-height: 40px; }
+.make-instrument-samples select, .make-instrument input { height: 40px; box-sizing: border-box; }
+.make-instrument label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.make-instrument .check-label { flex-direction: row; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.make-instrument > button { min-height: 40px; }
