@@ -534,11 +534,19 @@ export function App() {
     });
   };
   const captureEngineRef = useRef(false);
-  const startCaptureSession = async (metronome: boolean, bar?: number) => {
+  const startCaptureSession = async (metronome: boolean, bar?: number, playAlong = true) => {
     engine.setMetronome(metronome);
-    if (bar !== undefined) {
+    const loop = bar !== undefined ? barPreview(projectRef.current, bar) : undefined;
+    if (!playAlong) {
+      // Only the metronome: the loop keeps time silently, so the take still lines up with the grid.
       engine.stop();
-      auditionRef.current = barPreview(projectRef.current, bar);
+      const base = loop ?? projectRef.current;
+      auditionRef.current = { ...base, arrangement: [], channels: [] };
+      await engine.start();
+      captureEngineRef.current = true;
+    } else if (loop) {
+      engine.stop();
+      auditionRef.current = loop;
       await engine.start();
       captureEngineRef.current = true;
     } else if (!engine.playing) { await engine.start(); captureEngineRef.current = true; }
@@ -1125,12 +1133,15 @@ export function App() {
         onRecordStart={async (durationMs, _bars, metronome) => {
           emit('record-start');
           engine.setMetronome(metronome);
-          // Play the project as it is while recording; never change its loop (that used to delete content).
+          // Play the project as it is while recording (or only the metronome when Play along is off); never change its loop.
           if (!engine.playing) {
+            let playAlong = false;
+            try { playAlong = localStorage.getItem('musicmaker.capturePlayAlong') === '1'; } catch { /* storage unavailable */ }
+            if (!playAlong) auditionRef.current = { ...projectRef.current, arrangement: [], channels: [] };
             await engine.start();
             recognitionPlaybackRef.current = true;
             recognitionPlaybackTimerRef.current = window.setTimeout(() => {
-              if (recognitionPlaybackRef.current) engine.stop();
+              if (recognitionPlaybackRef.current) { engine.stop(); auditionRef.current = undefined; }
               recognitionPlaybackRef.current = false;
               recognitionPlaybackTimerRef.current = undefined;
             }, durationMs);
@@ -1141,7 +1152,7 @@ export function App() {
           engine.setMetronome(false);
           window.clearTimeout(recognitionPlaybackTimerRef.current);
           recognitionPlaybackTimerRef.current = undefined;
-          if (recognitionPlaybackRef.current) engine.stop();
+          if (recognitionPlaybackRef.current) { engine.stop(); auditionRef.current = undefined; }
           recognitionPlaybackRef.current = false;
         }}
         onRecognize={(take, options) => {
