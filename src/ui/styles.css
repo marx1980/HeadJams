@@ -303,6 +303,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .chord-controls { align-items: end; }
 .arrangement-heading { justify-content: space-between; align-items: center; }
 .timeline { display: grid; grid-auto-rows: minmax(32px, auto); gap: 4px; margin-top: 8px; overflow-x: auto; }
+.arrangement-controls { min-width: 0; max-width: 100%; overflow-x: auto; }
 .timeline-bar { grid-row: 1; border-left: 1px solid var(--border-strong); padding-left: 6px; font-size: .75rem; opacity: .7; }
 .timeline-clip { grid-row: 2; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 4px; background: var(--channel-4); color: var(--text); border-radius: var(--control-radius); padding: 2px 6px; min-width: 0; }
 .timeline-clip button { min-height: 28px; padding: 0 8px; }
