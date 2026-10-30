@@ -106,10 +106,10 @@ def write_wav(path, audio, rate):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('sfz', type=Path)
+    ap.add_argument('sfz', nargs='+', help='one or more SFZ files, each optionally limited to roots: file.sfz@LOW-HIGH')
     for name in ('id', 'name', 'family', 'creator', 'licence', 'source', 'url', 'commit'):
         ap.add_argument('--' + name, required=name != 'commit')
-    ap.add_argument('--layers', help='1-based velocity layers to keep, soft to loud (default: all)')
+    ap.add_argument('--layers', help='velocity layers to keep, soft to loud: 1-based numbers or first/last (default: all)')
     ap.add_argument('--round-robins', type=int, default=99)
     ap.add_argument('--rate', type=int, default=44100)
     ap.add_argument('--seconds', type=float, default=3.0)
@@ -120,14 +120,39 @@ def main():
     ap.add_argument('--polyphony', type=int, default=24)
     ap.add_argument('--gain-db', type=float, default=0)
     ap.add_argument('--articulation', default='sustain')
+    ap.add_argument('--transpose', type=int, default=0,
+                    help='semitones added to the SFZ keys when samples are mapped at written pitch (bass: -12)')
+    ap.add_argument('--require', help='only samples whose path matches this regex')
+    ap.add_argument('--exclude', help='skip samples whose path matches this regex')
+    ap.add_argument('--loop', help='loop START-END seconds (with a baked crossfade); the file ends at END')
+    ap.add_argument('--crossfade-ms', type=float, default=250)
     ap.add_argument('--out', type=Path)
     args = ap.parse_args()
 
     out = args.out or Path(__file__).resolve().parent.parent / 'app/public/instruments' / args.id
     key_low, key_high = (int(v) for v in args.keys.split('-'))
-    regions = [describe(r) for r in parse_sfz(args.sfz)
-               if 'sample' in r and r.get('trigger', 'attack') == 'attack' and not any(k.startswith('sw_') for k in r)]
-    regions = [r for r in regions if key_low <= r['root'] <= key_high]
+    regions, seen = [], set()
+    for spec in args.sfz:
+        path, _, roots = spec.partition('@')
+        path = Path(path)
+        low, high = (int(v) for v in roots.split('-')) if roots else (0, 127)
+        for raw in parse_sfz(path):
+            if 'sample' not in raw or raw.get('trigger', 'attack') != 'attack' or any(k.startswith('sw_') for k in raw):
+                continue
+            region = describe(raw)
+            for key in ('low', 'high', 'root'):
+                region[key] += args.transpose
+            region['path'] = path.parent / region['sample']
+            if args.require and not re.search(args.require, region['sample']):
+                continue
+            if args.exclude and re.search(args.exclude, region['sample']):
+                continue
+            # Programs often list the same region twice (for example poly and mono modes).
+            identity = (str(region['path']), region['lovel'], region['hivel'])
+            if identity in seen or not (low <= region['root'] <= high and key_low <= region['root'] <= key_high):
+                continue
+            seen.add(identity)
+            regions.append(region)
     if not regions:
         sys.exit('no regions matched')
 
@@ -136,26 +161,47 @@ def main():
     for region in regions:
         zones.setdefault((region['low'], region['high'], region['root']), {}).setdefault(
             (region['lovel'], region['hivel']), []).append(region)
-    keep = [int(v) for v in args.layers.split(',')] if args.layers else None
+    keep = args.layers.split(',') if args.layers else None
+
+    # Zones from different SFZ files can overlap at a split point: share the keys between the two roots.
+    keyed = sorted(zones.items(), key=lambda item: item[0][2])
+    bounds = [[low, high] for (low, high, _), _ in keyed]
+    for i in range(len(keyed) - 1):
+        root, next_root = keyed[i][0][2], keyed[i + 1][0][2]
+        if bounds[i][1] >= bounds[i + 1][0] and root != next_root:
+            split = (root + next_root) // 2
+            bounds[i][1], bounds[i + 1][0] = split, split + 1
 
     picked = []
-    for (low, high, root), layers in sorted(zones.items()):
+    for ((_, _, root), layers), (low, high) in zip(keyed, bounds):
         ordered = sorted(layers.items())
-        chosen = [ordered[i - 1] for i in keep if i <= len(ordered)] if keep else ordered
+        index_of = lambda token: 1 if token == 'first' else len(ordered) if token == 'last' else int(token)
+        chosen = ([ordered[i - 1] for i in dict.fromkeys(index_of(t) for t in keep) if i <= len(ordered)]
+                  if keep else ordered)
         for index, ((lovel, hivel), alternatives) in enumerate(chosen):
             velocity_low = 1 if index == 0 else chosen[index - 1][0][1] + 1
             velocity_high = 127 if index == len(chosen) - 1 else hivel
             for rr, region in enumerate(sorted(alternatives, key=lambda r: r['rr'])[:args.round_robins]):
-                picked.append((region, velocity_low, velocity_high, index + 1, rr))
+                picked.append((dict(region, low=low, high=high), velocity_low, velocity_high, index + 1, rr))
 
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob('*.wav'):
         old.unlink()
     fade = int(args.fade_ms / 1000 * args.rate)
+    loop = tuple(float(v) for v in args.loop.split('-')) if args.loop else None
+    seconds = loop[1] if loop else args.seconds
     audio = {}
     for region, *_ in picked:
-        data = decode(args.sfz.parent / region['sample'], args.rate, args.seconds)
-        if len(data) > fade and len(data) >= int(args.seconds * args.rate) - 1:
+        data = decode(region['path'], args.rate, seconds)
+        if loop:
+            start, end = (int(round(v * args.rate)) for v in loop)
+            if len(data) < end:
+                sys.exit(f"{region['sample']} is shorter than the loop end")
+            # Crossfade the end of the loop into the audio just before its start, so the jump is seamless.
+            xf = min(int(args.crossfade_ms / 1000 * args.rate), start)
+            t = np.linspace(0, np.pi / 2, xf, dtype=np.float32)
+            data[end - xf:end] = data[end - xf:end] * np.cos(t) + data[start - xf:start] * np.sin(t)
+        elif len(data) > fade and len(data) >= int(args.seconds * args.rate) - 1:
             data[-fade:] *= np.linspace(1, 0, fade, dtype=np.float32) ** 2
         audio[region['sample']] = data * 10 ** (region['volume'] / 20)
     peak = max(float(np.max(np.abs(a))) for a in audio.values()) or 1.0
@@ -172,6 +218,9 @@ def main():
         }
         if region['tune']:
             entry['tuneCents'] = region['tune']
+        if loop:
+            entry['loopStartMs'] = round(loop[0] * 1000)
+            entry['loopEndMs'] = round(loop[1] * 1000)
         manifest_regions.append(entry)
 
     url = f"{args.url}/tree/{args.commit}" if args.commit else args.url
@@ -185,9 +234,13 @@ def main():
         'provenance': {
             'source': args.source, 'url': url, 'creator': args.creator, 'licence': args.licence,
             'obtained': datetime.date.today().isoformat(), 'redistribution': True, 'modification': True,
-            'processing': (f"Imported from {args.sfz.name} with scripts/sfz-import.py: {layers_text}, up to "
-                           f"{args.round_robins} round robins, MIDI roots {args.keys}; mono, {args.rate} Hz, cut to "
-                           f"{args.seconds:g} s with a {args.fade_ms:g} ms fade; one gain for all files (peak -1 dBFS); 16-bit WAV."),
+            'processing': (f"Imported from {', '.join(Path(spec).name for spec in args.sfz)} with scripts/sfz-import.py: "
+                           f"{layers_text}, up to {args.round_robins} round robins, MIDI roots {args.keys}"
+                           + (f" (keys transposed {args.transpose:+d} to sounding pitch)" if args.transpose else "")
+                           + f"; mono, {args.rate} Hz, "
+                           + (f"looped {loop[0]:g}-{loop[1]:g} s with a {args.crossfade_ms:g} ms crossfade" if loop else
+                              f"cut to {args.seconds:g} s with a {args.fade_ms:g} ms fade")
+                           + "; one gain for all files (peak -1 dBFS); 16-bit WAV."),
         },
         'regions': manifest_regions,
     }

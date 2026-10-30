@@ -138,6 +138,12 @@ export function validateManifest(input: unknown, options: ValidateOptions = {}):
       errors.push(`${label}: velocityLow and velocityHigh must be 1–127`);
     } else if (region.velocityLow > region.velocityHigh) errors.push(`${label}: velocityLow is above velocityHigh`);
     if (!isText(region?.articulation)) errors.push(`${label}: articulation is required`);
+    if ((region?.loopStartMs === undefined) !== (region?.loopEndMs === undefined)) {
+      errors.push(`${label}: loopStartMs and loopEndMs go together`);
+    } else if (region?.loopStartMs !== undefined && !(Number.isFinite(region.loopStartMs) && Number.isFinite(region.loopEndMs)
+      && region.loopStartMs >= 0 && (region.loopEndMs as number) > region.loopStartMs)) {
+      errors.push(`${label}: loop must have 0 ≤ loopStartMs < loopEndMs`);
+    }
   });
 
   // Overlapping regions are only allowed as round-robin alternatives.

@@ -1,0 +1,3 @@
+Black And Blue Basses by Karoryfer Samples (Dark Black finger-played bass), CC0 1.0 Universal (public domain dedication).
+Source: https://github.com/sfzinstruments/karoryfer.black-and-blue-basses (commit 6e7d674cdb41be7a54dbccb15472401ad01099b9).
+This folder holds a processed subset; see processing notes in manifest.json.
