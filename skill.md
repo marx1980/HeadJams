@@ -26,3 +26,4 @@
 - Beat › Tracks | Bars: a two-button toggle (max 320px wide) under the options row. Each bar card: 40px family letter + name input, a 64px sketch, then one row of 40px controls (Loop, ←, →, Duplicate, Copy select filling the rest, Clear); at ≤380px the gap is 4px so Copy stays readable at 320px. Cards are one column, two from 700px; Double loop below.
 - Settings › Offline: one row, "Instruments n/N" on the left and a 120px Download all button (shows files done/total while downloading, Downloaded when complete).
 - File › Share: a full-width Share link button, then the link in a read-only field once made. Song (opened from a link): name, "BPM · tracks", then 44px Play and a wide Open.
+- File › Export: after Export WAV, a two-column row: Video select (Vertical, Square) and Export video ("Recording n/N s" while recording). Video frames carry the song name and one label at the bottom (Hummed, the section, or BPM) only.

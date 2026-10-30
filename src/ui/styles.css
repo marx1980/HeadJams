@@ -592,3 +592,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .song-link { display: flex; flex-direction: column; gap: 6px; }
 .song-link-actions { display: grid; grid-template-columns: 44px 1fr; gap: 6px; }
 #share-url { width: 100%; box-sizing: border-box; }
+
+/* File › Export video */
+.video-export { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end; }
+.video-export button { font-variant-numeric: tabular-nums; }

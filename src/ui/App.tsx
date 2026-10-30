@@ -36,6 +36,8 @@ import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
 import { OfflineInstruments } from './OfflineInstruments';
 import { decodeSong, songLink, songPayload } from '../model/songLink';
+import { recordVideo, videoSupported } from './videoExport';
+import type { VideoShape } from '../library/videoPlan';
 import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
@@ -135,6 +137,8 @@ export function App() {
   const [incoming, setIncoming] = useState<Project>();
   const [incomingPlaying, setIncomingPlaying] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const [videoShape, setVideoShape] = useState<VideoShape>('vertical');
+  const [videoProgress, setVideoProgress] = useState('');
   useEffect(() => { if (playStep === null) setIncomingPlaying(false); }, [playStep]);
   useEffect(() => {
     const read = () => {
@@ -344,50 +348,81 @@ export function App() {
     flash(`${kit.name} applied · patterns preserved ✓`, true);
   };
 
+  /** Render the project to WAV in a worker with the sampled instruments it uses. */
+  const renderWav = async (target: Project, options: { sampleRate: number; bitDepth: 16 | 24; normalize: boolean }) => {
+    const samples = [...sampleData.values()].map((sample) => ({
+      id: sample.id,
+      samples: sample.samples.slice(),
+      sampleRate: sample.sampleRate,
+    }));
+    const needs = instrumentNeeds(target);
+    await instrumentStore.prepare(needs);
+    const instruments = instrumentStore.exportAudio(needs.keys());
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const worker = new Worker(new URL('../audio/exportWorker.ts', import.meta.url), { type: 'module' });
+      worker.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+        worker.terminate();
+        resolve(event.data);
+      };
+      worker.onerror = (event) => {
+        worker.terminate();
+        reject(event.error ?? new Error(event.message));
+      };
+      worker.postMessage({ project: target, samples, ...options, instruments },
+        [...samples.map((sample) => sample.samples.buffer), ...instruments.regions.map((region) => region.data.buffer)]);
+    });
+  };
+
+  const download = (blob: Blob, name: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const fileBase = () => project.name.replace(/[^\w-]+/g, '_') || 'loop';
+
   const exportWav = async () => {
     if (exporting) return;
     setExporting(true);
     flash('Preparing WAV export…');
     try {
-      const samples = [...sampleData.values()].map((sample) => ({
-        id: sample.id,
-        samples: sample.samples.slice(),
-        sampleRate: sample.sampleRate,
-      }));
-      const needs = instrumentNeeds(project);
-      await instrumentStore.prepare(needs);
-      const instruments = instrumentStore.exportAudio(needs.keys());
-      const wav = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const worker = new Worker(new URL('../audio/exportWorker.ts', import.meta.url), { type: 'module' });
-        worker.onmessage = (event: MessageEvent<ArrayBuffer>) => {
-          worker.terminate();
-          resolve(event.data);
-        };
-        worker.onerror = (event) => {
-          worker.terminate();
-          reject(event.error ?? new Error(event.message));
-        };
-        worker.postMessage({
-          project,
-          samples,
-          sampleRate: exportSampleRate,
-          bitDepth: exportBitDepth,
-          normalize: normalizeExport,
-          instruments,
-        }, [...samples.map((sample) => sample.samples.buffer), ...instruments.regions.map((region) => region.data.buffer)]);
-      });
-      const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name.replace(/[^\w-]+/g, '_') || 'loop'}.wav`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const wav = await renderWav(project, { sampleRate: exportSampleRate, bitDepth: exportBitDepth, normalize: normalizeExport });
+      download(new Blob([wav], { type: 'audio/wav' }), `${fileBase()}.wav`);
       emit('export');
       flash('WAV exported ✓');
     } catch {
       flash('WAV export failed. Check project size and browser memory, then try again.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const exportVideo = async () => {
+    if (videoProgress) return;
+    setVideoProgress('0 s');
+    try {
+      if (engine.playing) { engine.stop(); auditionRef.current = undefined; }
+      const songWav = await renderWav(project, { sampleRate: 48000, bitDepth: 16, normalize: true });
+      const withOriginal = project.channels.find((channel) => channel.original);
+      const sampleId = withOriginal && project.customSounds.find((sound) => sound.id === withOriginal.original!.soundId)?.sampleId;
+      const data = sampleId ? sampleDataRef.current.get(sampleId) : undefined;
+      const { blob, extension } = await recordVideo({
+        project, shape: videoShape, songWav,
+        ...(data ? { original: { samples: data.originalSamples ?? data.samples, sampleRate: data.sampleRate } } : {}),
+        onProgress: (seconds, total) => setVideoProgress(`${Math.floor(seconds)}/${Math.ceil(total)} s`),
+      });
+      const file = new File([blob], `${fileBase()}.${extension}`, { type: blob.type });
+      try {
+        if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: project.name }); flash('Video ready ✓'); return; }
+      } catch { /* share cancelled: download instead */ }
+      download(blob, file.name);
+      flash('Video exported ✓');
+    } catch {
+      flash('Video export failed');
+    } finally {
+      setVideoProgress('');
     }
   };
 
@@ -560,6 +595,18 @@ export function App() {
                   Normalize to −1 dBFS
                 </label>
                 <button id="export-btn" disabled={exporting} onClick={() => void exportWav()}>{exporting ? 'Preparing WAV…' : 'Export WAV'}</button>
+                {videoSupported() && (
+                  <div className="video-export">
+                    <label>Video
+                      <select id="video-shape" value={videoShape} onChange={(event) => setVideoShape(event.target.value as VideoShape)}>
+                        <option value="vertical">Vertical</option>
+                        <option value="square">Square</option>
+                      </select>
+                    </label>
+                    <button id="export-video" disabled={Boolean(videoProgress)} onClick={() => void exportVideo()}>
+                      {videoProgress ? `Recording ${videoProgress}` : 'Export video'}</button>
+                  </div>
+                )}
               </HeaderTile>
             )}
             {openMenu === 'settings' && (
