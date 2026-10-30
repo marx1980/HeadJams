@@ -1,0 +1,3 @@
+Spanish Classical Guitar (version 2019-06-18) by roberto@zenvoid.org for the FreePats project, CC0 1.0 Universal (public domain dedication).
+Source: http://freepats.zenvoid.org/Guitar/acoustic-guitar.html (SpanishClassicalGuitar-SFZFLAC-20190618.7z).
+This folder holds a processed subset; see processing notes in manifest.json.

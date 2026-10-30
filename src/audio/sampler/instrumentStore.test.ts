@@ -58,17 +58,19 @@ describe('InstrumentStore', () => {
 
   it('collects the notes each sampled instrument needs, across patterns', () => {
     const project = createProject();
-    project.customSounds = [sine];
+    project.customSounds = [sine, { ...sine, id: 'sampled-sine-chords', playbackMode: 'chord' }];
     project.channels = [{
       ...createChannel('a', 'Sine', 'sampled-sine'),
       steps: [true],
       notes: [{ id: 'n', step: 0, pitch: 67, durationSteps: 1 }],
+    }, {
+      ...createChannel('c', 'Chords', 'sampled-sine-chords'),
       chordEvents: [{ id: 'c', step: 0, root: 48, quality: 'major', articulation: 'sustained', durationSteps: 1 }],
     }];
     project.patterns = [{ id: 'p2', name: 'P2', lengthSteps: 16, channels: [{ ...createChannel('b', 'S', 'sampled-sine'), notes: [{ id: 'm', step: 0, pitch: 50, durationSteps: 1 }] }] }];
     const notes = instrumentNeeds(project).get('test-sine')!;
-    expect([...notes].sort((a, b) => a - b)).toEqual(expect.arrayContaining([50, 60, 67]));
-    expect(notes.size).toBeGreaterThan(3);
+    // The C major chord uses the open shape: C3 E3 G3 C4 E4.
+    expect([...notes].sort((a, b) => a - b)).toEqual([48, 50, 52, 55, 60, 64, 67]);
   });
 });
 

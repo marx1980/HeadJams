@@ -1,8 +1,9 @@
 import {
-  audibleChannels, channelsForPlaybackStep, type PitchBendPoint, type Project, type SoundDef,
+  audibleChannels, channelsForPlaybackStep, type ChordEvent, type PitchBendPoint, type Project, type SoundDef,
 } from '../model/project';
 import { findSound } from '../library/sounds';
 import { guitarChordPitches } from '../model/music';
+import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -34,6 +35,8 @@ export interface PitchedVoice extends VoiceBase {
   /** Left undefined when the source event has none, so renderers keep their own default. */
   velocity?: number;
   pitchBend?: PitchBendPoint[];
+  /** Sampled guitars: voices with the same key on a channel cut each other (one per string, or the whole chord when tight). */
+  chokeKey?: string;
 }
 
 export type VoiceEvent = HitVoice | PitchedVoice;
@@ -70,6 +73,10 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         }
       }
       if (sound.playbackMode !== 'chord') continue;
+      if (sound.instrumentId) {
+        voices.push(...compileSampledChords(p, c.id, c.chordEvents ?? [], source.localStep, base, durationOf));
+        continue;
+      }
       for (const event of c.chordEvents ?? []) {
         if (event.step !== source.localStep) continue;
         const pitches = guitarChordPitches(event.root, event.quality, event.articulation);
@@ -86,6 +93,41 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
           });
         }
       }
+    }
+  }
+  return voices;
+}
+
+/**
+ * Sampled guitars (expansion.md E3): real chord shapes, string-by-string strums with seeded humanise,
+ * and per-string choke so a new chord only stops the strings it plays ('tight' stops the whole chord).
+ * Classic synth guitars keep the path above unchanged.
+ */
+function compileSampledChords(
+  p: Project, channelId: string, events: readonly ChordEvent[], step: number,
+  base: { sound: SoundDef; channelId: string; volume: number; pan: number },
+  durationOf: (steps: number) => number,
+): PitchedVoice[] {
+  const starting = events.filter((event) => event.step === step);
+  if (!starting.length) return [];
+  const voicings = voiceChordSequence(events);
+  const tight = base.sound.chordRing === 'tight';
+  const voices: PitchedVoice[] = [];
+  for (const event of starting) {
+    const voicing = voicings.get(event.id);
+    if (!voicing) continue;
+    const muted = event.articulation === 'muted';
+    const length = durationOf(event.durationSteps);
+    const duration = muted ? Math.min(MUTED_CHORD_MAX_SEC, length) : length;
+    const strokes = performChord(event, voicing, `${p.seed ?? 1}:${channelId}:${event.id}`);
+    for (const stroke of strokes) {
+      voices.push({
+        ...base, volume: base.volume * CHORD_STRING_LEVEL,
+        kind: 'pitched', origin: 'chord', offsetSec: stroke.offsetSec, pitch: stroke.pitch,
+        durationSec: Math.max(0.01, duration - stroke.offsetSec),
+        velocity: stroke.velocity * (muted ? MUTED_CHORD_VELOCITY : 1),
+        chokeKey: tight ? 'chord' : `string${stroke.string}`,
+      });
     }
   }
   return voices;

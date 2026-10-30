@@ -1,6 +1,6 @@
 import type { Channel, Project } from '../../model/project';
+import { voiceChordSequence } from '../../library/guitar/performer';
 import { findSound } from '../../library/sounds';
-import { guitarChordPitches } from '../../model/music';
 import { validateManifest, type InstrumentManifest, type SampleRegion } from './manifest';
 import type { DecodedRegion } from './sampledVoice';
 
@@ -40,8 +40,10 @@ export function instrumentNeeds(project: Project): Map<string, Set<number>> {
     needs.set(sound.instrumentId, notes);
     if (channel.steps.some(Boolean)) notes.add(sound.instrumentNote ?? 60);
     for (const note of channel.notes ?? []) notes.add(Math.round(note.pitch));
-    for (const event of channel.chordEvents ?? []) {
-      for (const pitch of guitarChordPitches(event.root, event.quality, event.articulation)) notes.add(pitch);
+    if (sound.playbackMode === 'chord') {
+      for (const voicing of voiceChordSequence(channel.chordEvents ?? []).values()) {
+        for (const note of voicing.notes) notes.add(note.midi);
+      }
     }
   }
   return needs;
