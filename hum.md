@@ -93,7 +93,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 - Done when: from launch, an idea is captured and playing as a track in 3 taps; the C D E G test phrase comes back without glide notes in Cleaned mode.
 
 ### H2. Hear as real instruments (needs E3 and E5a)
-- Recognised melody defaults to sampled piano, bass to sampled bass, beat to the sampled kit. A **Hear as** row on the track (Piano, Guitar, Bass, Strings, Synth) switches instrument without re-analysis.
+- ✅ Recognised melody defaults to sampled piano, bass to sampled bass, beat to the sampled kit. A **Hear as** row on the track (Piano, Guitar, Bass, Strings, Synth) switches instrument without re-analysis.
 
 ### H3. Chords by ear
 - Key detection from melody pitch classes (with a confidence; the scale setting is only a fallback).

@@ -72,6 +72,8 @@ export interface RecognitionTake {
   source?: 'mic' | 'import';
   /** Short name shown in the ideas list. */
   label?: string;
+  /** Instrument (melody/bass) or kit (beat) the idea is heard as; undefined on older takes (Classic sounds). */
+  hearAs?: import('./hearAs').HearAsId;
   /** Seconds added to recording times to place events in project time (microphone alignment). */
   alignmentSeconds?: number;
   /** What recognition last wrote to the project, so user edits on the grid can be told apart and kept. */

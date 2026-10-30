@@ -7,12 +7,13 @@ import { Icon } from './Icon';
 import type { Project } from '../model/project';
 import type { RecognitionTake } from '../model/recognition';
 import type { ApplyRecognitionOptions } from '../model/recognitionProject';
+import { HEAR_AS_BEAT, HEAR_AS_PITCHED, hearAsOf, type HearAsId } from '../model/hearAs';
 
 const SECTION = { name: 'library-section' } as Record<string, string>;
 
 export function SampleLibrary({
   sounds, channels, sampleData, bpm, project, onPreview, onPreviewSample, onUse, onSaveSample, onUpdateSample,
-  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onLibraryAction,
+  onRecordStart, onRecordStop, recordingOffset, onRecognize, onRecognitionBpmChange, onImport, onEdit, onRecognitionEdit, onRemoveIdea, onHearAs, onLibraryAction,
 }: {
   sounds: SoundDef[];
   channels: Channel[];
@@ -33,6 +34,7 @@ export function SampleLibrary({
   onEdit: () => void;
   onRecognitionEdit: () => void;
   onRemoveIdea: (takeId: string) => void;
+  onHearAs: (takeId: string, id: HearAsId) => void;
   onLibraryAction: (event: 'library-search' | 'library-tag') => void;
 }) {
   const [query, setQuery] = useState('');
@@ -141,6 +143,12 @@ export function SampleLibrary({
               return (
                 <li key={take.id} className="idea-item">
                   <span className="idea-name">{take.label ?? (take.mode === 'beat' ? 'Beat' : take.mode === 'bass' ? 'Bass' : 'Melody')}</span>
+                  <select className="idea-hear-as" aria-label={`Hear ${take.label ?? 'idea'} as`} value={hearAsOf(take)}
+                    disabled={!take.channelIds.length} onChange={(event) => onHearAs(take.id, event.target.value as HearAsId)}>
+                    {(take.mode === 'beat' ? HEAR_AS_BEAT : HEAR_AS_PITCHED).map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
                   <button className="secondary" aria-label={`Play ${take.label ?? 'idea'} recording`} disabled={!sample}
                     onClick={() => sample && onPreviewSample({ ...sample, samples: sample.originalSamples ?? sample.samples })}><Icon name="play" className="inline-icon" /></button>
                   <button className="secondary" aria-label={`Delete ${take.label ?? 'idea'}`} onClick={() => onRemoveIdea(take.id)}><Icon name="close" className="inline-icon" /></button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../model/project';
 import { createRecognitionTake, SOUND_FOR_CLASS, type ApplyRecognitionOptions } from '../model/recognitionProject';
+import { soundForClass } from '../model/hearAs';
 import { correctRecognitionPitches } from '../model/recognitionProject';
 import { applyPerformanceMode, PERFORMANCE_MODES, type PerformanceMode } from '../model/performanceModes';
 import { quantiseRecognitionEvents, quantiseTime } from '../library/quantisation';
@@ -135,15 +136,21 @@ export function RecognitionPanel({
     commitEvents(activeTake.quantisedEvents.map((event) => event.id === eventId ? update(event) : event));
   };
   const reclassify = (eventId: string, type: PercussionClass) => {
-    updateEvent(eventId, (event) => 'type' in event
-      ? { ...event, type, assignedSoundId: SOUND_FOR_CLASS[type] }
-      : event);
+    // A reclassified hit joins that class's track and plays its default sound.
+    updateEvent(eventId, (event) => {
+      if (!('type' in event)) return event;
+      const { assignedSoundId: _previous, ...rest } = event;
+      return { ...rest, type };
+    });
   };
   const assignSound = (eventId: string, assignedSoundId: string) => {
     if (!activeTake) return;
-    commitEvents(activeTake.quantisedEvents.map((event) =>
-      'type' in event && event.id === eventId ? { ...event, assignedSoundId } : event,
-    ));
+    commitEvents(activeTake.quantisedEvents.map((event) => {
+      if (!('type' in event) || event.id !== eventId) return event;
+      if (assignedSoundId !== soundForClass(activeTake, event.type)) return { ...event, assignedSoundId };
+      const { assignedSoundId: _previous, ...rest } = event;
+      return rest;
+    }));
   };
   const updatePitchSettings = (correction: number, scaleAware: boolean) => {
     setPitchCorrection(correction);
@@ -382,7 +389,7 @@ export function RecognitionPanel({
                 {PERCUSSION_CLASSES.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
               <select aria-label={`Sound for ${event.id}`}
-                value={event.assignedSoundId ?? SOUND_FOR_CLASS[event.type]}
+                value={event.assignedSoundId ?? (activeTake ? soundForClass(activeTake, event.type) : SOUND_FOR_CLASS[event.type])}
                 onChange={(change) => assignSound(event.id, change.target.value)}>
                 {sounds.map((sound) => <option key={sound.id} value={sound.id}>{sound.name}</option>)}
               </select>

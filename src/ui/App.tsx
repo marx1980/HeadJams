@@ -20,6 +20,7 @@ import { recordingOffsetSeconds } from '../audio/alignment';
 import { stepDuration } from '../audio/scheduler';
 import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
+import { hearTakeAs } from '../model/hearAs';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -792,6 +793,7 @@ export function App() {
         onEdit={() => emit('sample-edited')}
         onRecognitionEdit={() => emit('recognition-edited')}
         onRemoveIdea={(takeId) => { setProject(removeRecognitionTake(projectRef.current, takeId)); flash('Idea removed', true); }}
+        onHearAs={(takeId, id) => setProject(hearTakeAs(projectRef.current, takeId, id))}
         onLibraryAction={emit}
       />
 

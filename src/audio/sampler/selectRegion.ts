@@ -52,6 +52,33 @@ export class RoundRobin {
  * Returns undefined when nothing can play the note within the instrument's limits.
  */
 export function selectRegion(manifest: InstrumentManifest, request: RegionRequest, roundRobin?: RoundRobin): RegionChoice | undefined {
+  const midi = playableMidi(manifest, request.midi);
+  return midi === undefined ? undefined : selectExact(manifest, { ...request, midi }, roundRobin);
+}
+
+const reachable = (manifest: InstrumentManifest, midi: number) => manifest.regions.some((region) =>
+  (region.lowMidi <= midi && midi <= region.highMidi && Math.abs(region.rootMidi - midi) <= manifest.pitchShiftLimitSemitones)
+  || Math.abs(region.rootMidi - midi) <= manifest.pitchShiftLimitSemitones);
+
+/**
+ * The note an instrument actually plays for `midi`. Pitched instruments play notes outside their range an
+ * octave (or more) in, rather than not at all, so a hummed melody can be heard on a bass and a bass line on
+ * strings. Drums never fold. Undefined when nothing can play it.
+ */
+export function playableMidi(manifest: InstrumentManifest, midi: number): number | undefined {
+  if (reachable(manifest, midi)) return midi;
+  if (manifest.family === 'drums' || manifest.family === 'percussion' || !manifest.regions.length) return undefined;
+  const low = Math.min(...manifest.regions.map((region) => region.lowMidi));
+  const high = Math.max(...manifest.regions.map((region) => region.highMidi));
+  const direction = midi > high ? -12 : midi < low ? 12 : 0;
+  if (!direction) return undefined;
+  for (let octaves = 1; octaves <= 6; octaves++) {
+    if (reachable(manifest, midi + direction * octaves)) return midi + direction * octaves;
+  }
+  return undefined;
+}
+
+function selectExact(manifest: InstrumentManifest, request: RegionRequest, roundRobin?: RoundRobin): RegionChoice | undefined {
   const { midi, velocity } = request;
   const articulation = request.articulation && manifest.regions.some((region) => region.articulation === request.articulation)
     ? request.articulation

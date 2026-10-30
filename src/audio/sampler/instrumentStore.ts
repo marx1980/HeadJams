@@ -2,6 +2,7 @@ import type { Channel, Project } from '../../model/project';
 import { voiceChordSequence } from '../../library/guitar/performer';
 import { findSound } from '../../library/sounds';
 import { validateManifest, type InstrumentManifest, type SampleRegion } from './manifest';
+import { playableMidi } from './selectRegion';
 import type { DecodedRegion } from './sampledVoice';
 
 const MB = 2 ** 20;
@@ -51,7 +52,11 @@ export function instrumentNeeds(project: Project): Map<string, Set<number>> {
 
 /** Regions that could be chosen for any of the notes (all velocities, articulations and round robins). */
 export function regionsForNotes(manifest: InstrumentManifest, notes: ReadonlySet<number>): SampleRegion[] {
-  return manifest.regions.filter((region) => [...notes].some((midi) =>
+  const playable = [...notes].flatMap((note) => {
+    const midi = playableMidi(manifest, note);
+    return midi === undefined ? [] : [midi];
+  });
+  return manifest.regions.filter((region) => playable.some((midi) =>
     (region.lowMidi <= midi && midi <= region.highMidi)
     || Math.abs(region.rootMidi - midi) <= manifest.pitchShiftLimitSemitones));
 }

@@ -206,7 +206,8 @@ export function renderProject(
     const start = stepStarts[step];
     for (const voice of compileStep(p, step, (steps) => steps * stepLen / sr)) {
       const def = voice.sound;
-      if (def.instrumentId) {
+      // A sampled sound whose instrument could not be loaded falls back to its synth parameters.
+      if (def.instrumentId && instruments?.manifests.has(def.instrumentId)) {
         sampled.push({ voice, start: start + Math.round(voice.offsetSec * sr) });
         continue;
       }

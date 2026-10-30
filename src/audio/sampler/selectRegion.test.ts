@@ -29,6 +29,17 @@ describe('selectRegion', () => {
     expect(selectRegion(manifest([region('wide', 60, 40, 80)]), { midi: 70, velocity: 100 })).toBeUndefined();
   });
 
+  it('plays notes outside a pitched instrument\'s range an octave in (never for drums)', () => {
+    const m = manifest([region('c3', 48, 46, 50), region('c4', 60, 58, 62)]);
+    const high = selectRegion(m, { midi: 84, velocity: 100 })!;
+    expect(high.region.id).toBe('c4');
+    expect(high.rate).toBeCloseTo(1);
+    const low = selectRegion(m, { midi: 35, velocity: 100 })!;
+    expect(low.region.id).toBe('c3');
+    expect(low.rate).toBeCloseTo(2 ** (-1 / 12));
+    expect(selectRegion({ ...m, family: 'drums' }, { midi: 84, velocity: 100 })).toBeUndefined();
+  });
+
   it('chooses velocity layers by their inclusive bounds, or the nearest layer in a gap', () => {
     const m = manifest([
       region('soft', 60, 55, 65, { velocityLow: 1, velocityHigh: 63 }),
