@@ -51,6 +51,18 @@ export const DRUM_KITS: DrumKit[] = [
       { role: 'auxiliary', name: 'Cowbell', soundId: 'perc-2' },
     ],
   },
+  {
+    id: 'acoustic-kit',
+    name: 'Acoustic Kit',
+    group: 'Acoustic',
+    channels: [
+      { role: 'kick', name: 'Kick', soundId: 'acoustic-kick' },
+      { role: 'snare', name: 'Snare', soundId: 'acoustic-snare' },
+      { role: 'hat', name: 'Hi-Hat', soundId: 'acoustic-hat-closed' },
+      { role: 'tom', name: 'Tom', soundId: 'acoustic-tom-mid' },
+      { role: 'cymbal', name: 'Crash', soundId: 'acoustic-crash' },
+    ],
+  },
 ];
 
 export type DrumKitApplication =
@@ -59,6 +71,14 @@ export type DrumKitApplication =
   | { status: 'capacity-exceeded'; project: Project };
 
 function roleFromSoundId(soundId: string): DrumRole | undefined {
+  const acoustic = /^acoustic-(.+)$/.exec(soundId)?.[1];
+  if (acoustic) {
+    if (acoustic === 'kick') return 'kick';
+    if (acoustic === 'snare' || acoustic === 'sidestick') return 'snare';
+    if (acoustic.startsWith('hat-')) return 'hat';
+    if (acoustic.startsWith('tom-')) return 'tom';
+    if (acoustic === 'crash' || acoustic.startsWith('ride')) return 'cymbal';
+  }
   if (/^kick-\d+$/.test(soundId)) return 'kick';
   if (/^snare-\d+$/.test(soundId)) return 'snare';
   if (/^hat-\d+$/.test(soundId)) return 'hat';

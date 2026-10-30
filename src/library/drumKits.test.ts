@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addPattern, createProject, toggleStep } from '../model/project';
-import { applyDrumKit, DRUM_KITS } from './drumKits';
+import { applyDrumKit, DRUM_KITS, findDrumKit } from './drumKits';
 
 describe('drum kits', () => {
   it('applies a kit by role and preserves the active pattern content', () => {
@@ -56,5 +56,28 @@ describe('drum kits', () => {
         'hand-percussion', 'shaker', 'auxiliary',
       ]);
     }
+  });
+});
+
+describe('acoustic kit', () => {
+  it('maps every role to a sampled sound on the bundled acoustic-kit instrument', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { SAMPLED_SOUNDS } = await import('./instrumentRegistry');
+    const manifest = JSON.parse(readFileSync(new URL('../../app/public/instruments/acoustic-kit/manifest.json', import.meta.url), 'utf8')) as { regions: { rootMidi: number }[] };
+    const notes = new Set(manifest.regions.map((region) => region.rootMidi));
+    for (const sound of SAMPLED_SOUNDS.filter((item) => item.instrumentId === 'acoustic-kit')) {
+      expect(notes.has(sound.instrumentNote!)).toBe(true);
+    }
+    const kit = findDrumKit('acoustic-kit')!;
+    expect(kit.channels.every((channel) => SAMPLED_SOUNDS.some((sound) => sound.id === channel.soundId))).toBe(true);
+  });
+
+  it('swaps between synth and acoustic kits by role', () => {
+    const studio = applyDrumKit(createProject(), findDrumKit('studio-kit')!, true);
+    const acoustic = applyDrumKit(studio.project, findDrumKit('acoustic-kit')!, true);
+    const back = applyDrumKit(acoustic.project, findDrumKit('808-kit')!, true);
+    expect(acoustic.project.channels.find((c) => c.role === 'kick')?.soundId).toBe('acoustic-kick');
+    expect(back.project.channels.find((c) => c.role === 'kick')?.soundId).toBe('kick-6');
+    expect(back.project.channels.length).toBe(acoustic.project.channels.length);
   });
 });

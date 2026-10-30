@@ -28,6 +28,8 @@ export interface SampledVoicePlan {
   chokeKey?: string;
 }
 
+/** Grid hits use the middle velocity layer by default, leaving the loudest layer for accents. */
+export const DEFAULT_HIT_VELOCITY = 100;
 const DEFAULT_ATTACK_MS = 2;
 const DEFAULT_RELEASE_MS = 30;
 
@@ -42,7 +44,7 @@ export function planSampledVoice(
   const midi = pitched ? voice.pitch : voice.sound.instrumentNote ?? 60;
   const choice = selectRegion(manifest, {
     midi,
-    velocity: midiVelocity(pitched ? voice.velocity : undefined),
+    velocity: pitched ? midiVelocity(voice.velocity) : Math.max(1, Math.min(127, Math.round(voice.sound.instrumentVelocity ?? DEFAULT_HIT_VELOCITY))),
     articulation: voice.sound.instrumentArticulation,
   }, roundRobin);
   if (!choice) return undefined;

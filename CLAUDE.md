@@ -21,6 +21,7 @@ Follow `skill.md` (layout rules) and keep on-screen text to labels and values, w
 ## Sampled instruments
 - Bundled instruments go in `app/public/instruments/<id>/` with `manifest.json`, audio files and `LICENCE.txt`. Only redistributable licences (the repo is public); see `expansion.md` §5.
 - `npm test` validates every bundled manifest and checks the download budget. Regenerate the test instrument with `node scripts/make-test-instrument.mjs`.
+- Instruments built from third-party sources have a build script (e.g. `scripts/build-acoustic-kit.py`, needs git, ffmpeg, numpy) and record the source commit in `manifest.json` provenance. Use WAV for drums (compressed formats add start padding that makes hits late).
 - Existing projects must keep rendering identically: compare WAV render hashes before and after any change to `performance.ts`, `render.ts` or `engine.ts`.
 
 ## Hum-to-music must keep working (`hum.md`)

@@ -44,6 +44,8 @@ export interface SoundDef {
   instrumentNote?: number;
   /** Preferred articulation on a sampled instrument. */
   instrumentArticulation?: string;
+  /** MIDI velocity (1–127) for grid hits on a sampled instrument (default 100). */
+  instrumentVelocity?: number;
 }
 
 export interface Channel {
