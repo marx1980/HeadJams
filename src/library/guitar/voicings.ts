@@ -75,8 +75,14 @@ const centre = (voicing: GuitarVoicing) => {
  * Choose a playable shape: prefer open chords and low positions, and keep the hand close to the previous chord.
  * Returns undefined for chords the dictionary does not cover (callers fall back to the generic solver).
  */
-export function chooseVoicing(rootPitchClass: number, quality: ShapeQuality, previous?: GuitarVoicing): GuitarVoicing | undefined {
-  const candidates = candidateVoicings(rootPitchClass, quality);
+export function chooseVoicing(rootPitchClass: number, quality: ShapeQuality, previous?: GuitarVoicing, capo = 0): GuitarVoicing | undefined {
+  const fret = Math.max(0, Math.min(9, Math.round(capo)));
+  // With a capo the hand plays the shape of the chord `capo` semitones lower, everything sounding `capo` higher.
+  const candidates = candidateVoicings(rootPitchClass - fret, quality).map((voicing) => fret ? {
+    ...voicing,
+    frets: voicing.frets.map((value) => value === null ? null : value + fret),
+    notes: voicing.notes.map((note) => ({ ...note, fret: note.fret + fret, midi: note.midi + fret })),
+  } : voicing);
   let best: GuitarVoicing | undefined;
   let bestScore = Number.POSITIVE_INFINITY;
   for (const candidate of candidates) {

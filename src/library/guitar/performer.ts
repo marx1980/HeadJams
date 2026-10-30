@@ -51,7 +51,7 @@ export function voiceChordSequence(events: readonly ChordEvent[]): Map<string, G
   const sorted = [...events].sort((a, b) => a.step - b.step || a.id.localeCompare(b.id));
   for (const event of sorted) {
     const quality = event.articulation === 'power' ? 'power' : event.quality;
-    const voicing = chooseVoicing(event.root, quality, previous) ?? solverVoicing(event);
+    const voicing = chooseVoicing(event.root, quality, previous, event.capo ?? 0) ?? solverVoicing(event);
     voicings.set(event.id, voicing);
     previous = voicing;
   }
@@ -64,13 +64,22 @@ export function voiceChordSequence(events: readonly ChordEvent[]): Map<string, G
  */
 export function performChord(event: ChordEvent, voicing: GuitarVoicing, seed: string): GuitarStroke[] {
   const style = STRUM[event.articulation] ?? STRUM.sustained;
-  const strings = [...voicing.notes].sort((a, b) => a.string - b.string);
+  const all = [...voicing.notes].sort((a, b) => a.string - b.string);
+  // A string subset (arpeggios) counts from the lowest sounding string; out-of-range picks the top string.
+  const picked = event.strings?.length
+    ? [...new Set(event.strings.map((index) => Math.max(1, Math.min(all.length, Math.round(index)))))].map((index) => all[index - 1])
+    : all;
+  const strings = [...picked].sort((a, b) => a.string - b.string);
   if (event.articulation === 'up-strum') strings.reverse();
   const random = seededRandom(hashSeed(seed));
-  const offsets = strumOffsets(strings.length, style.sec, HUMANISE, random);
+  const strumSec = event.strumMs !== undefined && Number.isFinite(event.strumMs)
+    ? Math.max(0, Math.min(200, event.strumMs)) / 1000 * (event.articulation === 'sustained' ? 0.3 : 1)
+    : style.sec;
+  const humanise = event.humanise !== undefined && Number.isFinite(event.humanise) ? Math.max(0, Math.min(1, event.humanise)) : HUMANISE;
+  const offsets = strumOffsets(strings.length, strumSec, humanise, random);
   const base = Math.max(0, Math.min(1, event.velocity ?? 1)) * style.velocity;
   return strings.map((note, index) => {
-    const jitter = 1 + (random() * 2 - 1) * VELOCITY_JITTER;
+    const jitter = 1 + (random() * 2 - 1) * VELOCITY_JITTER * (humanise / HUMANISE);
     // Strings struck later in a strum are slightly softer.
     const fall = 1 - 0.04 * index / Math.max(1, strings.length - 1);
     return {

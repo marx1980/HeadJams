@@ -62,6 +62,8 @@ export interface Channel {
   notes: NoteEvent[];
   stepEventMetadata?: Record<number, StepEventMetadata>;
   chordEvents?: ChordEvent[];
+  /** Chord row that generated this channel's `row-` chord events (guitar channels). */
+  chordRow?: ChordRow;
   /** The recording a hummed or beatboxed track came from, and where it starts in the loop. */
   original?: { soundId: string; offsetSec: number };
   /** Play the original recording along with the track ("play what I sang"). */
@@ -107,6 +109,24 @@ export interface ChordEvent {
   articulation: ChordArticulation;
   durationSteps: number;
   velocity?: number;
+  /** Play only these strings of the shape (1 = lowest sounding string), e.g. for arpeggios. */
+  strings?: number[];
+  /** Strum length from first to last string, in ms (default per articulation). */
+  strumMs?: number;
+  /** 0–1 timing and velocity looseness for sampled guitars (default 0.5). */
+  humanise?: number;
+  /** Capo fret: shapes are chosen for the chord a capo-ed guitarist would finger (sampled guitars). */
+  capo?: number;
+}
+
+/** A guitar channel's chord row (expansion.md E4): chord symbols plus a strum pattern, compiled to chord events. */
+export interface ChordRow {
+  /** Chord symbols, one per bar ("Am F C G"); bars split with "|" may hold two ("Am G | F"). */
+  chords: string;
+  pattern: string;
+  strumMs: number;
+  humanise: number;
+  capo: number;
 }
 
 export interface Pattern {

@@ -20,6 +20,7 @@ import { ARRANGEMENT_STYLES, generateChordAccompaniment, generateHarmonyFromMelo
 import { detectKey, suggestProgressions, type Progression } from '../library/progressions';
 import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
 import { Icon } from './Icon';
+import { ChordRowEditor } from './ChordRowEditor';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
@@ -179,6 +180,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
         </div>
       ) : <p className="hint">Add a channel to edit notes.</p>}
 
+      {channel && guitarChordMode && <ChordRowEditor project={project} channel={channel} onChange={onChange} />}
       {channel && guitarChordMode && (
         <div className="chord-controls" aria-label="Guitar chord editor">
           <strong>Guitar chords</strong>
@@ -207,7 +209,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
           </label>
           <button onClick={addGuitarChord}><Icon name="add" className="inline-icon" /> Add guitar chord</button>
           <div className="chord-event-list" aria-label="Guitar chord events">
-            {(channel.chordEvents ?? []).map((event) => (
+            {(channel.chordEvents ?? []).filter((event) => !event.id.startsWith('row-')).map((event) => (
               <button key={event.id} className="secondary"
                 aria-label={`Remove ${formatChordSymbol(event.root, event.quality, event.articulation)} ${event.articulation} at step ${event.step + 1}`}
                 onClick={() => onChange(removeChordEvent(project, channel.id, event.id))}>

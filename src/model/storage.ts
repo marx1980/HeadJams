@@ -1,7 +1,7 @@
 import type { HearAsId } from './hearAs';
 import {
   createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
-  type Channel, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
+  type Channel, type ChordEvent, type ChordRow, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 import type {
@@ -126,6 +126,34 @@ function normalizeApplied(value: unknown): AppliedSnapshot | undefined {
 
 const HEAR_AS_IDS: HearAsId[] = ['piano', 'guitar', 'bass', 'strings', 'synth', 'acoustic', 'classic'];
 
+function normalizeChordEvent(event: ChordEvent): ChordEvent {
+  const { strings, strumMs, humanise, capo, ...rest } = event;
+  const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+  const validStrings = Array.isArray(strings) ? strings.filter((value) => Number.isInteger(value) && value >= 1 && value <= 6) : [];
+  return {
+    ...rest,
+    ...(validStrings.length ? { strings: validStrings } : {}),
+    ...(finite(strumMs) ? { strumMs: Math.max(0, Math.min(200, strumMs)) } : {}),
+    ...(finite(humanise) ? { humanise: Math.max(0, Math.min(1, humanise)) } : {}),
+    ...(finite(capo) && capo > 0 ? { capo: Math.min(9, Math.round(capo)) } : {}),
+  };
+}
+
+function normalizeChordRow(value: unknown): ChordRow | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const row = value as Partial<ChordRow>;
+  if (typeof row.chords !== 'string' || typeof row.pattern !== 'string') return undefined;
+  const number = (input: unknown, fallback: number, low: number, high: number) =>
+    typeof input === 'number' && Number.isFinite(input) ? Math.max(low, Math.min(high, input)) : fallback;
+  return {
+    chords: row.chords.slice(0, 200),
+    pattern: row.pattern,
+    strumMs: number(row.strumMs, 30, 0, 200),
+    humanise: number(row.humanise, 0.6, 0, 1),
+    capo: Math.round(number(row.capo, 0, 0, 9)),
+  };
+}
+
 function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((raw): RecognitionTake[] => {
@@ -196,8 +224,9 @@ function normalizeProject(raw: string): Project | undefined {
             && Number.isFinite(event.root) && Number.isFinite(event.durationSteps)
             && CHORD_QUALITIES.some((item) => item.id === event.quality)
             && CHORD_ARTICULATIONS.some((item) => item.id === event.articulation)),
-        ).map((event) => ({ ...event }))
+        ).map(normalizeChordEvent)
         : [],
+      ...(normalizeChordRow(channel.chordRow) ? { chordRow: normalizeChordRow(channel.chordRow) } : { chordRow: undefined }),
     });
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({

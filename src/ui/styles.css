@@ -477,3 +477,15 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .progression-text { min-width: 0; display: flex; flex-wrap: wrap; column-gap: 10px; align-items: baseline; }
 .progression-name { font-weight: 600; }
 .progression-chords { min-width: 0; font-size: .95rem; }
+
+/* Beat › piano roll › Chord row (guitar channels) */
+.chord-row-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; align-items: end; }
+.chord-row-editor > strong, .chord-row-editor .chord-row-chords, .chord-row-actions, .chord-row-invalid, .chord-row-shapes { grid-column: 1 / -1; }
+.chord-row-editor label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.chord-row-editor input, .chord-row-editor select { height: 40px; width: 100%; box-sizing: border-box; }
+.chord-row-actions { display: flex; gap: 8px; }
+.chord-row-actions button { min-height: 40px; }
+.chord-row-actions #chord-row-apply { flex: 1; }
+.chord-row-invalid { margin: 0; color: var(--danger); }
+.chord-row-shapes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-variant-numeric: tabular-nums; }
+@media (min-width: 700px) { .chord-row-editor { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

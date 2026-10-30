@@ -21,6 +21,7 @@ import { stepDuration } from '../audio/scheduler';
 import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { hearTakeAs } from '../model/hearAs';
+import { refreshChordRows } from '../model/chordRow';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -573,12 +574,12 @@ export function App() {
               <input id="bpm-input" type="number" min={40} max={200} value={project.bpm} onChange={(e) => setProject(setBpm(project, Number(e.target.value)))} />
             </label>
             <label>Note length
-              <select id="note-length" value={project.noteLength} onChange={(e) => setProject(setNoteLength(project, Number(e.target.value) as NoteLength))}>
+              <select id="note-length" value={project.noteLength} onChange={(e) => setProject(refreshChordRows(setNoteLength(project, Number(e.target.value) as NoteLength)))}>
                 {NOTE_LENGTHS.map((n) => <option key={n} value={n}>1/{n}</option>)}
               </select>
             </label>
             <label>Loop
-              <select id="loop-bars" value={project.loopBars} onChange={(e) => setProject(setLoopBars(project, Number(e.target.value) as LoopBars))}>
+              <select id="loop-bars" value={project.loopBars} onChange={(e) => setProject(refreshChordRows(setLoopBars(project, Number(e.target.value) as LoopBars)))}>
                 {LOOP_BARS.map((n) => <option key={n} value={n}>{n} bar{n > 1 ? 's' : ''}</option>)}
               </select>
             </label>
