@@ -20,3 +20,4 @@
 - Kit channels (one channel, the whole kit as lanes): the strip shows a kit select in the sound picker's place and no Piano roll button; lanes show Kick, Snare, Closed hat (and any lane with hits), each with its name above a normal 40px beat grid; "All lanes · N" reveals the rest.
 - Capture sheet (idle): Part and Into side by side, Metronome below, a Headphones cue when the project already makes sound, the big Record button, then Chords and Harmony side by side.
 - Capture › Tap rhythm: one large pad (≥160px) while tapping, then a step strip, Use for / Into side by side, and Again / Use. Draw melody: a full-width 220px pad, Original/Cleaned/Tight in thirds, the note stepper row (← n/N → Lower Higher), then clear, play and a wide Use.
+- Song › Song builder: Template + Sections in the control grid; one 40px row per section (name, pattern select only when there are several patterns, −, size, +, remove), then add / play / wide Use.

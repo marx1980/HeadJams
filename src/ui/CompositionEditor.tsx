@@ -21,6 +21,7 @@ import { detectKey, suggestProgressions, type Progression } from '../library/pro
 import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
 import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type HarmonyPreset, type PhraseVariation } from '../library/phrases';
 import { withNextPhrase } from '../model/phraseProject';
+import { buildSong, DENSITIES, SONG_TEMPLATES, templateSections, type SongSection, type SongTemplate } from '../model/songBuilder';
 import { createChannel } from '../model/project';
 
 const HARMONY_SOUNDS: ReadonlyArray<{ id: string; label: string }> = [
@@ -282,6 +283,8 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   const [harmonyPreset, setHarmonyPreset] = useState<HarmonyPreset>('subtle');
   const [harmonySound, setHarmonySound] = useState(HARMONY_SOUNDS[0].id);
   const [phrases, setPhrases] = useState<{ id: PhraseVariation; label: string; notes: NoteEvent[] }[] | null>(null);
+  const [songTemplate, setSongTemplate] = useState<SongTemplate>('full');
+  const [sections, setSections] = useState<SongSection[] | null>(null);
   useEffect(() => { setSuggestions(null); setBassPreview(null); setArrangementPreview(null); setProgressions(null); setPhrases(null); }, [project]);
   useEffect(() => { if (!playing) setAuditionId(''); }, [playing]);
   const bars = Math.max(1, Math.ceil(arrangementLength(project) / project.noteLength));
@@ -429,6 +432,17 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
     if (!sourceChannel || !arrangementPreview?.length) return;
     onChange(replaceGeneratedArrangementChannel(project, channelId, sourceChannel.id, arrangementKind, arrangementPreview));
   };
+  const patternOptions = project.patterns.length
+    ? project.patterns.map((pattern) => ({ id: pattern.id, name: pattern.name }))
+    : [{ id: 'current', name: 'Loop' }];
+  const updateSection = (index: number, patch: Partial<SongSection>) =>
+    setSections((current) => current?.map((section, i) => i === index ? { ...section, ...patch } : section) ?? null);
+  const shiftDensity = (index: number, by: number) => {
+    const order = DENSITIES.map((density) => density.id);
+    const section = sections?.[index];
+    if (!section) return;
+    updateSection(index, { density: order[Math.max(0, Math.min(order.length - 1, order.indexOf(section.density) + by))] });
+  };
   const appendArrangementClip = () => {
     const patternId = project.currentPatternId ?? project.patterns[0]?.id;
     if (!patternId) return;
@@ -474,7 +488,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
               return (
                 <div className="timeline-clip" key={clip.id}
                   style={{ gridColumn: `${Math.floor(clip.startStep / project.noteLength) + 1} / span ${Math.max(1, Math.ceil(clip.lengthSteps / project.noteLength))}` }}>
-                  {pattern?.name ?? 'Missing pattern'}
+                  {clip.section ? `${clip.section} · ` : ''}{pattern?.name ?? 'Missing pattern'}
                   <button aria-label={`Remove ${pattern?.name ?? 'pattern'} clip`} onClick={() => onChange(removeArrangementClip(project, clip.id))}><Icon name="close" className="inline-icon" /></button>
                 </div>
               );
@@ -482,6 +496,55 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
           </div>
         ) : null}
       </div>
+      <section className="song-builder bass-assistant" aria-label="Song builder">
+        <h3>Song builder</h3>
+        <div className="arrangement-assistant-controls">
+          <label>Template
+            <select id="song-template" value={songTemplate} onChange={(event) => { setSongTemplate(event.target.value as SongTemplate); setSections(null); }}>
+              {SONG_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.label}</option>)}
+            </select>
+          </label>
+          <button id="song-sections" onClick={() => setSections(templateSections(project, songTemplate))}>
+            <Icon name="sparkle" className="inline-icon" /> Sections
+          </button>
+        </div>
+        {sections && (
+          <>
+            <ol className="song-sections" aria-label="Sections">
+              {sections.map((section, index) => (
+                <li key={index} className={`song-section${patternOptions.length > 1 ? ' with-pattern' : ''}`}>
+                  <span className="song-section-name">{section.name}</span>
+                  {patternOptions.length > 1 ? (
+                    <select aria-label={`Pattern for ${section.name} ${index + 1}`} value={section.patternId}
+                      onChange={(event) => updateSection(index, { patternId: event.target.value })}>
+                      {patternOptions.map((pattern) => <option key={pattern.id} value={pattern.id}>{pattern.name}</option>)}
+                    </select>
+                  ) : null}
+                  <button className="secondary" aria-label={`Smaller ${section.name} ${index + 1}`} disabled={section.density === 'sparse'}
+                    onClick={() => shiftDensity(index, -1)}>−</button>
+                  <span className="song-section-density">{DENSITIES.find((density) => density.id === section.density)!.label}</span>
+                  <button className="secondary" aria-label={`Bigger ${section.name} ${index + 1}`} disabled={section.density === 'full'}
+                    onClick={() => shiftDensity(index, 1)}>+</button>
+                  <button className="secondary" aria-label={`Remove ${section.name} ${index + 1}`} disabled={sections.length <= 1}
+                    onClick={() => setSections(sections.filter((_, i) => i !== index))}><Icon name="close" className="inline-icon" /></button>
+                </li>
+              ))}
+            </ol>
+            <div className="song-builder-actions">
+              <button className="secondary" aria-label="Add section" onClick={() => setSections([...sections, { ...sections.at(-1)! }])}>
+                <Icon name="add" className="inline-icon" />
+              </button>
+              <button id="song-play" className="secondary" aria-label={auditionId === 'song' && playing ? 'Stop song' : 'Play song'}
+                onClick={() => {
+                  if (auditionId === 'song' && playing) { onAudition(undefined); setAuditionId(''); return; }
+                  setAuditionId('song');
+                  onAudition(buildSong(project, sections));
+                }}><Icon name={auditionId === 'song' && playing ? 'stop' : 'play'} className="inline-icon" /></button>
+              <button id="song-use" onClick={() => { if (auditionId) onAudition(undefined); onChange(buildSong(project, sections)); setSections(null); }}>Use</button>
+            </div>
+          </>
+        )}
+      </section>
       <section className="arrangement-assistant" aria-label="Arrangement assistance">
         <h3>Arrangement assistance</h3>
         <div className="arrangement-assistant-controls">

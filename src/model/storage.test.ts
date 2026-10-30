@@ -54,6 +54,20 @@ describe('project storage migration', () => {
     expect(guitar.chordEvents![0]).toMatchObject({ strings: [1], strumMs: 30, humanise: 1, capo: 3 });
   });
 
+  it('keeps song sections and per-clip muted tracks', () => {
+    const project = createProject();
+    project.patterns = [{ id: 'pattern-1', name: 'A', channels: project.channels, lengthSteps: 16 }];
+    project.arrangement = [
+      { id: 'clip-1', patternId: 'pattern-1', startStep: 0, lengthSteps: 16, section: 'Intro', mutedChannelIds: ['ch1', 3 as never] },
+      { id: 'clip-2', patternId: 'pattern-1', startStep: 16, lengthSteps: 16 },
+    ];
+    saveProject(project);
+    expect(loadProject().arrangement).toEqual([
+      { id: 'clip-1', patternId: 'pattern-1', startStep: 0, lengthSteps: 16, section: 'Intro', mutedChannelIds: ['ch1'] },
+      { id: 'clip-2', patternId: 'pattern-1', startStep: 16, lengthSteps: 16 },
+    ]);
+  });
+
   it('loads legacy v1 projects without changing sound and sample references', () => {
     const project = createProject();
     project.channels[0].soundId = 'legacy-custom-id';

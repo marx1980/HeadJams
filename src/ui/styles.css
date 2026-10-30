@@ -525,3 +525,14 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .draw-note-label { text-align: center; font-variant-numeric: tabular-nums; }
 .draw-actions { display: grid; grid-template-columns: 44px 44px 1fr; gap: 6px; }
 .draw-pad button, .tap-result button { min-height: 40px; }
+
+/* Song › Song builder */
+.song-sections { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.song-section { display: grid; grid-template-columns: minmax(56px, 1fr) 40px minmax(64px, auto) 40px 40px; gap: 6px; align-items: center; }
+.song-section.with-pattern { grid-template-columns: minmax(56px, 1fr) minmax(0, 1.2fr) 40px minmax(58px, auto) 40px 40px; }
+.song-section select { height: 40px; min-width: 0; width: 100%; box-sizing: border-box; }
+.song-section button { min-height: 40px; padding: 0; }
+.song-section-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-section-density, .song-section-pattern { text-align: center; font-size: .9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-builder-actions { display: grid; grid-template-columns: 44px 44px 1fr; gap: 6px; margin-top: 8px; }
+.song-builder-actions button { min-height: 40px; }

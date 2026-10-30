@@ -156,6 +156,10 @@ export interface ArrangementClip {
   patternId: string;
   startStep: number;
   lengthSteps: number;
+  /** Song section name (Intro, Verse, Chorus…), from the song builder. */
+  section?: string;
+  /** Channels left out of this clip (song builder density); they stay in the pattern. */
+  mutedChannelIds?: string[];
 }
 
 export interface ProjectEffects {
@@ -262,6 +266,11 @@ function copyLane(lane: KitLane): KitLane {
       stepEventMetadata: Object.fromEntries(Object.entries(lane.stepEventMetadata).map(([step, metadata]) => [step, { ...metadata }])),
     } : {}),
   };
+}
+
+/** Patterns with the current pattern's channels up to date. */
+export function syncedPatterns(p: Project): Pattern[] {
+  return syncCurrentPattern(p, p.channels).patterns;
 }
 
 function syncCurrentPattern(p: Project, channels: Channel[], lengthSteps = totalSteps(p)): Project {
@@ -630,7 +639,9 @@ export function channelsForPlaybackStep(p: Project, step: number): Array<{ chann
     const pattern = p.patterns.find((item) => item.id === clip.patternId);
     const offset = step - clip.startStep;
     if (!pattern || offset < 0 || offset >= clip.lengthSteps || pattern.lengthSteps <= 0) return [];
-    const channels = pattern.id === p.currentPatternId ? p.channels : pattern.channels;
+    const all = pattern.id === p.currentPatternId ? p.channels : pattern.channels;
+    const muted = clip.mutedChannelIds;
+    const channels = muted?.length ? all.filter((channel) => !muted.includes(channel.id)) : all;
     return [{ channels, localStep: offset % pattern.lengthSteps }];
   });
 }
