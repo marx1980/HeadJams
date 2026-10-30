@@ -184,6 +184,18 @@ export function App() {
   const sounds = useMemo(() => allSounds(project), [project]);
   const [instrumentVersion, setInstrumentVersion] = useState(0);
   useEffect(() => instrumentStore.subscribe(() => setInstrumentVersion((version) => version + 1)), []);
+  // Say once when an instrument the project uses can't load (missing or corrupt files); it plays its synth sound instead.
+  const reportedInstrumentsRef = useRef(new Set<string>());
+  useEffect(() => {
+    for (const channel of project.channels) {
+      const sound = findSound(project, channel.soundId);
+      const id = sound?.instrumentId;
+      if (!sound || !id || instrumentStore.status(id)?.state !== 'error' || reportedInstrumentsRef.current.has(id)) continue;
+      reportedInstrumentsRef.current.add(id);
+      flash(`${sound.name} unavailable · playing a synth sound`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instrumentVersion, project.channels]);
   // Personal instruments are built from saved samples and registered with the sampler (expansion.md E6).
   useEffect(() => {
     if (!samplesLoaded) return;
@@ -213,7 +225,12 @@ export function App() {
 
   const togglePlay = async () => {
     if (engine.playing) { engine.stop(); auditionRef.current = undefined; }
-    else { auditionRef.current = undefined; await engine.start(); emit('play'); }
+    else {
+      auditionRef.current = undefined;
+      await engine.start();
+      emit('play');
+      if (engine.audioState !== 'running' && !await engine.resumeAudio()) flash('Audio blocked by the browser · tap Play again');
+    }
   };
   const audition = async (preview?: Project) => {
     engine.stop();

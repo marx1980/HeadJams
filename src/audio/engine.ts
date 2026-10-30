@@ -173,12 +173,30 @@ export class Engine {
     return b;
   }
 
+  /** 'running' when sound can be heard; browsers (iOS especially) suspend or interrupt audio until a tap. */
+  get audioState(): AudioContextState | 'interrupted' | 'none' {
+    return this.ctx ? this.ctx.state as AudioContextState | 'interrupted' : 'none';
+  }
+
+  /** Try to (re)start audio, e.g. after the app comes back from the background. */
+  async resumeAudio(): Promise<boolean> {
+    if (!this.ctx) return false;
+    if (this.ctx.state !== 'running') await this.ctx.resume().catch(() => undefined);
+    return this.ctx.state === 'running';
+  }
+
   private async ensureCtx(): Promise<AudioContext> {
     if (!this.ctx) {
       this.ctx = new AudioContext();
       this.setupEffects(this.ctx);
+      // iOS suspends ("interrupted") audio in the background; resume when the app is visible again.
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible' && this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
+        });
+      }
     }
-    if (this.ctx.state === 'suspended') await this.ctx.resume();
+    if (this.ctx.state !== 'running') await this.ctx.resume().catch(() => undefined);
     this.updateEffects();
     return this.ctx;
   }
