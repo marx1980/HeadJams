@@ -1,3 +1,4 @@
+import type { HearAsId } from './hearAs';
 import {
   createProject, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
   type Channel, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
@@ -123,6 +124,8 @@ function normalizeApplied(value: unknown): AppliedSnapshot | undefined {
   return applied.notes || applied.groups ? applied : undefined;
 }
 
+const HEAR_AS_IDS: HearAsId[] = ['piano', 'guitar', 'bass', 'strings', 'synth', 'acoustic', 'classic'];
+
 function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((raw): RecognitionTake[] => {
@@ -168,6 +171,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       ...(typeof take.targetChannelId === 'string' ? { targetChannelId: take.targetChannelId } : {}),
       ...(['original', 'cleaned', 'tight'].includes(take.performance ?? '') ? { performance: take.performance } : {}),
       ...(typeof take.label === 'string' && take.label.trim() ? { label: take.label.trim().slice(0, 60) } : {}),
+      ...(HEAR_AS_IDS.includes(take.hearAs as HearAsId) ? { hearAs: take.hearAs } : {}),
     }];
   });
 }

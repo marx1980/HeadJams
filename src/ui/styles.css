@@ -465,4 +465,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .idea-item { display: flex; align-items: center; gap: 6px; }
 .idea-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .idea-item button { min-height: 40px; min-width: 44px; }
+.idea-item .idea-hear-as { flex: 0 1 132px; min-width: 0; min-height: 40px; }
+.idea-name { min-width: 72px; }
+@media (max-width: 380px) { .idea-item .idea-hear-as { flex-basis: 104px; } .idea-item button { min-width: 40px; } }
 @media (max-width: 380px) { button.play { min-width: 84px; padding: 4px 8px; } }

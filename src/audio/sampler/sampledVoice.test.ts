@@ -93,8 +93,10 @@ describe('sampled voices', () => {
     expect(peak(0, 2000)).toBeGreaterThan(0.1);
     expect(peak(4 * step, 4 * step + 2000)).toBeGreaterThan(0.1);
     expect(peak(3 * step, 4 * step - 10)).toBeLessThan(0.01);
-    const silent = renderProject(project, 44100);
-    expect(silent.left.every((value) => value === 0)).toBe(true);
+    // Without the instrument (it failed to load), the sound falls back to its synth parameters.
+    const fallback = renderProject(project, 44100);
+    expect(fallback.left.some((value) => value !== 0)).toBe(true);
+    expect(fallback.left).not.toEqual(a.left);
   });
 
   it('uses the same round-robin sequence for the same seed', async () => {

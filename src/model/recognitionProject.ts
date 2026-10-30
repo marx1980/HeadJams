@@ -8,18 +8,10 @@ import type {
 import { noteEventToSteps, percussionEventToStep, quantiseRecognitionEvents } from '../library/quantisation';
 import { SCALES, snapPitchToScale } from './music';
 import { alignEvents } from '../audio/alignment';
+import { CLASSIC_SOUND_FOR_CLASS, defaultHearAs, soundForClass, trackSoundFor } from './hearAs';
 
-export const SOUND_FOR_CLASS: Record<PercussionClass, string> = {
-  kick: 'kick-1',
-  snare: 'snare-1',
-  'closed-hat': 'hat-1',
-  'open-hat': 'hat-3',
-  clap: 'clap-1',
-  tom: 'tom-1',
-  cymbal: 'cymbal-1',
-  bass: 'perc-4',
-  unknown: 'perc-6',
-};
+/** Classic sound per beatbox class; also the stable key for a class's track (see eventsByClass). */
+export const SOUND_FOR_CLASS = CLASSIC_SOUND_FOR_CLASS;
 
 const NAME_FOR_CLASS: Record<PercussionClass, string> = {
   kick: 'Recognized Kick',
@@ -74,6 +66,7 @@ export function createRecognitionTake(
     quantisedEvents,
     channelIds: [],
     ...(alignmentSeconds ? { alignmentSeconds } : {}),
+    hearAs: defaultHearAs(result.mode),
   };
 }
 
@@ -255,7 +248,7 @@ export function applyRecognitionTake(
       }
       if (!known) {
         if (!group) continue;
-        next = addChannel(next, NAME_FOR_CLASS[group.type], group.events[0]?.assignedSoundId ?? SOUND_FOR_CLASS[group.type]);
+        next = addChannel(next, NAME_FOR_CLASS[group.type], group.events[0]?.assignedSoundId ?? soundForClass(take, group.type));
         const channel = next.channels.at(-1)!;
         next = updateChannel(next, channel.id, { steps: generated, stepEventMetadata: metadata });
         applied.groups[key] = { channelId: channel.id, steps: generated, events };
@@ -318,7 +311,7 @@ export function applyRecognitionTake(
       applied.notes = snapshot;
       createdChannelIds.push(channelId);
     } else if (generated.length && !(previous && previous.channelIds.length)) {
-      next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', take.mode === 'bass' ? 'bass-6' : 'keys-1');
+      next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', trackSoundFor(take));
       const channel = next.channels.at(-1)!;
       next = updateChannel(next, channel.id, { notes: generated });
       applied.notes = Object.fromEntries(generated.map((note) => [note.id, noteKey(note)]));
