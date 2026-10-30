@@ -125,7 +125,7 @@ function normalizeApplied(value: unknown): AppliedSnapshot | undefined {
   return applied.notes || applied.groups ? applied : undefined;
 }
 
-const HEAR_AS_IDS: HearAsId[] = ['piano', 'guitar', 'bass', 'strings', 'synth', 'acoustic', 'classic'];
+const HEAR_AS_IDS: HearAsId[] = ['piano', 'epiano', 'guitar', 'bass', 'strings', 'brass', 'synth', 'acoustic', 'classic'];
 
 function normalizeChordEvent(event: ChordEvent): ChordEvent {
   const { strings, strumMs, humanise, capo, ...rest } = event;

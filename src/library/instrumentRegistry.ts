@@ -217,6 +217,8 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   sampledInstrument('grand-piano', 'Grand Piano', 'Keys', 'Piano', 'Versilian Community Sample Library (VCSL)'),
   sampledInstrument('electric-bass', 'Electric Bass', 'Bass', 'Electric', 'Black And Blue Basses by Karoryfer Samples'),
   sampledInstrument('strings', 'Strings', 'Strings', 'Ensemble', 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)'),
+  sampledInstrument('electric-piano', 'Electric Piano', 'Keys', 'Electric piano', 'Versilian Community Sample Library (VCSL)'),
+  sampledInstrument('brass', 'Brass', 'Brass & Winds', 'Brass', 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)'),
 ];
 
 export function createInstrumentRegistry(customSounds: readonly SoundDef[]): InstrumentRegistryEntry[] {

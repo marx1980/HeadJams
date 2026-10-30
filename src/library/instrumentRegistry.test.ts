@@ -96,8 +96,10 @@ describe('instrument registry', () => {
   it('registers sampled piano, bass and strings in their groups', () => {
     const registry = createInstrumentRegistry([]);
     const pick = (id: string) => registry.find((entry) => entry.id === id)!;
-    expect([pick('grand-piano'), pick('electric-bass'), pick('strings')].map((entry) => [entry.group, entry.subgroup, entry.sound.instrumentId]))
-      .toEqual([['Keys', 'Piano', 'grand-piano'], ['Bass', 'Electric', 'electric-bass'], ['Strings', 'Ensemble', 'strings']]);
+    expect([pick('grand-piano'), pick('electric-bass'), pick('strings'), pick('electric-piano'), pick('brass')]
+      .map((entry) => [entry.group, entry.subgroup, entry.sound.instrumentId]))
+      .toEqual([['Keys', 'Piano', 'grand-piano'], ['Bass', 'Electric', 'electric-bass'], ['Strings', 'Ensemble', 'strings'],
+        ['Keys', 'Electric piano', 'electric-piano'], ['Brass & Winds', 'Brass', 'brass']]);
   });
 
   it('includes ten additional Bass, Synths, Drums, and Percussion sounds', () => {

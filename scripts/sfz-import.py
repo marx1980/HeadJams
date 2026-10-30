@@ -126,6 +126,7 @@ def main():
     ap.add_argument('--exclude', help='skip samples whose path matches this regex')
     ap.add_argument('--loop', help='loop START-END seconds (with a baked crossfade); the file ends at END')
     ap.add_argument('--crossfade-ms', type=float, default=250)
+    ap.add_argument('--level-zones', action='store_true', help='even out loudness across key zones (keeps layer balance)')
     ap.add_argument('--out', type=Path)
     args = ap.parse_args()
 
@@ -204,6 +205,22 @@ def main():
         elif len(data) > fade and len(data) >= int(args.seconds * args.rate) - 1:
             data[-fade:] *= np.linspace(1, 0, fade, dtype=np.float32) ** 2
         audio[region['sample']] = data * 10 ** (region['volume'] / 20)
+    if args.level_zones:
+        # Even out loudness across the range: each zone's loudest layer is brought to the median zone level
+        # (at most ±12 dB); the layers within a zone keep their balance.
+        def rms(data):
+            head = data[: int(1.5 * args.rate)]
+            return float(np.sqrt(np.mean(head ** 2))) or 1e-9
+        loudest = {}
+        for region, _low, _high, layer, _rr in picked:
+            key = region['root']
+            level = rms(audio[region['sample']])
+            if layer >= loudest.get(key, (0, 0))[0]:
+                loudest[key] = (layer, level)
+        target = float(np.median([level for _, level in loudest.values()]))
+        zone_gain = {key: float(np.clip(target / level, 10 ** (-12 / 20), 10 ** (12 / 20))) for key, (_, level) in loudest.items()}
+        for region, *_ in picked:
+            audio[region['sample']] = audio[region['sample']] * zone_gain[region['root']]
     peak = max(float(np.max(np.abs(a))) for a in audio.values()) or 1.0
     gain = 10 ** (-1 / 20) / peak
 
@@ -240,6 +257,7 @@ def main():
                            + f"; mono, {args.rate} Hz, "
                            + (f"looped {loop[0]:g}-{loop[1]:g} s with a {args.crossfade_ms:g} ms crossfade" if loop else
                               f"cut to {args.seconds:g} s with a {args.fade_ms:g} ms fade")
+                           + ("; zone levels evened out (±12 dB max)" if args.level_zones else "")
                            + "; one gain for all files (peak -1 dBFS); 16-bit WAV."),
         },
         'regions': manifest_regions,
