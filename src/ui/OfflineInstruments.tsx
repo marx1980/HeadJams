@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useInstallPrompt } from '../platform/install';
 import { BUNDLED_INSTRUMENT_IDS, browserOfflineDeps, makeInstrumentsOffline, offlineInstrumentCount } from '../platform/offlineInstruments';
 
 /** Settings › Offline: download every bundled instrument so the app sounds the same without a network. */
@@ -7,14 +8,20 @@ export function OfflineInstruments({ onMessage }: { onMessage: (text: string) =>
   const supported = typeof caches !== 'undefined';
   const [ready, setReady] = useState<number>();
   const [progress, setProgress] = useState<{ done: number; total: number }>();
+  const installer = useInstallPrompt();
   useEffect(() => {
     if (!supported) return;
     let live = true;
     void offlineInstrumentCount(browserOfflineDeps()).then((count) => { if (live) setReady(count); }, () => undefined);
     return () => { live = false; };
   }, [supported]);
-  if (!supported) return null;
+  const install = installer.available && (
+    <button id="install-app" className="secondary" onClick={() => void installer.install().then((ok) => { if (ok) onMessage('Installed ✓'); })}>Install app</button>
+  );
+  if (!supported) return install || null;
   return (
+    <>
+    {install}
     <div className="offline-instruments">
       <span id="offline-count">Instruments {ready ?? '…'}/{total}</span>
       <button id="offline-download" className="secondary" disabled={Boolean(progress) || ready === total}
@@ -26,5 +33,6 @@ export function OfflineInstruments({ onMessage }: { onMessage: (text: string) =>
             .finally(() => setProgress(undefined));
         }}>{progress ? `${progress.done}/${progress.total || '…'}` : ready === total ? 'Downloaded' : 'Download all'}</button>
     </div>
+    </>
   );
 }

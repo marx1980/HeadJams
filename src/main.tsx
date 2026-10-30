@@ -1,5 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App';
+import { captureInstallPrompt } from './platform/install';
+
+captureInstallPrompt();
 
 createRoot(document.getElementById('root')!).render(<App />);
 
