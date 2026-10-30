@@ -537,6 +537,11 @@ export function App() {
                   onChange={(e) => setProject(updateChannel(project, c.id, { pan: Number(e.target.value) }))} />
                 <button className="secondary" aria-label={`Duplicate ${c.name}`} disabled={project.channels.length >= MAX_CHANNELS}
                   onClick={() => setProject(duplicateChannel(project, c.id))}><Icon name="duplicate" className="inline-icon" /></button>
+                {c.original && (
+                  <button className={c.playOriginal ? 'on' : 'secondary'} aria-pressed={Boolean(c.playOriginal)}
+                    aria-label={`Play original recording with ${c.name}`} title="Original"
+                    onClick={() => setProject(updateChannel(project, c.id, { playOriginal: !c.playOriginal }))}><Icon name="record" className="inline-icon" /></button>
+                )}
                 <button className="secondary" aria-pressed={pianoChannels.has(c.id)} aria-label={`${pianoChannels.has(c.id) ? 'Show grid' : 'Show piano roll'} for ${c.name}`}
                   onClick={() => togglePiano(c.id)}><Icon name={pianoChannels.has(c.id) ? 'grid' : 'piano'} className="inline-icon" /> {pianoChannels.has(c.id) ? 'Grid' : 'Piano roll'}</button>
                 <button className="secondary" aria-label={`Remove ${c.name}`} onClick={() => {

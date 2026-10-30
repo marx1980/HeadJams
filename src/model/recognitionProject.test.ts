@@ -34,9 +34,11 @@ describe('recognition project integration', () => {
         id: 'note-a', step: 1, pitch: 69, confidence: 0.6, sourceTakeId: 'take-a',
       }],
     });
-    const original = updated?.channels.find((channel) => channel.id === updated.recognitionTakes[0].originalChannelId);
-    expect(original).toMatchObject({ name: 'Melody Original', mute: true });
-    expect(original?.steps[0]).toBe(true);
+    // The recording is attached to the track (play-what-I-sang toggle) instead of a separate muted channel.
+    expect(updated?.recognitionTakes[0].originalChannelId).toBeUndefined();
+    const track = updated?.channels.find((channel) => channel.id === updated.recognitionTakes[0].channelIds[0]);
+    expect(track).toMatchObject({ original: { soundId: 'recognition-original-take-a', offsetSec: 0 }, playOriginal: false });
+    expect(updated?.channels).toHaveLength(2);
     expect(updated?.customSounds.at(-1)).toMatchObject({
       sampleId: 'sample-a', sampleVersion: 'original',
     });

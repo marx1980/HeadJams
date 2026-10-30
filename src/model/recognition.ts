@@ -64,6 +64,8 @@ export interface RecognitionTake {
   quantisedEvents: RecognitionEvent[];
   channelIds: string[];
   originalChannelId?: string;
+  /** Original / Cleaned / Tight preset last applied (undefined = custom settings). */
+  performance?: 'original' | 'cleaned' | 'tight';
   /** Where the idea came from. */
   source?: 'mic' | 'import';
   /** Short name shown in the ideas list. */

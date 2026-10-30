@@ -104,12 +104,25 @@ function makeEvents(frames: Array<PitchFrame | undefined>, frameDuration: number
     group = [];
   };
 
+  // A re-articulated note (same pitch, a breath or new syllable) shows as a level dip and a rise.
+  let groupPeak = 0;
+  let dipped = false;
   for (const frame of frames) {
     if (!frame) {
       flush();
+      groupPeak = 0;
+      dipped = false;
       continue;
     }
-    if (group.length && Math.abs(frame.pitch - median(group.map((item) => item.pitch))) > 0.8) flush();
+    const pitchChanged = group.length && Math.abs(frame.pitch - median(group.map((item) => item.pitch))) > 0.8;
+    const rearticulated = group.length && dipped && frame.rms > groupPeak * 0.6;
+    if (pitchChanged || rearticulated) {
+      flush();
+      groupPeak = 0;
+      dipped = false;
+    }
+    if (group.length && frame.rms < groupPeak * 0.35) dipped = true;
+    groupPeak = Math.max(groupPeak, frame.rms);
     group.push(frame);
   }
   flush();

@@ -222,8 +222,7 @@ export function applyRecognitionTake(
     }
     const keys = [...new Set([...Object.keys(previousGroups), ...groups.keys()])];
     const newChannels = keys.filter((key) => groups.has(key) && !previousGroups[key]).length;
-    const needsOriginal = take.sourceSampleId && !exists(previous?.originalChannelId) ? 1 : 0;
-    if (next.channels.length + newChannels + needsOriginal > MAX_CHANNELS) return undefined;
+    if (next.channels.length + newChannels > MAX_CHANNELS) return undefined;
     applied.groups = {};
     // Events keep their identity across corrections and reclassification: a hit the user deleted stays deleted.
     const deletedEvents = new Set<string>();
@@ -287,8 +286,7 @@ export function applyRecognitionTake(
     const generated = generatedNotes(take, bpm, next.noteLength);
     const channelId = previous?.channelIds.find((id) => exists(id));
     const needsChannel = !channelId && generated.length && !(previous && previous.channelIds.length) ? 1 : 0;
-    const needsOriginal = take.sourceSampleId && !exists(previous?.originalChannelId) ? 1 : 0;
-    if (next.channels.length + needsChannel + needsOriginal > MAX_CHANNELS) return undefined;
+    if (next.channels.length + needsChannel > MAX_CHANNELS) return undefined;
     if (channelId) {
       const channel = next.channels.find((candidate) => candidate.id === channelId)!;
       const ownNotes = channel.notes.filter((note) => note.sourceTakeId === take.id);
@@ -330,33 +328,33 @@ export function applyRecognitionTake(
     }
   }
 
+  // Legacy takes keep their separate muted "Original" channel; new takes attach the recording to their track.
   let originalChannelId = exists(previous?.originalChannelId) ? previous!.originalChannelId : undefined;
-  if (take.sourceSampleId && !originalChannelId && !(previous?.originalChannelId)) {
+  if (previous?.originalChannelId && !originalChannelId) originalChannelId = previous.originalChannelId;
+  if (take.sourceSampleId && !previous?.originalChannelId) {
     const soundId = `recognition-original-${take.id}`;
-    const sound: SoundDef = {
-      id: soundId,
-      name: `${take.mode === 'beat' ? 'Percussion' : take.mode === 'bass' ? 'Bass' : 'Melody'} Original`,
-      category: 'Samples',
-      params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.1, cutoff: 12000 },
-      sampleId: take.sourceSampleId,
-      sampleVersion: 'original',
-      assetSource: 'user-sample',
-      assetAttribution: 'User-provided audio',
-      assetLicense: 'Not verified by MusicMaker',
-    };
     if (!next.customSounds.some((candidate) => candidate.id === soundId)) {
+      const sound: SoundDef = {
+        id: soundId,
+        name: `${take.label ?? (take.mode === 'beat' ? 'Percussion' : take.mode === 'bass' ? 'Bass' : 'Melody')} Original`,
+        category: 'Samples',
+        params: { wave: 'sine', freq: 440, freqEnd: 440, decay: 0.1, cutoff: 12000 },
+        sampleId: take.sourceSampleId,
+        sampleVersion: 'original',
+        assetSource: 'user-sample',
+        assetAttribution: 'User-provided audio',
+        assetLicense: 'Not verified by MusicMaker',
+      };
       next = { ...next, customSounds: [...next.customSounds, sound] };
     }
-    next = addChannel(next, sound.name, soundId);
-    const originalChannel = next.channels.at(-1);
-    if (originalChannel) {
-      originalChannelId = originalChannel.id;
-      const steps = new Array(totalSteps(next)).fill(false);
-      steps[0] = true;
-      next = updateChannel(next, originalChannel.id, { steps, mute: true });
+    const trackId = createdChannelIds.find((id) => exists(id));
+    const track = next.channels.find((channel) => channel.id === trackId);
+    if (track) {
+      next = updateChannel(next, track.id, {
+        original: { soundId, offsetSec: Math.max(0, take.alignmentSeconds ?? 0) },
+        playOriginal: track.playOriginal ?? false,
+      });
     }
-  } else if (previous?.originalChannelId && !originalChannelId) {
-    originalChannelId = previous.originalChannelId; // the user deleted the original track: keep it deleted
   }
 
   const savedTake: RecognitionTake = {

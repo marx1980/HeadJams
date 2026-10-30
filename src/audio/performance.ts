@@ -59,6 +59,16 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
           durationSec: durationOf(note.durationSteps), velocity: note.velocity, pitchBend: note.pitchBend,
         });
       }
+      if (c.playOriginal && c.original) {
+        const startStep = Math.max(0, Math.floor(c.original.offsetSec / durationOf(1) + 1e-9));
+        const originalSound = startStep === source.localStep ? findSound(p, c.original.soundId) : undefined;
+        if (originalSound) {
+          voices.push({
+            sound: originalSound, channelId: c.id, kind: 'hit', volume: c.volume, pan: c.pan,
+            offsetSec: Math.max(0, c.original.offsetSec - durationOf(startStep)),
+          });
+        }
+      }
       if (sound.playbackMode !== 'chord') continue;
       for (const event of c.chordEvents ?? []) {
         if (event.step !== source.localStep) continue;
