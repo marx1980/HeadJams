@@ -92,6 +92,16 @@ export const PROGRESSION_STYLES: ReadonlyArray<{ id: ProgressionStyle; label: st
   { id: 'colour', label: 'Colour' },
 ];
 
+/** Mood (plan.md milestone C): steers the chord choice without naming chords. */
+export type Mood = 'any' | 'bright' | 'dreamy' | 'dark' | 'epic';
+export const MOODS: ReadonlyArray<{ id: Mood; label: string }> = [
+  { id: 'any', label: 'Any' },
+  { id: 'bright', label: 'Bright' },
+  { id: 'dreamy', label: 'Dreamy' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'epic', label: 'Epic' },
+];
+
 interface Candidate {
   /** Semitones above the tonic. */
   degree: number;
@@ -145,6 +155,43 @@ function colourOf(candidate: Candidate, scaleId: 'major' | 'minor'): Candidate[]
     if (scaleId === 'minor' && degree === 0) out.push({ ...candidate, quality: 'sus2', cost: candidate.cost + 0.2 });
   }
   return out;
+}
+
+/**
+ * Mood pricing on top of a chord's base cost: Bright favours major chords; Dark favours minor and borrowed
+ * chords (iv, ♭VI, ♭VII) and plays down the major V; Epic favours ♭VI, ♭VII and IV; Dreamy keeps the chords
+ * and prefers their colour versions (applied after the search).
+ */
+function moodCost(candidate: Candidate, mood: Mood, minor: boolean): number {
+  const { degree, quality } = candidate;
+  const majorish = quality === 'major' || quality === 'major7' || quality === 'seventh' || quality === 'sus2' || quality === 'sus4';
+  switch (mood) {
+    case 'bright': return majorish ? -0.2 : quality === 'minor' || quality === 'minor7' ? 0.6 : 0.6;
+    case 'dark':
+      if (quality === 'minor' || quality === 'minor7') return -0.35;
+      if ((degree === 8 || degree === 10) && majorish) return -0.4;
+      if (degree === 7 && majorish && !minor) return 0.5;
+      return degree === 0 ? 0 : 0.15;
+    case 'epic':
+      if ((degree === 8 || degree === 10 || degree === 5) && majorish) return -0.5;
+      return quality === 'minor' && degree !== 0 ? 0.35 : 0;
+    default: return 0;
+  }
+}
+
+/** Borrowed chords a mood brings into the Simple pool. */
+function moodExtras(mood: Mood, minor: boolean): Candidate[] {
+  if (minor) return [];
+  if (mood === 'dark') return [
+    { degree: 5, quality: 'minor', cost: 0.3, role: 'subdominant' },
+    { degree: 8, quality: 'major', cost: 0.35, role: 'subdominant' },
+    { degree: 10, quality: 'major', cost: 0.35, role: 'subdominant' },
+  ];
+  if (mood === 'epic') return [
+    { degree: 8, quality: 'major', cost: 0.3, role: 'subdominant' },
+    { degree: 10, quality: 'major', cost: 0.3, role: 'dominant' },
+  ];
+  return [];
 }
 
 const tones = (keyRoot: number, candidate: Candidate) =>
@@ -284,8 +331,9 @@ function toChords(slots: Slot[], path: (Candidate | undefined)[], keyRoot: numbe
  */
 export function suggestProgressions(
   notes: readonly NoteEvent[], key: Pick<DetectedKey, 'root' | 'scaleId'>, stepsPerBar: number, bars: number,
-  options: { halfBar?: boolean } = {},
+  options: { halfBar?: boolean; mood?: Mood } = {},
 ): Progression[] {
+  const mood = options.mood ?? 'any';
   const valid = notes.filter((note) => Number.isFinite(note.pitch) && Number.isFinite(note.step) && note.step >= 0
     && Number.isFinite(note.durationSteps) && note.durationSteps > 0);
   if (!valid.length || !Number.isInteger(stepsPerBar) || stepsPerBar < 1 || !Number.isInteger(bars) || bars < 1) return [];
@@ -294,35 +342,41 @@ export function suggestProgressions(
   const scale = new Set((minor ? [0, 2, 3, 5, 7, 8, 10, 11] : [0, 2, 4, 5, 7, 9, 11]).map((interval) => (keyRoot + interval) % 12));
   const stepsPerBeat = Math.max(1, Math.round(stepsPerBar / 4));
   const slots = slotsFor(valid, stepsPerBar, bars, Boolean(options.halfBar));
-  const triads = minor ? MINOR_TRIADS : MAJOR_TRIADS;
+  const priced = (list: readonly Candidate[]) => list.map((candidate) => ({ ...candidate, cost: candidate.cost + moodCost(candidate, mood, minor) }));
+  const triads = priced(minor ? MINOR_TRIADS : MAJOR_TRIADS);
+  const extras = priced(moodExtras(mood, minor));
+  // Dreamy and Dark resolve less: the last chord need not be the tonic.
+  const cadence = mood === 'dreamy' || mood === 'dark' ? 0.5 : 1;
 
   const simple = search(slots, keyRoot, scale, stepsPerBeat, {
-    candidates: triads.slice(0, minor ? 6 : 4), tonicStart: 1.2, endCadence: 0.6,
+    candidates: [...triads.slice(0, minor ? 6 : 4), ...extras], tonicStart: 1.2, endCadence: 0.6 * cadence,
   });
-  const differentPool = [...triads, ...(minor ? MINOR_EXTRA : MAJOR_EXTRA)];
+  const differentPool = [...triads, ...priced(minor ? MINOR_EXTRA : MAJOR_EXTRA)];
   let different = search(slots, keyRoot, scale, stepsPerBeat, {
-    candidates: differentPool, avoid: simple, avoidCost: 0.7, tonicStart: 0.2, endCadence: 0.3,
+    candidates: differentPool, avoid: simple, avoidCost: 0.7, tonicStart: 0.2, endCadence: 0.3 * cadence,
   });
   if (different.every((candidate, index) => candidate?.degree === simple[index]?.degree)) {
     different = search(slots, keyRoot, scale, stepsPerBeat, {
       candidates: differentPool, avoid: simple, avoidCost: 2, tonicStart: 0, endCadence: 0.2,
     });
   }
-  // Colour keeps the Simple progression's roots and picks the richest quality the melody allows on each.
-  const colour = simple.map((candidate, index) => {
+  // Colour keeps a progression's roots and picks the richest quality the melody allows on each.
+  const colourise = (path: (Candidate | undefined)[], richness: number) => path.map((candidate, index) => {
     if (!candidate) return candidate;
-    const options = [candidate, ...colourOf(candidate, key.scaleId)];
+    const options = [candidate, ...colourOf(candidate, minor ? 'minor' : 'major')];
     const slot = slots[index];
     let best = candidate;
     let bestCost = Number.POSITIVE_INFINITY;
     for (const option of options) {
       const melody = melodyCost(slot, tones(keyRoot, option), scale, stepsPerBeat);
-      const richness = option.quality === candidate.quality ? 0.35 : 0;
-      const cost = melody.cost + richness + (option.cost - candidate.cost);
+      const plain = option.quality === candidate.quality ? richness : 0;
+      const cost = melody.cost + plain + (option.cost - candidate.cost);
       if (cost < bestCost - 1e-9) { bestCost = cost; best = option; }
     }
     return best;
   });
+  const colour = colourise(simple, mood === 'dreamy' ? 0.6 : 0.35);
+  if (mood === 'dreamy') different = colourise(different, 0.35);
 
   return [
     { id: 'simple' as const, path: simple },
