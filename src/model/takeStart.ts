@@ -35,3 +35,27 @@ export function shiftTakeStart(project: Project, takeId: string, steps: number):
   };
   return applyRecognitionTake(project, moved, project.bpm) ?? project;
 }
+
+/**
+ * Capture over one bar (plan.md B2): the take was recorded against that bar looping on its own, so its events
+ * are moved into the bar and only what starts inside it is kept (the first pass sung over the loop).
+ */
+export function confineTakeToBar<T extends { originalEvents: RecognitionEvent[]; quantisedEvents: RecognitionEvent[]; alignmentSeconds?: number }>(
+  take: T, bar: number, barSeconds: number,
+): T {
+  const from = bar * barSeconds;
+  const to = from + barSeconds;
+  const move = (events: readonly RecognitionEvent[]) => events
+    .map((event) => ({ ...event, startSeconds: event.startSeconds + from }))
+    .filter((event) => event.startSeconds >= from - 1e-6 && event.startSeconds < to - 1e-6)
+    .map((event) => 'durationSeconds' in event
+      ? { ...event, durationSeconds: Math.min(event.durationSeconds, to - event.startSeconds) } : event);
+  const originalEvents = move(take.originalEvents);
+  const kept = new Set(originalEvents.map((event) => event.id));
+  return {
+    ...take,
+    originalEvents,
+    quantisedEvents: move(take.quantisedEvents).filter((event) => kept.has(event.id)),
+    alignmentSeconds: (take.alignmentSeconds ?? 0) + from,
+  };
+}

@@ -34,7 +34,8 @@ import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
 import { BarsView } from './BarsView';
-import { shiftTakeStart } from '../model/takeStart';
+import { confineTakeToBar, shiftTakeStart } from '../model/takeStart';
+import { barPreview } from '../model/bars';
 import { OfflineInstruments } from './OfflineInstruments';
 import { decodeSong, songLink, songPayload } from '../model/songLink';
 import { recordVideo, videoSupported } from './videoExport';
@@ -431,16 +432,22 @@ export function App() {
   const recordingOffsetFor = (recorderStartMs: number, inputLatencySec: number) => {
     const beatZeroAudibleMs = engine.playbackBeatZeroMs;
     if (beatZeroAudibleMs === undefined) return undefined;
-    const p = projectRef.current;
+    // The loop that is playing: the whole project, or one bar on its own while capturing over a bar.
+    const p = auditionRef.current ?? projectRef.current;
     return recordingOffsetSeconds({
       beatZeroAudibleMs, recorderStartMs, inputLatencySec, userOffsetMs: prefs.recordingOffsetMs,
       loopSeconds: (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
     });
   };
   const captureEngineRef = useRef(false);
-  const startCaptureSession = async (metronome: boolean) => {
+  const startCaptureSession = async (metronome: boolean, bar?: number) => {
     engine.setMetronome(metronome);
-    if (!engine.playing) { await engine.start(); captureEngineRef.current = true; }
+    if (bar !== undefined) {
+      engine.stop();
+      auditionRef.current = barPreview(projectRef.current, bar);
+      await engine.start();
+      captureEngineRef.current = true;
+    } else if (!engine.playing) { await engine.start(); captureEngineRef.current = true; }
     try {
       return await startCapture(recordingOffsetFor);
     } catch (reason) {
@@ -450,10 +457,10 @@ export function App() {
   };
   const stopCaptureSession = () => {
     engine.setMetronome(false);
-    if (captureEngineRef.current) engine.stop();
+    if (captureEngineRef.current) { engine.stop(); auditionRef.current = undefined; }
     captureEngineRef.current = false;
   };
-  const applyCapture = async (capture: CaptureResult, kind: RecognitionMode, into: string | undefined) => {
+  const applyCapture = async (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => {
     const current = projectRef.current;
     const kindLabel = kind === 'beat' ? 'Beat' : kind === 'bass' ? 'Bass' : 'Melody';
     const label = `${kindLabel} ${current.recognitionTakes.filter((take) => take.mode === kind).length + 1}`;
@@ -482,8 +489,15 @@ export function App() {
     }
     const created = createRecognitionTake(sample.id, result, { enabled: true, strength: 0.5, subdivision: 'sixteenth' },
       withSound.bpm, withSound.noteLength, undefined, 0.5, false, withSound.scaleRoot, withSound.scaleId, sample.recordingOffsetSeconds ?? 0);
+    const placed = bar === undefined ? created
+      : confineTakeToBar(created, bar, withSound.noteLength * stepDuration(withSound.bpm, withSound.noteLength));
+    if (!placed.originalEvents.length) {
+      setProject(withSound);
+      flash(`${label} saved · nothing to put on the grid`, true);
+      return;
+    }
     const take = {
-      ...applyPerformanceMode(created, 'cleaned', withSound.bpm, withSound.noteLength, withSound.scaleRoot, withSound.scaleId),
+      ...applyPerformanceMode(placed, 'cleaned', withSound.bpm, withSound.noteLength, withSound.scaleRoot, withSound.scaleId),
       source: 'mic' as const, label, ...(into ? { targetChannelId: into } : {}),
     };
     const updated = applyRecognitionTake(withSound, take);
