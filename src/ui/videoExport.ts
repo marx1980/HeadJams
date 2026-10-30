@@ -1,4 +1,5 @@
 import type { Project } from '../model/project';
+import { hasTempoMap, stepAtSeconds } from '../model/tempo';
 import { pickVideoType, VIDEO_SIZES, videoFrame, videoPlan, type VideoShape } from '../library/videoPlan';
 
 export interface VideoInput {
@@ -85,7 +86,9 @@ export async function recordVideo(input: VideoInput): Promise<{ blob: Blob; exte
       return;
     }
     const songTime = time - plan.introSeconds;
-    const songStep = Math.min(plan.steps * plan.passes, songTime / plan.stepSeconds) % plan.steps;
+    const songStep = hasTempoMap(input.project)
+      ? stepAtSeconds(input.project, Math.min(plan.passSeconds * plan.passes, songTime) % plan.passSeconds)
+      : Math.min(plan.steps * plan.passes, songTime / plan.stepSeconds) % plan.steps;
     const frame = videoFrame(input.project, songStep);
     g.fillStyle = text;
     g.fillText(frame.section ?? `${input.project.bpm} BPM`, pad, height - pad * 1.8);

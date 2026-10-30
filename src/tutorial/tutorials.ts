@@ -1,3 +1,4 @@
+import { songBars } from '../model/tempo';
 import type { Project } from '../model/project';
 
 export interface TutorialState {
@@ -82,7 +83,7 @@ export const FEATURES: { id: string; label: string }[] = [
   { id: 'recording', label: 'Microphone recording' }, { id: 'import', label: 'Importing audio and the library' },
   { id: 'sample-editor', label: 'Sample Editor' }, { id: 'recognition', label: 'Melody, bass and beatbox recognition' },
   { id: 'recognition-edit', label: 'Recognition correction' }, { id: 'patterns', label: 'Patterns' },
-  { id: 'timeline', label: 'Arrangement timeline' }, { id: 'arrangement-assist', label: 'Arrangement assistance' },
+  { id: 'timeline', label: 'Arrangement timeline' }, { id: 'song-timing', label: 'Tempo changes, automation and play from a bar' }, { id: 'arrangement-assist', label: 'Arrangement assistance' },
   { id: 'export-options', label: 'Export options' }, { id: 'privacy-offline', label: 'Privacy and offline use' },
   { id: 'confidence-cues', label: 'Confidence and source-take cues' }, { id: 'keyboard-navigation', label: 'Keyboard navigation' },
   { id: 'library-tools', label: 'Search and tags' },
@@ -301,6 +302,19 @@ export const TUTORIALS: Tutorial[] = [
     steps: [
       { view: 'song', text: 'Add the selected pattern to the timeline. Repeat for other patterns.', target: '.arrangement-heading button', done: (s) => s.project.arrangement.length > s.base.arrangement.length },
       { text: 'Press Play to hear the song.', target: '#play-btn', done: (s) => s.events.has('play') },
+    ],
+  },
+  {
+    id: 'song-timing', title: 'Change tempo, fade a track, play from a bar', tab: 'song', group: 'Arrangement', level: 'intermediate', estMinutes: 2,
+    summary: 'Speed up or slow down at a bar, fade or pan a track over the song, and start playback anywhere.', features: ['song-timing'],
+    doneMessage: 'Tempo, fades and pans follow the song in playback and export.',
+    steps: [
+      { view: 'beat', text: 'Make the loop 2 or 4 bars long (or arrange a song) so there is room for changes.', target: '#loop-bars', done: (s) => songBars(s.project) >= 2 },
+      { view: 'song', text: 'Add a tempo change. Choose its bar, its BPM, and whether it changes at once or glides over a few bars.', target: '#tempo-add',
+        done: (s) => (s.project.tempoChanges?.length ?? 0) > (s.base.tempoChanges?.length ?? 0) },
+      { view: 'song', text: 'Pick a track and add two Volume points, say 100% at one bar and 0% at a later one, for a fade. Pan works the same way.', target: '#automation-add',
+        done: (s) => (s.project.automation ?? []).reduce((count, lane) => count + lane.points.length, 0) >= 2 },
+      { view: 'song', text: 'Choose a bar and Play from there to hear it straight away. Tapping a bar on the timeline does the same.', target: '#play-from-btn', done: (s) => s.events.has('play') },
     ],
   },
   {

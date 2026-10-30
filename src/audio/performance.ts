@@ -5,6 +5,7 @@ import { findSound } from '../library/sounds';
 import { guitarChordPitches } from '../model/music';
 import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
 import { chordArticulation, recordedChordFor } from '../model/personalInstrument';
+import { automatedMix } from '../model/automation';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -56,7 +57,8 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
     for (const c of audibleChannels({ ...p, channels: source.channels })) {
       const sound = findSound(p, c.soundId);
       if (!sound) continue;
-      const base = { sound, channelId: c.id, volume: c.volume, pan: c.pan };
+      const mix = automatedMix(p, c, step);
+      const base = { sound, channelId: c.id, volume: mix.volume, pan: mix.pan };
       // A track with a shorter Length repeats its grid steps (and kit lanes) across the loop.
       const gridStep = c.lengthSteps ? source.localStep % c.lengthSteps : source.localStep;
       if (c.steps[gridStep]) voices.push({ ...base, kind: 'hit', offsetSec: 0 });
@@ -78,7 +80,7 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         const originalSound = startStep === source.localStep ? findSound(p, c.original.soundId) : undefined;
         if (originalSound) {
           voices.push({
-            sound: originalSound, channelId: c.id, kind: 'hit', volume: c.volume, pan: c.pan,
+            sound: originalSound, channelId: c.id, kind: 'hit', volume: mix.volume, pan: mix.pan,
             offsetSec: Math.max(0, offset - durationOf(startStep)),
             ...(offset < 0 ? { skipSec: -offset } : {}),
           });

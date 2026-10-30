@@ -4,6 +4,8 @@ import {
   type Channel, type ChordEvent, type ChordRow, type KitLane, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
+import { normalizeTempoChanges } from './tempo';
+import { normalizeAutomation } from './automation';
 import type {
   AppliedSnapshot, DetectedNoteEvent, PercussionEvent, RecognitionEvent, RecognitionTake,
 } from './recognition';
@@ -291,6 +293,8 @@ export function normalizeProject(raw: string): Project | undefined {
         ? Object.fromEntries(Object.entries(p.barNames).filter(([, names]) => Array.isArray(names))
           .map(([key, names]) => [key, (names as unknown[]).slice(0, 8).map((name) => typeof name === 'string' ? name.slice(0, 24) : '')]))
         : undefined,
+      tempoChanges: normalizeTempoChanges(p.tempoChanges),
+      automation: normalizeAutomation(p.automation),
       personalInstruments: Array.isArray(p.personalInstruments)
         ? p.personalInstruments.flatMap((item) => item && typeof item.id === 'string' && /^mine-\d+$/.test(item.id) && Array.isArray(item.samples)
           ? [{

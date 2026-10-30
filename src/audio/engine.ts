@@ -5,6 +5,7 @@ import { createSoundSource } from '../library/soundSource';
 import { resampleSample, type SampleData } from '../library/sampleStorage';
 import { panGains } from './render';
 import { Scheduler, stepDuration } from './scheduler';
+import { durationAt, hasTempoMap, stepSeconds } from '../model/tempo';
 import { pitchToFrequency } from '../model/music';
 import { compileStep, type HitVoice, type PitchedVoice, type VoiceEvent } from './performance';
 import type { InstrumentStore } from './sampler/instrumentStore';
@@ -475,7 +476,8 @@ export class Engine {
     for (const voiceId of this.liveNotes.keys()) this.stopLiveNote(voiceId);
   }
 
-  async start() {
+  /** Start playing, from song step `fromStep` (seek) or the beginning. */
+  async start(fromStep = 0) {
     if (this.playing) return;
     const ctx = await this.ensureCtx();
     if (this.instruments) await this.instruments.prepare(instrumentNeeds(this.getProject()));
@@ -491,6 +493,7 @@ export class Engine {
       totalSteps: () => arrangementLength(this.getProject()) || totalSteps(this.getProject()),
       stepsPerBar: () => this.getProject().noteLength,
       swingTemplate: () => this.getProject().swingTemplate,
+      stepSeconds: (step) => stepSeconds(this.getProject(), step),
       lookAhead: 0.15,
       onStep: (step, time) => {
         const p = this.getProject();
@@ -499,7 +502,8 @@ export class Engine {
         const stepsPerBeat = Math.max(1, p.noteLength / 4);
         if (this.metronome && step % stepsPerBeat === 0) this.click(time, step % p.noteLength === 0);
         const stepLen = stepDuration(p.bpm, p.noteLength);
-        for (const voice of compileStep(p, step, (steps) => stepLen * steps)) {
+        const durationOf = hasTempoMap(p) ? (steps: number) => durationAt(p, step, steps) : (steps: number) => stepLen * steps;
+        for (const voice of compileStep(p, step, durationOf)) {
           // A sampled sound whose instrument failed to load falls back to its synth parameters.
           if (voice.sound.instrumentId && this.instruments?.status(voice.sound.instrumentId)?.state !== 'error') {
             this.playSampled(voice, time + voice.offsetSec);
@@ -513,8 +517,13 @@ export class Engine {
         window.setTimeout(() => this.playing && this.onStep(step), Math.max(0, (time - ctx.currentTime) * 1000));
       },
     });
-    this.sched.start();
+    this.sched.start(fromStep);
     this.timer = window.setInterval(() => this.sched?.tick(), 25);
+  }
+
+  /** Jump to song step `step` while playing. */
+  seek(step: number) {
+    if (this.playing) this.sched?.jump(step);
   }
 
   stop() {

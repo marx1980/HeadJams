@@ -24,6 +24,7 @@ import type { RecognitionMode } from '../model/recognition';
 import { UndoHistory } from '../model/history';
 import { recordingOffsetSeconds } from '../audio/alignment';
 import { stepDuration } from '../audio/scheduler';
+import { hasTempoMap, songSeconds } from '../model/tempo';
 import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { hearTakeAs } from '../model/hearAs';
@@ -418,6 +419,16 @@ export function App() {
       if (engine.audioState !== 'running' && !await engine.resumeAudio()) flash('Audio blocked by the browser · tap Play again');
     }
   };
+  /** Song › Play from: start at a bar, or jump there while the song is playing. */
+  const playFrom = async (bar: number) => {
+    const step = bar * projectRef.current.noteLength;
+    if (engine.playing && !auditionRef.current) { engine.seek(step); return; }
+    engine.stop();
+    auditionRef.current = undefined;
+    await engine.start(step);
+    emit('play');
+    if (engine.audioState !== 'running' && !await engine.resumeAudio()) flash('Audio blocked by the browser · tap Play again');
+  };
   const audition = async (preview?: Project) => {
     engine.stop();
     auditionRef.current = preview;
@@ -585,7 +596,7 @@ export function App() {
     const p = auditionRef.current ?? projectRef.current;
     return recordingOffsetSeconds({
       beatZeroAudibleMs, recorderStartMs, inputLatencySec, userOffsetMs: prefs.recordingOffsetMs,
-      loopSeconds: (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
+      loopSeconds: hasTempoMap(p) ? songSeconds(p) : (arrangementLength(p) || totalSteps(p)) * stepDuration(p.bpm, p.noteLength),
     });
   };
   const captureEngineRef = useRef(false);
@@ -1264,6 +1275,7 @@ export function App() {
         <div id="pane-song" role="tabpanel" aria-labelledby="tab-song" className={`pane pane-song${view === 'song' ? ' active' : ''}`}>
           <SongEditor project={project} onChange={(next) => { auditionRef.current = undefined; setProject(next); }}
             onAudition={(preview) => void audition(preview)} playing={playStep !== null}
+            onPlayFrom={(bar) => void playFrom(bar)}
             voice={{ lang: voiceLanguage(prefs.voiceLanguage, navigator.languages ?? [navigator.language]), allowOnline: prefs.voiceOnline }}
             onAction={(action) => {
               if (action === 'play') { if (!engine.playing) void togglePlay(); }
