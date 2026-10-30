@@ -62,3 +62,25 @@ describe('take start', () => {
     expect((voice as { skipSec?: number }).skipSec).toBeCloseTo(0.4);
   });
 });
+
+describe('capture over one bar', () => {
+  it('moves the first pass into the bar and drops the rest', async () => {
+    const { confineTakeToBar } = await import('./takeStart');
+    const take = createRecognitionTake('rec', {
+      ...result,
+      events: [
+        { id: 'a', pitch: 60, startSeconds: 0.5, durationSeconds: 1.8, velocity: 0.8, confidence: 0.9 },
+        { id: 'b', pitch: 64, startSeconds: 2.5, durationSeconds: 0.5, velocity: 0.8, confidence: 0.9 },
+      ],
+    }, { enabled: true, strength: 1, subdivision: 'eighth' }, 120, 8, 'take');
+    const confined = confineTakeToBar(take, 1, 2);
+    expect(confined.originalEvents.map((event) => [event.id, event.startSeconds])).toEqual([['a', 2.5]]);
+    expect((confined.originalEvents[0] as { durationSeconds: number }).durationSeconds).toBeCloseTo(1.5);
+    expect(confined.quantisedEvents.map((event) => event.id)).toEqual(['a']);
+    expect(confined.alignmentSeconds).toBe(2);
+    const base = setLoopBars({ ...createProject(), bpm: 120, noteLength: 8 }, 2);
+    const applied = applyRecognitionTake(base, confined)!;
+    expect(applied.loopBars).toBe(2);
+    expect(applied.channels.at(-1)!.notes.map((note) => [note.step, note.durationSteps])).toEqual([[10, 6]]);
+  });
+});

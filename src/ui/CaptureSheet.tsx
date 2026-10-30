@@ -4,6 +4,7 @@ import type { RecognitionMode } from '../model/recognition';
 import type { Channel } from '../model/project';
 import { guessCaptureKind } from '../library/captureGuess';
 import { Icon } from './Icon';
+import { barNames } from '../model/bars';
 import { DrawPad, TapPad } from './TapDrawPads';
 import type { NoteEvent, Project } from '../model/project';
 import type { Rhythm } from '../library/tapRhythm';
@@ -40,10 +41,11 @@ export function CaptureSheet({
   beatChannels: Channel[];
   /** The project already makes sound, so a mic will hear it unless headphones are on. */
   hasSound: boolean;
-  start: (metronome: boolean) => Promise<CaptureSession>;
+  /** Start recording over the loop, or over one bar looping on its own. */
+  start: (metronome: boolean, bar?: number) => Promise<CaptureSession>;
   /** Called when recording ends or is cancelled, to stop playback and the metronome. */
   stop: () => void;
-  onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined) => Promise<void>;
+  onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => Promise<void>;
   onPlay: (capture: CaptureResult) => void;
   onOpenSong: (section: 'chords' | 'harmony') => void;
   project: Project;
@@ -58,6 +60,9 @@ export function CaptureSheet({
   const [phase, setPhase] = useState<Phase>('idle');
   const [part, setPart] = useState<Part>('auto');
   const [into, setInto] = useState('new');
+  const [bar, setBar] = useState('all');
+  const barIndex = bar !== 'all' && Number(bar) < project.loopBars ? Number(bar) : undefined;
+  const recordedBar = useRef<number | undefined>(undefined);
   const pad = part === 'tap' || part === 'draw';
   const targets = part === 'beat' ? beatChannels : part === 'auto' ? [...channels, ...beatChannels] : channels;
   const intoValue = targets.some((channel) => channel.id === into) ? into : 'new';
@@ -77,7 +82,8 @@ export function CaptureSheet({
   const record = async () => {
     setError('');
     try {
-      session.current = await start(metronome);
+      recordedBar.current = barIndex;
+      session.current = await start(metronome, barIndex);
       const startedAt = Date.now();
       setElapsed(0);
       timer.current = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 250);
@@ -114,7 +120,7 @@ export function CaptureSheet({
     // Beatbox only goes into kit channels; melody and bass only into melodic channels.
     const fits = (kind === 'beat' ? beatChannels : channels).some((channel) => channel.id === intoValue);
     try {
-      await onUse(recorded, kind, fits ? intoValue : undefined);
+      await onUse(recorded, kind, fits ? intoValue : undefined, recordedBar.current);
       setCapture(undefined);
       setPhase('idle');
     } catch (reason) {
@@ -138,6 +144,16 @@ export function CaptureSheet({
                 <select id="capture-into" value={intoValue} onChange={(event) => setInto(event.target.value)}>
                   <option value="new">{part === 'beat' ? 'New kit' : 'New track'}</option>
                   {targets.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                </select>
+              </label>
+            )}
+            {!pad && project.loopBars > 1 && (
+              <label>Bar
+                <select id="capture-bar" value={barIndex === undefined ? 'all' : String(barIndex)} onChange={(event) => setBar(event.target.value)}>
+                  <option value="all">All</option>
+                  {Array.from({ length: project.loopBars }, (_, index) => (
+                    <option key={index} value={index}>{barNames(project)[index] || `Bar ${index + 1}`}</option>
+                  ))}
                 </select>
               </label>
             )}
