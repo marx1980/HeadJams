@@ -453,7 +453,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .capture-main .inline-icon { color: var(--danger, #e5484d); }
 .capture-main.recording .inline-icon { color: #fff; }
 .capture-sheet { display: flex; flex-direction: column; gap: 10px; }
-.capture-options { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.capture-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+.capture-options .check-label { grid-column: 1 / -1; }
 .capture-options select { width: 100%; box-sizing: border-box; height: 40px; }
 .capture-options .check-label { min-height: 40px; }
 .capture-main { min-height: 56px; font-size: 1.1rem; font-weight: 700; }
@@ -496,3 +497,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .kit-lanes { display: flex; flex-direction: column; gap: 6px; }
 .kit-lane-name { display: block; font-size: .8rem; font-weight: 600; opacity: .85; margin: 0 0 2px 2px; }
 .kit-lanes-toggle { align-self: flex-start; min-height: 40px; }
+
+/* Capture sheet: part choice, headphones cue, Song shortcuts */
+.capture-headphones { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; opacity: .85; }
+.capture-more { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.capture-more button { min-height: 40px; }

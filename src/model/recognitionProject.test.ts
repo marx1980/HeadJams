@@ -1,6 +1,6 @@
 import { hearTakeAs } from './hearAs';
 import { describe, expect, it } from 'vitest';
-import { createProject } from './project';
+import { createProject, MAX_CHANNELS } from './project';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo } from './recognitionProject';
 import type { RecognitionResult } from './recognition';
 
@@ -56,9 +56,9 @@ describe('recognition project integration', () => {
       }],
       tempoAlternatives: [],
     };
-    const take = createRecognitionTake('sample-a', result, {
+    const take = { ...createRecognitionTake('sample-a', result, {
       enabled: true, strength: 1, subdivision: 'sixteenth',
-    }, 120, 16, 'take-beat');
+    }, 120, 16, 'take-beat'), kitLanes: undefined }; // older per-drum tracks
     const applied = applyRecognitionTake(project, take)!;
     const channel = applied.channels.find((item) => item.name === 'Recognized Kick')!;
     expect(channel).toMatchObject({
@@ -87,14 +87,14 @@ describe('recognition project integration', () => {
 
   it('does not partially add a recognition track when the channel limit would be exceeded', () => {
     const project = createProject();
-    project.channels = Array.from({ length: 8 }, (_, index) => ({
+    project.channels = Array.from({ length: MAX_CHANNELS }, (_, index) => ({
       ...project.channels[0], id: `channel-${index}`,
     }));
     const take = createRecognitionTake('sample-a', melodyResult, {
       enabled: true, strength: 1, subdivision: 'sixteenth',
     }, 120, 16, 'take-full');
     expect(applyRecognitionTake(project, take)).toBeUndefined();
-    expect(project.channels).toHaveLength(8);
+    expect(project.channels).toHaveLength(MAX_CHANNELS);
   });
 
   it('re-quantises source timing at a new tempo without losing pitch edits', () => {
@@ -149,7 +149,7 @@ describe('hear as (hum.md H2)', () => {
   });
 
   it('switches a beat between kits, keeps hand-picked sounds, and corrections still update the same tracks', () => {
-    const take = createRecognitionTake('a', beat(), quant, 120, 16, 'bt');
+    const take = { ...createRecognitionTake('a', beat(), quant, 120, 16, 'bt'), kitLanes: undefined };
     let project = applyRecognitionTake(createProject(), take)!;
     const kick = project.channels.find((c) => c.name === 'Recognized Kick')!;
     const snare = project.channels.find((c) => c.name === 'Recognized Snare')!;

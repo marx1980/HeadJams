@@ -119,6 +119,7 @@ function normalizeApplied(value: unknown): AppliedSnapshot | undefined {
         ...(group.events && typeof group.events === 'object'
           ? { events: Object.fromEntries(Object.entries(group.events).filter(([, step]) => Number.isInteger(step))) }
           : {}),
+        ...(typeof group.laneId === 'string' ? { laneId: group.laneId } : {}),
       }]));
   }
   return applied.notes || applied.groups ? applied : undefined;
@@ -220,6 +221,7 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       ...(['original', 'cleaned', 'tight'].includes(take.performance ?? '') ? { performance: take.performance } : {}),
       ...(typeof take.label === 'string' && take.label.trim() ? { label: take.label.trim().slice(0, 60) } : {}),
       ...(HEAR_AS_IDS.includes(take.hearAs as HearAsId) ? { hearAs: take.hearAs } : {}),
+      ...(take.kitLanes === true ? { kitLanes: true } : {}),
     }];
   });
 }

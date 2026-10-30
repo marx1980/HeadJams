@@ -619,7 +619,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
             </>
           )}
         </div>
-        <div className="bass-assistant">
+        <div className="bass-assistant harmony-assistant">
           <h4>Harmony and accompaniment</h4>
           <div className="arrangement-assistant-controls">
             <label>Generate

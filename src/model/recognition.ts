@@ -72,6 +72,8 @@ export interface RecognitionTake {
   source?: 'mic' | 'import';
   /** Short name shown in the ideas list. */
   label?: string;
+  /** Beat takes: hits go into lanes of one kit channel (older beat takes made one channel per drum). */
+  kitLanes?: boolean;
   /** Instrument (melody/bass) or kit (beat) the idea is heard as; undefined on older takes (Classic sounds). */
   hearAs?: import('./hearAs').HearAsId;
   /** Seconds added to recording times to place events in project time (microphone alignment). */
@@ -84,7 +86,7 @@ export interface AppliedSnapshot {
   /** Melody/bass: note id -> "step:pitch:durationSteps" as last written. */
   notes?: Record<string, string>;
   /** Beat: event group key -> its channel, the steps last written, and each event's step (-1 = deleted by the user). */
-  groups?: Record<string, { channelId: string; steps: boolean[]; events?: Record<string, number> }>;
+  groups?: Record<string, { channelId: string; steps: boolean[]; events?: Record<string, number>; laneId?: string }>;
 }
 
 export interface RecognitionResult {

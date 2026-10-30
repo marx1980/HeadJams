@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addChannel, createProject, setLoopBars, updateChannel, type Project } from './project';
-import { applyRecognitionTake, createRecognitionTake } from './recognitionProject';
+import { addChannel, createProject, setLoopBars, toggleLaneStep, updateChannel, type Project } from './project';
+import { addKitChannel, findDrumKit } from '../library/drumKits';
+import { hearTakeAs } from './hearAs';
+import { applyRecognitionTake, createRecognitionTake, removeRecognitionTake } from './recognitionProject';
 import type { RecognitionResult, RecognitionTake } from './recognition';
 import { loadProject, saveProject } from './storage';
 
@@ -17,8 +19,10 @@ const beat = (events = [hit('k1', 'kick', 0), hit('k2', 'kick', 1), hit('s1', 's
 });
 const exact = { enabled: true, strength: 1, subdivision: 'sixteenth' as const };
 
-function setup(result: RecognitionResult, project: Project = createProject()) {
-  const take = createRecognitionTake('sample-1', result, exact, 120, 16, 'take-1');
+/** Per-drum tracks are how older beat takes were applied; `lanes` uses the kit channel of newer takes. */
+function setup(result: RecognitionResult, project: Project = createProject(), lanes = false) {
+  const created = createRecognitionTake('sample-1', result, exact, 120, 16, 'take-1');
+  const take = lanes ? created : { ...created, kitLanes: undefined };
   const applied = applyRecognitionTake(project, take)!;
   const saved = applied.recognitionTakes.find((t) => t.id === 'take-1')!;
   return { project: applied, take: saved };
@@ -189,5 +193,83 @@ describe('capture into an existing channel', () => {
     expect(removed.channels).toHaveLength(1);
     expect(removed.channels[0].notes.map((n) => n.id)).toEqual(['own']);
     expect(removed.channels[0].original).toBeUndefined();
+  });
+});
+
+describe('beatbox into kit lanes (hum.md H4)', () => {
+  const values = new Map<string, string>();
+  beforeEach(() => {
+    values.clear();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k, v), removeItem: (k: string) => values.delete(k) },
+    });
+  });
+  afterEach(() => { delete (globalThis as { localStorage?: Storage }).localStorage; });
+  const lane = (project: Project, channelId: string, laneId: string) =>
+    project.channels.find((channel) => channel.id === channelId)!.lanes!.find((item) => item.id === laneId)!;
+  const on = (steps: boolean[]) => steps.flatMap((value, index) => value ? [index] : []);
+
+  it('puts a new beat on one acoustic kit channel, one lane per drum', () => {
+    const before = createProject();
+    const { project, take } = setup(beat(), before, true);
+    expect(project.channels).toHaveLength(before.channels.length + 1);
+    const kit = trackOf(project, take);
+    expect(kit.kitId).toBe('acoustic-kit');
+    expect(on(lane(project, kit.id, 'kick').steps)).toEqual([0, 8]);
+    expect(on(lane(project, kit.id, 'snare').steps)).toEqual([4]);
+    expect(lane(project, kit.id, 'kick').stepEventMetadata?.[0]?.sourceTakeId).toBe('take-1');
+  });
+
+  it('captures into an existing kit, keeping its programmed steps, and removing the idea clears only its hits', () => {
+    let project = addKitChannel(createProject(), findDrumKit('acoustic-kit')!);
+    const kitId = project.channels.at(-1)!.id;
+    project = toggleLaneStep(toggleLaneStep(project, kitId, 'kick', 12), kitId, 'hat-closed', 2);
+    const take = { ...createRecognitionTake('sample-1', beat(), exact, 120, 16, 'take-1'), targetChannelId: kitId };
+    const applied = applyRecognitionTake(project, take)!;
+    expect(applied.channels).toHaveLength(project.channels.length);
+    expect(on(lane(applied, kitId, 'kick').steps)).toEqual([0, 8, 12]);
+    expect(on(lane(applied, kitId, 'hat-closed').steps)).toEqual([2]);
+    const removed = removeRecognitionTake(applied, 'take-1');
+    expect(on(lane(removed, kitId, 'kick').steps)).toEqual([12]);
+    expect(on(lane(removed, kitId, 'snare').steps)).toEqual([]);
+    expect(removed.channels.some((channel) => channel.id === kitId)).toBe(true);
+  });
+
+  it('corrections move untouched hits, keep deleted hits deleted and keep added steps; Reset restores deleted hits only', () => {
+    const { project, take } = setup(beat(), createProject(), true);
+    const kitId = take.channelIds[0];
+    let edited = toggleLaneStep(project, kitId, 'kick', 8);     // delete the second kick
+    edited = toggleLaneStep(edited, kitId, 'snare', 14);        // add a snare
+    const moved = applyRecognitionTake(edited, shifted(take, 0.125))!;
+    expect(on(lane(moved, kitId, 'kick').steps)).toEqual([1]);
+    expect(on(lane(moved, kitId, 'snare').steps)).toEqual([5, 14]);
+    const stored = moved.recognitionTakes.find((t) => t.id === 'take-1')!;
+    const reset = applyRecognitionTake(moved, stored, undefined, { discardEdits: true })!;
+    expect(on(lane(reset, kitId, 'kick').steps)).toEqual([1, 9]);
+    expect(on(lane(reset, kitId, 'snare').steps)).toEqual([5, 14]);
+    expect(reset.channels).toHaveLength(project.channels.length);
+  });
+
+  it('reclassified hits move lanes (adding the lane the kit lacks); Hear as switches the kit; it all survives a reload', () => {
+    const { project, take } = setup(beat(), createProject(), true);
+    const kitId = take.channelIds[0];
+    const reclassified = { ...take, quantisedEvents: take.quantisedEvents.map((event) =>
+      'type' in event && event.id === 'k2' ? { ...event, type: 'clap' as const } : event) };
+    const next = applyRecognitionTake(project, reclassified)!;
+    expect(on(lane(next, kitId, 'kick').steps)).toEqual([0]);
+    expect(lane(next, kitId, 'clap')).toMatchObject({ soundId: 'clap-1' });
+    expect(on(lane(next, kitId, 'clap').steps)).toEqual([8]);
+    const classic = hearTakeAs(next, 'take-1', 'classic');
+    expect(lane(classic, kitId, 'kick').soundId).toBe('kick-1');
+    expect(on(lane(classic, kitId, 'kick').steps)).toEqual([0]);
+    expect(classic.channels.find((c) => c.id === kitId)!.kitId).toBe('studio-kit');
+    saveProject(classic);
+    const loaded = loadProject();
+    const stored = loaded.recognitionTakes.find((t) => t.id === 'take-1')!;
+    expect(stored.kitLanes).toBe(true);
+    expect(Object.values(stored.applied!.groups!).every((group) => group.laneId)).toBe(true);
+    const again = applyRecognitionTake(loaded, shifted(stored, 0))!;
+    expect(again.channels).toHaveLength(loaded.channels.length);
   });
 });
