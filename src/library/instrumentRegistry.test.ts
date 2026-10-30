@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addSampleSound, createProject } from '../model/project';
-import { createInstrumentRegistry, STARTER_SOUNDS, validateInstrumentRegistry } from './instrumentRegistry';
+import { createInstrumentRegistry, SAMPLED_SOUNDS, STARTER_SOUNDS, validateInstrumentRegistry } from './instrumentRegistry';
 
 describe('instrument registry', () => {
   it('keeps starter sound IDs unique and stable', () => {
@@ -109,7 +109,7 @@ describe('instrument registry', () => {
     expect(registry.find((entry) => entry.id === 'lead-1')?.group).toBe('Synths');
     expect(registry.find((entry) => entry.id === 'lead-5')?.group).toBe('FX & Other');
     expect(registry.find((entry) => entry.id === 'fx-1')?.group).toBe('FX & Other');
-    expect(registry.map((entry) => entry.sound)).toEqual([...STARTER_SOUNDS, ...project.customSounds]);
+    expect(registry.map((entry) => entry.sound)).toEqual([...STARTER_SOUNDS, ...SAMPLED_SOUNDS, ...project.customSounds]);
   });
 
   it('reports duplicate IDs and sample references missing from a supplied asset set', () => {

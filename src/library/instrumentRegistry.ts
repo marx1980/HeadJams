@@ -142,9 +142,43 @@ export const STARTER_SOUNDS: SoundDef[] = [
   s('fx-1', 'Laser', 'FX', 'square', 2000, 200, 0.3, 8000),
 ];
 
+const acoustic = (piece: string, name: string, note: number, extra: Partial<SoundDef> = {}): SoundDef => ({
+  id: `acoustic-${piece}`,
+  name,
+  category: 'Drums',
+  subcategory: 'Acoustic kit',
+  params: { wave: 'noise', freq: 200, freqEnd: 200, decay: 0.3, cutoff: 12000 },
+  type: 'percussion',
+  playbackMode: 'one-shot',
+  instrumentId: 'acoustic-kit',
+  instrumentNote: note,
+  tags: ['acoustic', 'sampled'],
+  assetAttribution: 'Big Rusty Drums by Karoryfer Samples',
+  assetLicense: 'CC0-1.0',
+  ...extra,
+});
+
+/** Built-in sounds played by sampled instruments (app/public/instruments). */
+export const SAMPLED_SOUNDS: SoundDef[] = [
+  acoustic('kick', 'Acoustic Kick', 36),
+  acoustic('snare', 'Acoustic Snare', 38),
+  acoustic('sidestick', 'Acoustic Side Stick', 37),
+  acoustic('hat-closed', 'Acoustic Hat Closed', 42),
+  acoustic('hat-pedal', 'Acoustic Hat Pedal', 44),
+  acoustic('hat-half', 'Acoustic Hat Half-Open', 45),
+  acoustic('hat-open', 'Acoustic Hat Open', 46),
+  acoustic('tom-high', 'Acoustic Tom High', 50),
+  acoustic('tom-mid', 'Acoustic Tom Mid', 48),
+  acoustic('tom-low', 'Acoustic Tom Low', 43),
+  acoustic('crash', 'Acoustic Crash', 49),
+  acoustic('ride', 'Acoustic Ride', 51),
+  acoustic('ride-bell', 'Acoustic Ride Bell', 53),
+];
+
 export function createInstrumentRegistry(customSounds: readonly SoundDef[]): InstrumentRegistryEntry[] {
   return [
     ...STARTER_SOUNDS.map((sound) => ({ id: sound.id, sound, origin: 'built-in' as const })),
+    ...SAMPLED_SOUNDS.map((sound) => ({ id: sound.id, sound, origin: 'built-in' as const })),
     ...customSounds.map((sound) => ({ id: sound.id, sound, origin: 'custom' as const })),
   ].map((entry) => ({
     ...entry,
