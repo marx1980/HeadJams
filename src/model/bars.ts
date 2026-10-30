@@ -1,5 +1,7 @@
 import { layoutChordRow } from '../library/guitar/patterns';
 import { setChordRow } from './chordRow';
+import { nextPhrase, type PhraseVariation } from '../library/phrases';
+import { detectKey } from '../library/progressions';
 import { LOOP_BARS, setLoopBars, type Channel, type LoopBars, type NoteEvent, type Project, type StepEventMetadata } from './project';
 
 /**
@@ -182,8 +184,11 @@ export function barPreview(p: Project, bar: number): Project {
   return { ...single, arrangement: [], channels: single.channels.map((channel) => ({ ...channel, playOriginal: false })) };
 }
 
-/** Everything that sounds in one bar, as comparable tokens (step offset, channel, pitch or lane). */
-export function barTokens(p: Project, bar: number): Set<string> {
+/**
+ * Everything that sounds in one bar, as comparable tokens (step offset, channel, pitch or lane).
+ * With `rhythmOnly`, notes and chords count by when they start, not what they play.
+ */
+export function barTokens(p: Project, bar: number, rhythmOnly = false): Set<string> {
   const per = p.noteLength;
   const start = bar * per;
   const tokens = new Set<string>();
@@ -193,10 +198,10 @@ export function barTokens(p: Project, bar: number): Set<string> {
       for (const lane of channel.lanes ?? []) if (lane.steps[start + offset]) tokens.add(`${channel.id}:${lane.id}${offset}`);
     }
     for (const note of channel.notes ?? []) {
-      if (Math.floor(note.step / per) === bar) tokens.add(`${channel.id}:n${note.step - start}.${note.pitch}`);
+      if (Math.floor(note.step / per) === bar) tokens.add(`${channel.id}:n${note.step - start}${rhythmOnly ? '' : `.${note.pitch}`}`);
     }
     for (const event of channel.chordEvents ?? []) {
-      if (Math.floor(event.step / per) === bar) tokens.add(`${channel.id}:c${event.step - start}.${event.root}.${event.quality}.${event.articulation}`);
+      if (Math.floor(event.step / per) === bar) tokens.add(`${channel.id}:c${event.step - start}${rhythmOnly ? '' : `.${event.root}.${event.quality}.${event.articulation}`}`);
     }
   }
   return tokens;
@@ -210,22 +215,57 @@ export function barIsEmpty(p: Project, bar: number, ignoreChordRows = false): bo
 
 /**
  * Family letters for the bars: identical bars share a letter (A A B A); a bar that shares at least
- * 60% of what sounds with an earlier family gets that letter with a prime (A′). Empty bars get "–".
+ * 60% of its rhythm (what starts when, on which track) with an earlier family gets that letter with a
+ * prime (A′), so a variation with new notes on the same rhythm joins its family. Empty bars get "–".
  */
 export function barFamilies(p: Project): string[] {
-  const families: { letter: string; tokens: Set<string> }[] = [];
+  const families: { letter: string; tokens: Set<string>; rhythm: Set<string> }[] = [];
   return Array.from({ length: p.loopBars }, (_, bar) => {
     const tokens = barTokens(p, bar);
     if (!tokens.size) return '–';
+    const rhythm = barTokens(p, bar, true);
     const same = families.find((family) => family.tokens.size === tokens.size && [...tokens].every((token) => family.tokens.has(token)));
     if (same) return same.letter;
     const similar = families.find((family) => {
-      const shared = [...tokens].filter((token) => family.tokens.has(token)).length;
-      return shared / new Set([...tokens, ...family.tokens]).size >= 0.6;
+      const shared = [...rhythm].filter((token) => family.rhythm.has(token)).length;
+      return shared / new Set([...rhythm, ...family.rhythm]).size >= 0.6;
     });
     if (similar) return `${similar.letter}′`;
     const letter = String.fromCharCode(65 + families.length);
-    families.push({ letter, tokens });
+    families.push({ letter, tokens, rhythm });
     return letter;
   });
+}
+
+/**
+ * Bar families (plan.md C2): insert a variation after a bar. Drums and chords are copied; each melody or bass
+ * line in the bar gets Echo, Answer or Twist (src/library/phrases.ts), keeping its rhythm, so the new bar
+ * joins the bar's family as A′.
+ */
+export function canVaryBar(p: Project, bar: number): boolean {
+  return canDuplicateBar(p, bar) && p.channels.some((channel) => isLine(channel) && channel.notes.some((note) => Math.floor(note.step / p.noteLength) === bar));
+}
+
+const isLine = (channel: Channel) => !channel.lanes && !channel.generatedMetadata && (channel.notes?.length ?? 0) > 0;
+
+export function varyBar(p: Project, bar: number, variation: PhraseVariation): Project {
+  if (!canVaryBar(p, bar)) return p;
+  const next = duplicateBar(p, bar);
+  const per = p.noteLength;
+  const target = bar + 1;
+  const melody = p.channels.filter(isLine).flatMap((channel) => channel.notes);
+  const detected = detectKey(melody, per);
+  // A few hummed notes rarely pin the key down, so the project key wins unless the melody is clear.
+  const key = detected && detected.confidence >= 0.8 ? { root: detected.root, scaleId: detected.scaleId } : { root: p.scaleRoot, scaleId: p.scaleId };
+  const channels = next.channels.map((channel) => {
+    if (!isLine(channel)) return channel;
+    const inBar = channel.notes.filter((note) => Math.floor(note.step / per) === target);
+    if (!inBar.length) return channel;
+    const varied = nextPhrase(inBar, key, variation, (p.seed ?? 1) * 31 + bar).map((note, index) => ({
+      ...note,
+      id: `${inBar[Math.min(index, inBar.length - 1)].id}~${variation[0]}${target}-${index}`,
+    }));
+    return { ...channel, notes: [...channel.notes.filter((note) => Math.floor(note.step / per) !== target), ...varied] };
+  });
+  return setLoopBars({ ...next, channels }, next.loopBars);
 }

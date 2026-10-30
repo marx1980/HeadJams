@@ -105,3 +105,27 @@ describe('bars', () => {
     expect(rearrangeBars(p, [0, 1, 0])).toBe(p);
   });
 });
+
+describe('bar variations', () => {
+  it('inserts an Answer after the bar: same rhythm, new notes, drums copied, family A′', async () => {
+    const { varyBar, canVaryBar } = await import('./bars');
+    const base = setLoopBars({ ...createProject('Vary'), noteLength: 8 }, 2);
+    const p: Project = {
+      ...base,
+      channels: [
+        { ...createChannel('mel', 'Melody', 'grand-piano', 16), notes: [60, 62, 64, 67].map((pitch, index) => ({ id: `m${index}`, step: index * 2, pitch, durationSteps: 2 })) },
+        { ...createChannel('kick', 'Kick', 'kick', 16), steps: Array.from({ length: 16 }, (_, step) => step % 4 === 0 && step < 8) },
+      ],
+    };
+    expect(canVaryBar(p, 0)).toBe(true);
+    expect(canVaryBar(p, 1)).toBe(false);
+    const varied = varyBar(p, 0, 'answer');
+    expect(varied.loopBars).toBe(2);
+    const second = varied.channels[0].notes.filter((note) => note.step >= 8);
+    expect(second.map((note) => note.step)).toEqual([8, 10, 12, 14]);
+    expect(second.map((note) => note.pitch)).not.toEqual([60, 62, 64, 67]);
+    expect(new Set(varied.channels[0].notes.map((note) => note.id)).size).toBe(8);
+    expect(varied.channels[1].steps.flatMap((on, step) => on ? [step] : [])).toEqual([0, 4, 8, 12]);
+    expect(barFamilies(varied)).toEqual(['A', 'A′']);
+  });
+});
