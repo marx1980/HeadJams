@@ -455,8 +455,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .capture-main.recording .inline-icon { color: #fff; }
 .capture-sheet { display: flex; flex-direction: column; gap: 10px; }
 .capture-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
-.capture-options .check-label { grid-column: 1 / -1; }
-.capture-options label:has(#capture-bar) + .check-label { grid-column: auto; }
+.capture-options .check-label { grid-column: auto; }
 .capture-options select { width: 100%; box-sizing: border-box; height: 40px; }
 .capture-options .check-label { min-height: 40px; }
 .capture-main { min-height: 56px; font-size: 1.1rem; font-weight: 700; }

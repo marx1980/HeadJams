@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   addArrangementClip, addChordEvent, addNote, addPattern, arrangementLength, MAX_CHANNELS, removeArrangementClip, removeChordEvent, removeNote,
   removePattern, renamePattern, scaleChannelNoteDurations, selectPattern, shiftChannelNotes, totalSteps,
@@ -38,6 +38,7 @@ import { ChordRowEditor } from './ChordRowEditor';
 
 const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 const CHORDS = ['major', 'minor', 'diminished', 'sus2', 'sus4'] as const;
+/** Default piano-roll range C3–B5; it widens to whole octaves around the track's notes (low hums and bass sit below C3). */
 const LOW_PITCH = 48;
 const PITCH_COUNT = 36;
 
@@ -58,11 +59,27 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
   const [guitarArticulation, setGuitarArticulation] = useState<ChordArticulation>('down-strum');
   const [guitarStep, setGuitarStep] = useState(0);
   const channel = project.channels.find((item) => item.id === channelId);
+  const notePitches = (channel?.notes ?? []).map((note) => note.pitch).filter((pitch) => Number.isFinite(pitch));
+  const lowPitch = notePitches.length ? Math.max(0, Math.min(LOW_PITCH, Math.floor(Math.min(...notePitches) / 12) * 12)) : LOW_PITCH;
+  const highPitch = notePitches.length
+    ? Math.min(127, Math.max(LOW_PITCH + PITCH_COUNT - 1, Math.ceil((Math.max(...notePitches) + 1) / 12) * 12 - 1))
+    : LOW_PITCH + PITCH_COUNT - 1;
+  const pitchCount = highPitch - lowPitch + 1;
+  // Open on the notes: scroll the roll so the track's highest note is near the top (hummed notes are often low).
+  const rollRef = useRef<HTMLDivElement>(null);
+  const topNote = notePitches.length ? Math.max(...notePitches) : undefined;
+  useEffect(() => {
+    const roll = rollRef.current;
+    if (!roll || topNote === undefined) return;
+    const cell = roll.querySelector<HTMLElement>(`[data-pitch="${Math.min(highPitch, topNote + 2)}"]`);
+    if (cell) roll.scrollTop = Math.max(0, cell.getBoundingClientRect().top - roll.getBoundingClientRect().top + roll.scrollTop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId, topNote === undefined]);
   const guitarChordMode = channel ? findSound(project, channel.soundId)?.playbackMode === 'chord' : false;
   const scale = SCALES.find((item) => item.id === project.scaleId) ?? SCALES[0];
   const steps = totalSteps(project);
   const activeFocusedStep = Math.min(focusedCell.step, steps - 1);
-  const scaleRoots = useMemo(() => scalePitches(LOW_PITCH + project.scaleRoot, scale, 3).filter((pitch) => pitch >= LOW_PITCH && pitch < LOW_PITCH + PITCH_COUNT), [project.scaleRoot, scale]);
+  const scaleRoots = useMemo(() => scalePitches(lowPitch + project.scaleRoot, scale, Math.ceil(pitchCount / 12) + 1).filter((pitch) => pitch >= lowPitch && pitch < lowPitch + pitchCount), [project.scaleRoot, scale, lowPitch, pitchCount]);
   const activeChordRoot = scaleRoots.includes(chordRoot) ? chordRoot : (scaleRoots[0] ?? 60);
   const activeGuitarStep = Math.min(guitarStep, steps - 1);
   const addGuitarChord = () => {
@@ -76,7 +93,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
       durationSteps: duration,
     }));
   };
-  const pitches = Array.from({ length: PITCH_COUNT }, (_, index) => LOW_PITCH + PITCH_COUNT - 1 - index);
+  const pitches = Array.from({ length: pitchCount }, (_, index) => lowPitch + pitchCount - 1 - index);
 
   const addPianoNote = (step: number, pitch: number) => {
     if (!channel) return;
@@ -114,7 +131,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
     event.preventDefault();
     onKeyboardNavigate?.();
     const nextStep = Math.max(0, Math.min(steps - 1, step + offset[0]));
-    const nextPitch = Math.max(LOW_PITCH, Math.min(LOW_PITCH + PITCH_COUNT - 1, pitch + offset[1]));
+    const nextPitch = Math.max(lowPitch, Math.min(lowPitch + pitchCount - 1, pitch + offset[1]));
     setFocusedCell({ step: nextStep, pitch: nextPitch });
     event.currentTarget.closest('.piano-roll')
       ?.querySelector<HTMLButtonElement>(`[data-step="${nextStep}"][data-pitch="${nextPitch}"]`)
@@ -160,7 +177,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
         </details>
       )}
       {channel ? (
-        <div className="piano-roll" role="grid" aria-label={`${channel.name} piano roll`}>
+        <div className="piano-roll" ref={rollRef} role="grid" aria-label={`${channel.name} piano roll`}>
           {pitches.map((pitch) => (
             <div className="piano-row" role="row" key={pitch} style={{ gridTemplateColumns: `44px repeat(${steps}, minmax(22px, 1fr))` }}>
               <span className="pitch-label">{NOTE_NAMES[pitch % 12]}{Math.floor(pitch / 12) - 1}</span>

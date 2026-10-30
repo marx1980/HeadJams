@@ -26,7 +26,8 @@ const KINDS: { id: RecognitionMode; label: string }[] = [
   { id: 'beat', label: 'Beat' },
 ];
 
-type Phase = 'idle' | 'recording' | 'review' | 'working';
+type Phase = 'idle' | 'starting' | 'recording' | 'review' | 'working';
+const PLAY_ALONG_KEY = 'musicmaker.capturePlayAlong';
 
 /**
  * Capture an idea or add a part (hum.md H1, H4): choose the part (or let it guess), record over the playing loop,
@@ -42,7 +43,7 @@ export function CaptureSheet({
   /** The project already makes sound, so a mic will hear it unless headphones are on. */
   hasSound: boolean;
   /** Start recording over the loop, or over one bar looping on its own. */
-  start: (metronome: boolean, bar?: number) => Promise<CaptureSession>;
+  start: (metronome: boolean, bar?: number, playAlong?: boolean) => Promise<CaptureSession>;
   /** Called when recording ends or is cancelled, to stop playback and the metronome. */
   stop: () => void;
   onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => Promise<void>;
@@ -67,6 +68,12 @@ export function CaptureSheet({
   const targets = part === 'beat' ? beatChannels : part === 'auto' ? [...channels, ...beatChannels] : channels;
   const intoValue = targets.some((channel) => channel.id === into) ? into : 'new';
   const [metronome, setMetronome] = useState(true);
+  // Hearing the existing tracks while humming is optional (off by default): the metronome alone keeps time.
+  const [playAlong, setPlayAlongState] = useState(() => { try { return localStorage.getItem(PLAY_ALONG_KEY) === '1'; } catch { return false; } });
+  const setPlayAlong = (value: boolean) => {
+    setPlayAlongState(value);
+    try { localStorage.setItem(PLAY_ALONG_KEY, value ? '1' : '0'); } catch { /* storage unavailable */ }
+  };
   const [elapsed, setElapsed] = useState(0);
   const [capture, setCapture] = useState<CaptureResult>();
   const [guess, setGuess] = useState<RecognitionMode>('melody');
@@ -83,13 +90,15 @@ export function CaptureSheet({
     setError('');
     try {
       recordedBar.current = barIndex;
-      session.current = await start(metronome, barIndex);
+      setPhase('starting');
+      session.current = await start(metronome, barIndex, hasSound && playAlong);
       const startedAt = Date.now();
       setElapsed(0);
       timer.current = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 250);
       setPhase('recording');
     } catch (reason) {
       stop();
+      setPhase('idle');
       setError(reason instanceof Error && !/permission|denied/i.test(reason.message)
         ? reason.message : 'Microphone access failed. Check browser permissions and try again.');
     }
@@ -157,11 +166,15 @@ export function CaptureSheet({
                 </select>
               </label>
             )}
+            {!pad && hasSound && (
+              <label className="check-label"><input id="capture-play-along" type="checkbox" checked={playAlong}
+                onChange={(event) => setPlayAlong(event.target.checked)} /> Play along</label>
+            )}
             {part !== 'draw' && (
               <label className="check-label"><input type="checkbox" checked={metronome} onChange={(event) => setMetronome(event.target.checked)} /> Metronome</label>
             )}
           </div>
-          {hasSound && !pad && <p className="capture-headphones"><Icon name="headphones" className="inline-icon" /> Headphones</p>}
+          {hasSound && !pad && playAlong && <p className="capture-headphones"><Icon name="headphones" className="inline-icon" /> Headphones</p>}
           {part === 'tap' && <TapPad project={project} start={() => startTap(metronome)} stop={stop} beatZeroMs={beatZeroMs} onUse={onUseRhythm} />}
           {part === 'draw' && <DrawPad project={project} playing={playing} onAudition={onAudition} onUse={onUseDrawn} />}
           {!pad && <button id="capture-record" className="capture-main" onClick={() => void record()}><Icon name="record" className="inline-icon" /> Record</button>}
@@ -170,6 +183,9 @@ export function CaptureSheet({
             <button className="secondary" onClick={() => onOpenSong('harmony')}>Harmony</button>
           </div>
         </>
+      )}
+      {phase === 'starting' && (
+        <button id="capture-starting" className="capture-main" disabled><Icon name="record" className="inline-icon" /> Starting…</button>
       )}
       {phase === 'recording' && (
         <button id="capture-stop" className="capture-main recording" onClick={() => void finish()}>
