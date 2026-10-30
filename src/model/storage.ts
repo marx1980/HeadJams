@@ -271,7 +271,16 @@ function normalizeProject(raw: string): Project | undefined {
       scaleRoot: Number.isInteger(p.scaleRoot) && p.scaleRoot >= 0 && p.scaleRoot <= 11 ? p.scaleRoot : 0,
       scaleId: typeof p.scaleId === 'string' ? p.scaleId : 'major',
       patterns,
-      arrangement: Array.isArray(p.arrangement) ? p.arrangement : [],
+      arrangement: Array.isArray(p.arrangement)
+        ? p.arrangement.map((clip) => {
+          const { mutedChannelIds, section, ...rest } = clip;
+          return {
+            ...rest,
+            ...(typeof section === 'string' && section ? { section: section.slice(0, 40) } : {}),
+            ...(Array.isArray(mutedChannelIds) ? { mutedChannelIds: mutedChannelIds.filter((id) => typeof id === 'string') } : {}),
+          };
+        })
+        : [],
       effects: normalizeEffects(p.effects),
       swingTemplate: normalizeSwingTemplate(p.swingTemplate),
       recognitionTakes: normalizeRecognitionTakes(p.recognitionTakes),

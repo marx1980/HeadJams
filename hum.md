@@ -114,7 +114,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 - Harmony: Subtle / Warm / Wide presets over the existing generator, auditioned, as a separate track.
 - Next phrase: 3 deterministic variations of the selected phrase, seeded, marked as generated.
 
-### H7. Arrangement builder
+### H7. Arrangement builder ✅
 - Section templates (Short idea, Loop, Full song: Intro, Verse, Chorus…) built from existing patterns. Density per section (Smaller/Bigger, More/Fewer instruments). Preview before commit; undoable.
 
 ### H8. Find the sound
