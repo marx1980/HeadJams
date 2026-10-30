@@ -16,6 +16,7 @@ import { addKitChannel, applyDrumKit, CORE_LANES, DRUM_KITS, findDrumKit, setKit
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { startCapture, type CaptureResult } from '../audio/capture';
+import { trimLeadingSilence } from '../audio/trimSilence';
 import { CaptureSheet } from './CaptureSheet';
 import { localRecognitionAdapter } from '../library/recognitionAdapter';
 import { applyPerformanceMode } from '../model/performanceModes';
@@ -562,7 +563,9 @@ export function App() {
     if (captureEngineRef.current) { engine.stop(); auditionRef.current = undefined; }
     captureEngineRef.current = false;
   };
-  const applyCapture = async (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => {
+  const applyCapture = async (rawCapture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => {
+    // Start the take where the sound starts, so the empty steps before the first hum are not recorded.
+    const capture = trimLeadingSilence(rawCapture);
     const current = projectRef.current;
     const kindLabel = kind === 'beat' ? 'Beat' : kind === 'bass' ? 'Bass' : 'Melody';
     const label = `${kindLabel} ${current.recognitionTakes.filter((take) => take.mode === kind).length + 1}`;
