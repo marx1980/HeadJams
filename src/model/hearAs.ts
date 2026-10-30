@@ -3,13 +3,15 @@ import { findDrumKit, setKitChannelKit } from '../library/drumKits';
 import type { PercussionClass, RecognitionMode, RecognitionTake } from './recognition';
 
 /** How a recognised idea is heard (hum.md H2). Melody and bass pick an instrument; beats pick a kit. */
-export type HearAsId = 'piano' | 'guitar' | 'bass' | 'strings' | 'synth' | 'acoustic' | 'classic';
+export type HearAsId = 'piano' | 'epiano' | 'guitar' | 'bass' | 'strings' | 'brass' | 'synth' | 'acoustic' | 'classic';
 
 export const HEAR_AS_PITCHED: ReadonlyArray<{ id: HearAsId; label: string }> = [
   { id: 'piano', label: 'Piano' },
+  { id: 'epiano', label: 'Electric piano' },
   { id: 'guitar', label: 'Guitar' },
   { id: 'bass', label: 'Bass' },
   { id: 'strings', label: 'Strings' },
+  { id: 'brass', label: 'Brass' },
   { id: 'synth', label: 'Synth' },
 ];
 export const HEAR_AS_BEAT: ReadonlyArray<{ id: HearAsId; label: string }> = [
@@ -18,7 +20,7 @@ export const HEAR_AS_BEAT: ReadonlyArray<{ id: HearAsId; label: string }> = [
 ];
 
 const PITCHED_SOUND: Record<string, string> = {
-  piano: 'grand-piano', guitar: 'nylon-guitar', bass: 'electric-bass', strings: 'strings',
+  piano: 'grand-piano', epiano: 'electric-piano', guitar: 'nylon-guitar', bass: 'electric-bass', strings: 'strings', brass: 'brass',
 };
 /** Classic (synth) sounds: what recognised tracks used before H2. */
 const SYNTH_SOUND: Record<'melody' | 'bass', string> = { melody: 'keys-1', bass: 'bass-6' };

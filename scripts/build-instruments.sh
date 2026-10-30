@@ -5,9 +5,9 @@
 #   EMILY  git clone https://github.com/sfzinstruments/karoryfer.emilyguitar
 #   BASS   git clone https://github.com/sfzinstruments/karoryfer.black-and-blue-basses
 #   VCSL   git clone https://github.com/sgossner/VCSL, then (SFZ files live on the sfz branch):
-#          git -C VCSL checkout origin/sfz -- "Chordophones/Zithers/Grand Piano, Steinway B.sfz"
+#          git -C VCSL checkout origin/sfz -- "Chordophones/Zithers/Grand Piano, Steinway B.sfz" "Electrophones/TX81Z - FM Piano.sfz"
 #   VSCO   git clone https://github.com/sgossner/VSCO-2-CE, then (SFZ files live on the SFZ branch):
-#          git -C VSCO checkout origin/SFZ -- CelloEnsSusVib.sfz ViolaEnsSusVib.sfz ViolinEnsSusVib.sfz
+#          git -C VSCO checkout origin/SFZ -- CelloEnsSusVib.sfz ViolaEnsSusVib.sfz ViolinEnsSusVib.sfz TromboneSus.sfz TrumpetSus.sfz
 #
 # Usage: scripts/build-instruments.sh NYLON EMILY BASS VCSL VSCO   (pass "-" to skip one)
 set -e
@@ -50,4 +50,18 @@ if [ "$VSCO" != "-" ]; then
     --licence CC0-1.0 --source "VS Chamber Orchestra 2: Community Edition (cello, viola and violin sections, sustain with vibrato)" \
     --url https://github.com/sgossner/VSCO-2-CE --commit "$(commit "$VSCO")" --layers first,last --rate 22050 \
     --loop 1.2-3.2 --crossfade-ms 300 --release-ms 350 --pitch-limit 3 --polyphony 24 --gain-db 1
+fi
+if [ "$VCSL" != "-" ]; then
+  $IMPORT "$VCSL/Electrophones/TX81Z - FM Piano.sfz" --id electric-piano --name "Electric Piano" \
+    --family keys --creator "Versilian Studios (VCSL)" --licence CC0-1.0 \
+    --source "Versilian Community Sample Library: Yamaha TX81Z FM Piano" --url https://github.com/sgossner/VCSL \
+    --commit "$(commit "$VCSL")" --layers first,last --rate 22050 --seconds 2.5 --fade-ms 500 --keys 36-96 \
+    --release-ms 250 --pitch-limit 2 --polyphony 32 --gain-db -2
+fi
+if [ "$VSCO" != "-" ]; then
+  $IMPORT "$VSCO/TromboneSus.sfz@34-53" "$VSCO/TrumpetSus.sfz@57-84" \
+    --id brass --name "Brass" --family brass --creator "Versilian Studios (Sam Gossner, Simon Dalzell)" \
+    --licence CC0-1.0 --source "VS Chamber Orchestra 2: Community Edition (tenor trombone and trumpet, sustain)" \
+    --url https://github.com/sgossner/VSCO-2-CE --commit "$(commit "$VSCO")" --layers first,last --rate 22050 \
+    --loop 1.0-3.0 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 24 --level-zones --gain-db 0
 fi
