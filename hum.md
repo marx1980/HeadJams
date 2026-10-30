@@ -117,7 +117,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 ### H7. Arrangement builder ✅
 - Section templates (Short idea, Loop, Full song: Intro, Verse, Chorus…) built from existing patterns. Density per section (Smaller/Bigger, More/Fewer instruments). Preview before commit; undoable.
 
-### H8. Find the sound
+### H8. Find the sound ✅
 - Description tags on instrument manifests (Warm, Bright, Dark, Soft, Acoustic, Electronic…). Rank instruments by tags and audition them playing your own phrase.
 
 ### Deferred

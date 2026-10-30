@@ -536,3 +536,16 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .song-section-density, .song-section-pattern { text-align: center; font-size: .9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-builder-actions { display: grid; grid-template-columns: 44px 44px 1fr; gap: 6px; margin-top: 8px; }
 .song-builder-actions button { min-height: 40px; }
+
+/* Library › Find the sound */
+.find-sound { display: flex; flex-direction: column; gap: 10px; }
+.find-sound label { display: flex; flex-direction: column; gap: 4px; }
+.find-sound select { height: 40px; width: 100%; box-sizing: border-box; }
+.find-words { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.find-words button { min-height: 40px; }
+.find-results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.find-result { display: grid; grid-template-columns: 1fr 44px 64px; gap: 6px; align-items: center; min-height: 40px; }
+.find-result button { min-height: 40px; }
+.find-result-text { min-width: 0; display: flex; flex-direction: column; }
+.find-result-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-result-words { font-size: .8rem; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

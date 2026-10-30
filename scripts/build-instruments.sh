@@ -16,13 +16,13 @@ IMPORT="python3 -I $(dirname "$0")/sfz-import.py"
 commit() { git -C "$1" rev-parse HEAD 2>/dev/null || cat "$1/.commit"; }
 
 if [ "$NYLON" != "-" ]; then
-  $IMPORT "$NYLON/SpanishClassicalGuitar-20190618.sfz" --id nylon-guitar --name "Nylon Guitar" \
+  $IMPORT "$NYLON/SpanishClassicalGuitar-20190618.sfz" --id nylon-guitar --tags acoustic,warm,soft,plucky --name "Nylon Guitar" \
     --family guitar --creator "roberto@zenvoid.org (FreePats project)" --licence CC0-1.0 \
     --source "Spanish Classical Guitar (FreePats, version 2019-06-18)" --url http://freepats.zenvoid.org/Guitar/acoustic-guitar.html \
     --rate 32000 --seconds 2.5 --fade-ms 400 --keys 36-88 --release-ms 400 --pitch-limit 2 --gain-db -4
 fi
 if [ "$EMILY" != "-" ]; then
-  $IMPORT "$EMILY/emily_clean.sfz" --id clean-guitar --name "Clean Guitar" \
+  $IMPORT "$EMILY/emily_clean.sfz" --id clean-guitar --tags bright,plucky,smooth --name "Clean Guitar" \
     --family guitar --creator "Karoryfer Samples (D. Smolken)" --licence CC0-1.0 \
     --source "Emily Guitar by Karoryfer Samples" --url https://github.com/sfzinstruments/karoryfer.emilyguitar \
     --commit "$(commit "$EMILY")" --layers 2,4 --round-robins 2 --rate 22050 --seconds 2.0 \
@@ -30,7 +30,7 @@ if [ "$EMILY" != "-" ]; then
 fi
 if [ "$BASS" != "-" ]; then
   # Mapped at written pitch (an octave above sounding), hence --transpose -12.
-  $IMPORT "$BASS/Programs/05-darkblack_pluck.sfz" --transpose -12 --id electric-bass --name "Electric Bass" \
+  $IMPORT "$BASS/Programs/05-darkblack_pluck.sfz" --transpose -12 --id electric-bass --tags warm,punchy,plucky,acoustic --name "Electric Bass" \
     --family bass --creator "Karoryfer Samples" --licence CC0-1.0 \
     --source "Black And Blue Basses by Karoryfer Samples (Dark Black, finger plucks)" \
     --url https://github.com/sfzinstruments/karoryfer.black-and-blue-basses --commit "$(commit "$BASS")" \
@@ -38,7 +38,7 @@ if [ "$BASS" != "-" ]; then
     --pitch-limit 5 --polyphony 8 --gain-db -2
 fi
 if [ "$VCSL" != "-" ]; then
-  $IMPORT "$VCSL/Chordophones/Zithers/Grand Piano, Steinway B.sfz" --require "/NoSus/" --id grand-piano --name "Grand Piano" \
+  $IMPORT "$VCSL/Chordophones/Zithers/Grand Piano, Steinway B.sfz" --require "/NoSus/" --id grand-piano --tags acoustic,warm,bright,plucky --name "Grand Piano" \
     --family piano --creator "Versilian Studios (VCSL)" --licence CC0-1.0 \
     --source "Versilian Community Sample Library: Grand Piano, Steinway B" --url https://github.com/sgossner/VCSL \
     --commit "$(commit "$VCSL")" --layers first,last --rate 22050 --seconds 2.6 --fade-ms 500 --keys 36-96 \
@@ -46,13 +46,13 @@ if [ "$VCSL" != "-" ]; then
 fi
 if [ "$VSCO" != "-" ]; then
   $IMPORT "$VSCO/CelloEnsSusVib.sfz@36-53" "$VSCO/ViolaEnsSusVib.sfz@55-62" "$VSCO/ViolinEnsSusVib.sfz@66-86" \
-    --id strings --name "Strings" --family strings --creator "Versilian Studios (Sam Gossner, Simon Dalzell)" \
+    --id strings --tags acoustic,warm,smooth,sustained,soft --name "Strings" --family strings --creator "Versilian Studios (Sam Gossner, Simon Dalzell)" \
     --licence CC0-1.0 --source "VS Chamber Orchestra 2: Community Edition (cello, viola and violin sections, sustain with vibrato)" \
     --url https://github.com/sgossner/VSCO-2-CE --commit "$(commit "$VSCO")" --layers first,last --rate 22050 \
     --loop 1.2-3.2 --crossfade-ms 300 --release-ms 350 --pitch-limit 3 --polyphony 24 --gain-db 1
 fi
 if [ "$VCSL" != "-" ]; then
-  $IMPORT "$VCSL/Electrophones/TX81Z - FM Piano.sfz" --id electric-piano --name "Electric Piano" \
+  $IMPORT "$VCSL/Electrophones/TX81Z - FM Piano.sfz" --id electric-piano --tags electronic,warm,soft,smooth,plucky --name "Electric Piano" \
     --family keys --creator "Versilian Studios (VCSL)" --licence CC0-1.0 \
     --source "Versilian Community Sample Library: Yamaha TX81Z FM Piano" --url https://github.com/sgossner/VCSL \
     --commit "$(commit "$VCSL")" --layers first,last --rate 22050 --seconds 2.5 --fade-ms 500 --keys 36-96 \
@@ -60,7 +60,7 @@ if [ "$VCSL" != "-" ]; then
 fi
 if [ "$VSCO" != "-" ]; then
   $IMPORT "$VSCO/TromboneSus.sfz@34-53" "$VSCO/TrumpetSus.sfz@57-84" \
-    --id brass --name "Brass" --family brass --creator "Versilian Studios (Sam Gossner, Simon Dalzell)" \
+    --id brass --tags acoustic,bright,punchy,sustained --name "Brass" --family brass --creator "Versilian Studios (Sam Gossner, Simon Dalzell)" \
     --licence CC0-1.0 --source "VS Chamber Orchestra 2: Community Edition (tenor trombone and trumpet, sustain)" \
     --url https://github.com/sgossner/VSCO-2-CE --commit "$(commit "$VSCO")" --layers first,last --rate 22050 \
     --loop 1.0-3.0 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 24 --level-zones --gain-db 0

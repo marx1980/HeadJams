@@ -10,6 +10,13 @@
   "pitchShiftLimitSemitones": 3,
   "preloadStrategy": "range",
   "gainDb": 1,
+  "tags": [
+    "acoustic",
+    "warm",
+    "smooth",
+    "sustained",
+    "soft"
+  ],
   "envelope": {
     "mode": "sustain",
     "attackMs": 1,
