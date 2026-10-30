@@ -4,13 +4,19 @@ import type { RecognitionMode } from '../model/recognition';
 import type { Channel } from '../model/project';
 import { guessCaptureKind } from '../library/captureGuess';
 import { Icon } from './Icon';
+import { DrawPad, TapPad } from './TapDrawPads';
+import type { NoteEvent, Project } from '../model/project';
+import type { Rhythm } from '../library/tapRhythm';
+import type { RhythmUse } from '../model/rhythmUse';
 
-type Part = 'auto' | RecognitionMode;
+type Part = 'auto' | RecognitionMode | 'tap' | 'draw';
 const PARTS: { id: Part; label: string }[] = [
   { id: 'auto', label: 'Auto' },
   { id: 'melody', label: 'Hum melody' },
   { id: 'bass', label: 'Hum bass' },
   { id: 'beat', label: 'Beatbox' },
+  { id: 'tap', label: 'Tap rhythm' },
+  { id: 'draw', label: 'Draw melody' },
 ];
 
 const KINDS: { id: RecognitionMode; label: string }[] = [
@@ -25,7 +31,9 @@ type Phase = 'idle' | 'recording' | 'review' | 'working';
  * Capture an idea or add a part (hum.md H1, H4): choose the part (or let it guess), record over the playing loop,
  * and it lands on the grid. Beatbox goes into a kit channel's lanes; Chords and Harmony open their Song tools.
  */
-export function CaptureSheet({ channels, beatChannels, hasSound, start, stop, onUse, onPlay, onOpenSong }: {
+export function CaptureSheet({
+  channels, beatChannels, hasSound, start, stop, onUse, onPlay, onOpenSong, project, startTap, beatZeroMs, onUseRhythm, onUseDrawn, onAudition, playing,
+}: {
   /** Channels a melody or bass can be captured into. */
   channels: Channel[];
   /** Kit channels a beatbox can be captured into. */
@@ -38,10 +46,19 @@ export function CaptureSheet({ channels, beatChannels, hasSound, start, stop, on
   onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined) => Promise<void>;
   onPlay: (capture: CaptureResult) => void;
   onOpenSong: (section: 'chords' | 'harmony') => void;
+  project: Project;
+  /** Play the loop (and metronome) for tapping; `stop` ends it. */
+  startTap: (metronome: boolean) => Promise<void>;
+  beatZeroMs: () => number | undefined;
+  onUseRhythm: (rhythm: Rhythm, use: RhythmUse, into: string | undefined) => void;
+  onUseDrawn: (notes: NoteEvent[]) => void;
+  onAudition: (preview?: Project) => void;
+  playing: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [part, setPart] = useState<Part>('auto');
   const [into, setInto] = useState('new');
+  const pad = part === 'tap' || part === 'draw';
   const targets = part === 'beat' ? beatChannels : part === 'auto' ? [...channels, ...beatChannels] : channels;
   const intoValue = targets.some((channel) => channel.id === into) ? into : 'new';
   const [metronome, setMetronome] = useState(true);
@@ -81,7 +98,7 @@ export function CaptureSheet({ channels, beatChannels, hasSound, start, stop, on
     try {
       const result = await current.stop();
       setCapture(result);
-      if (part !== 'auto') { await use(part, result); return; }
+      if (part === 'melody' || part === 'bass' || part === 'beat') { await use(part, result); return; }
       setGuess(guessCaptureKind(result.samples, result.sampleRate));
       setPhase('review');
     } catch (reason) {
@@ -116,16 +133,22 @@ export function CaptureSheet({ channels, beatChannels, hasSound, start, stop, on
                 {PARTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
               </select>
             </label>
-            <label>Into
-              <select id="capture-into" value={intoValue} onChange={(event) => setInto(event.target.value)}>
-                <option value="new">{part === 'beat' ? 'New kit' : 'New track'}</option>
-                {targets.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-              </select>
-            </label>
-            <label className="check-label"><input type="checkbox" checked={metronome} onChange={(event) => setMetronome(event.target.checked)} /> Metronome</label>
+            {!pad && (
+              <label>Into
+                <select id="capture-into" value={intoValue} onChange={(event) => setInto(event.target.value)}>
+                  <option value="new">{part === 'beat' ? 'New kit' : 'New track'}</option>
+                  {targets.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+                </select>
+              </label>
+            )}
+            {part !== 'draw' && (
+              <label className="check-label"><input type="checkbox" checked={metronome} onChange={(event) => setMetronome(event.target.checked)} /> Metronome</label>
+            )}
           </div>
-          {hasSound && <p className="capture-headphones"><Icon name="headphones" className="inline-icon" /> Headphones</p>}
-          <button id="capture-record" className="capture-main" onClick={() => void record()}><Icon name="record" className="inline-icon" /> Record</button>
+          {hasSound && !pad && <p className="capture-headphones"><Icon name="headphones" className="inline-icon" /> Headphones</p>}
+          {part === 'tap' && <TapPad project={project} start={() => startTap(metronome)} stop={stop} beatZeroMs={beatZeroMs} onUse={onUseRhythm} />}
+          {part === 'draw' && <DrawPad project={project} playing={playing} onAudition={onAudition} onUse={onUseDrawn} />}
+          {!pad && <button id="capture-record" className="capture-main" onClick={() => void record()}><Icon name="record" className="inline-icon" /> Record</button>}
           <div className="capture-more">
             <button className="secondary" onClick={() => onOpenSong('chords')}>Chords</button>
             <button className="secondary" onClick={() => onOpenSong('harmony')}>Harmony</button>

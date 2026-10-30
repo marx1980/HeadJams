@@ -22,6 +22,7 @@ import { instrumentStore } from '../audio/sampler/browser';
 import { instrumentNeeds } from '../audio/sampler/instrumentStore';
 import { hearTakeAs } from '../model/hearAs';
 import { refreshChordRows } from '../model/chordRow';
+import { applyRhythm } from '../model/rhythmUse';
 import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTempo, removeRecognitionTake } from '../model/recognitionProject';
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
@@ -536,6 +537,31 @@ export function App() {
             beatChannels={project.channels.filter((channel) => channel.lanes)}
             hasSound={project.channels.some((channel) => !channel.mute && (channel.steps.some(Boolean) || channel.notes.length > 0
               || (channel.chordEvents?.length ?? 0) > 0 || (channel.lanes ?? []).some((lane) => lane.steps.some(Boolean))))}
+            project={project}
+            startTap={async (metronome) => {
+              engine.setMetronome(metronome);
+              auditionRef.current = undefined;
+              if (!engine.playing) { await engine.start(); captureEngineRef.current = true; }
+            }}
+            beatZeroMs={() => engine.playbackBeatZeroMs}
+            onUseRhythm={(rhythm, use, into) => {
+              const updated = applyRhythm(projectRef.current, rhythm, use, into);
+              if (updated === projectRef.current) { flash('No room for another track. Choose one in Into.'); return; }
+              setProject(updated);
+              closeMenu();
+              flash('Rhythm added', true);
+            }}
+            onUseDrawn={(notes) => {
+              const current = projectRef.current;
+              const added = addChannel(current, 'Drawn melody', 'grand-piano');
+              if (added === current) { flash('No room for another track.'); return; }
+              auditionRef.current = undefined;
+              setProject(updateChannel(added, added.channels.at(-1)!.id, { notes }));
+              closeMenu();
+              flash('Melody added', true);
+            }}
+            onAudition={(preview) => void audition(preview)}
+            playing={playStep !== null}
             onOpenSong={(section) => {
               closeMenu();
               goTab('song');

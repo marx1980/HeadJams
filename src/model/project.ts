@@ -140,6 +140,8 @@ export interface ChordRow {
   strumMs: number;
   humanise: number;
   capo: number;
+  /** A tapped one-bar pattern (pattern "custom"), in the patterns.ts format. */
+  customBar?: string;
 }
 
 export interface Pattern {
