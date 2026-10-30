@@ -624,7 +624,24 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .track-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: end; margin-bottom: 6px; }
 .track-tools select, .track-tools button { width: 100%; min-width: 0; box-sizing: border-box; height: 40px; }
 .track-tools-wide { grid-column: span 2; }
+.track-tools-full { grid-column: 1 / -1; display: grid; gap: 6px; align-items: center; }
+.tap-modes { grid-template-columns: 36px repeat(3, minmax(0, 1fr)); }
+.no-room { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.no-room span { grid-column: 1 / -1; }
+.no-room span, .tap-modes span { font-weight: 600; }
+.channel.tap-insert .grid, .channel.tap-remove .grid { outline: 2px dashed var(--color); outline-offset: 3px; }
+.channel.tap-remove .grid { outline-style: dotted; }
 @media (max-width: 600px) { .track-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Beat › Tracks layout: Stack | Row and Bars shown */
+.grid-layout { margin-top: 12px; display: grid; gap: 6px; }
+.grid-layout-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.layout-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.layout-toggle button, .bars-shown select { height: 40px; min-width: 0; }
+.bars-shown { display: grid; gap: 2px; min-width: 96px; }
+.grid-layout .bar-pager { margin-top: 0; }
+.grid.row-layout { overflow-x: auto; position: relative; padding-bottom: 4px; }
+.grid.row-layout .bar-row { margin-bottom: 0; }
+.step.bar-start { margin-left: 6px; }
 .bar-pager { display: grid; grid-template-columns: 44px 1fr 44px; gap: 6px; align-items: center; margin-top: 12px; }
 .bar-pager span { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 .step.hidden-hits { position: relative; }
