@@ -13,6 +13,7 @@ export interface SampleData {
   metadataVersion?: number;
   /** Musical time (s) of the first sample of a microphone recording, for aligning it with the project. */
   recordingOffsetSeconds?: number;
+  source?: 'mic' | 'import';
 }
 
 export function normalizeSampleData(sample: SampleData): SampleData {
@@ -54,6 +55,7 @@ interface StoredSample {
   targetPitch?: number;
   metadataVersion?: number;
   recordingOffsetSeconds?: number;
+  source?: 'mic' | 'import';
 }
 
 const DB_NAME = 'musicmaker.samples';

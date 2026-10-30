@@ -12,6 +12,7 @@ interface DraftSample {
   samples: Float32Array;
   sampleRate: number;
   recordingOffsetSeconds?: number;
+  source?: 'mic' | 'import';
 }
 
 function Setting({
@@ -172,6 +173,7 @@ export function SampleEditor({
         name: fallbackName.replace(/\.[^.]+$/, '') || 'My sample',
         samples: mono, sampleRate: decoded.sampleRate,
         ...(recordingOffsetSeconds === undefined ? {} : { recordingOffsetSeconds }),
+        source: imported ? 'import' : 'mic',
       });
       if (imported) onImport();
     } catch {
@@ -307,6 +309,7 @@ export function SampleEditor({
       sampleRate,
       processingSettings: settings,
       recordedAt: activeSample?.recordedAt ?? Date.now(),
+      ...((activeSample?.source ?? draft?.source) ? { source: activeSample?.source ?? draft?.source } : {}),
       ...((activeSample?.recordingOffsetSeconds ?? draft?.recordingOffsetSeconds) === undefined
         ? {} : { recordingOffsetSeconds: activeSample?.recordingOffsetSeconds ?? draft?.recordingOffsetSeconds }),
       detectedBpm,

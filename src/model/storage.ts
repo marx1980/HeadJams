@@ -164,6 +164,8 @@ function normalizeRecognitionTakes(value: unknown): RecognitionTake[] {
       ...(typeof take.originalChannelId === 'string' ? { originalChannelId: take.originalChannelId } : {}),
       ...(normalizeApplied(take.applied) ? { applied: normalizeApplied(take.applied) } : {}),
       ...(Number.isFinite(take.alignmentSeconds) ? { alignmentSeconds: take.alignmentSeconds } : {}),
+      ...(take.source === 'mic' || take.source === 'import' ? { source: take.source } : {}),
+      ...(typeof take.label === 'string' && take.label.trim() ? { label: take.label.trim().slice(0, 60) } : {}),
     }];
   });
 }

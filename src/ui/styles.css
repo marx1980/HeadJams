@@ -182,7 +182,10 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 10px 0; }
 .beat-options > label > :is(input, select) { flex: 1; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 12px; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--card-shadow); }
-.toast { position: fixed; top: 10px; right: 10px; background: var(--success); color: var(--success-contrast); padding: 8px 14px; border-radius: var(--control-radius); }
+.undo-row { margin: 0 0 8px; }
+.undo-row button { flex: 1 1 0; }
+.toast-undo { margin-left: 10px; min-height: 32px; padding: 2px 12px; background: var(--surface); color: var(--text); }
+.toast { position: fixed; z-index: 30; top: 10px; right: 10px; display: flex; align-items: center; background: var(--success); color: var(--success-contrast); padding: 8px 14px; border-radius: var(--control-radius); }
 .hint { opacity: 0.7; }
 .library-heading, .library-filters, .sound-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .library-heading { justify-content: space-between; }
@@ -439,3 +442,4 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .effect-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .effect-controls label { min-width: 0; }
 .effect-controls select { width: 100%; box-sizing: border-box; height: 40px; }
+.toast.nudge { top: auto; bottom: calc(120px + env(safe-area-inset-bottom)); }

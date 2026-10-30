@@ -83,6 +83,10 @@ export function RecognitionPanel({
         sample.id, result, options, project.bpm, project.noteLength, takeId, pitchCorrection,
         scaleAwarePitch, project.scaleRoot, project.scaleId, sample.recordingOffsetSeconds ?? 0,
       );
+      const previous = project.recognitionTakes.find((item) => item.id === take.id);
+      take.source = sample.source;
+      take.label = previous?.label
+        ?? `${MODES.find((item) => item.value === mode)?.label ?? 'Idea'} ${project.recognitionTakes.filter((item) => item.mode === mode).length + 1}`;
       if (!onApply(take)) {
         setError('There is not enough channel space for this recognition result. Remove a channel and try again.');
         setProgress(undefined);
