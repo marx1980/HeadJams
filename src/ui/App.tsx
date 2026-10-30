@@ -648,7 +648,8 @@ export function App() {
                   <span className="generated-track-badge">
                     Generated · {c.generatedMetadata.kind === 'bass-generation' ? 'Bass'
                       : c.generatedMetadata.kind === 'harmony-generation' ? 'Harmony'
-                        : c.generatedMetadata.kind === 'accompaniment-generation' ? 'Accompaniment' : 'Chords'}
+                        : c.generatedMetadata.kind === 'accompaniment-generation' ? 'Accompaniment'
+                          : c.generatedMetadata.kind === 'phrase-variation' ? 'Phrase' : 'Chords'}
                   </span>
                 )}
                 {c.lanes ? (

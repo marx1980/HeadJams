@@ -55,7 +55,8 @@ function normalizeGeneratedMetadata(value: unknown): Channel['generatedMetadata'
   const metadata = value as Partial<NonNullable<Channel['generatedMetadata']>>;
   if (metadata.generatedBy !== 'arrangement-assistant'
     || (metadata.kind !== 'chord-suggestions' && metadata.kind !== 'bass-generation'
-      && metadata.kind !== 'harmony-generation' && metadata.kind !== 'accompaniment-generation')
+      && metadata.kind !== 'harmony-generation' && metadata.kind !== 'accompaniment-generation'
+      && metadata.kind !== 'phrase-variation')
     || typeof metadata.sourceChannelId !== 'string' || !metadata.sourceChannelId
     || !Number.isFinite(metadata.confidence)) return undefined;
   return {

@@ -110,7 +110,7 @@ Promise: *if you can hum it, tap it or draw it, MusicMaker turns it into editabl
 - Tap pad: record taps, store them as a rhythm pattern (beats and strengths), then "Use for" Drums, Bass, Strum (E4) or Pulses.
 - Draw pad: contour → smoothed segments → notes snapped by Original/Cleaned/Tight → audition. Higher/Lower nudges per note.
 
-### H6. Harmony presets and next phrase
+### H6. Harmony presets and next phrase ✅
 - Harmony: Subtle / Warm / Wide presets over the existing generator, auditioned, as a separate track.
 - Next phrase: 3 deterministic variations of the selected phrase, seeded, marked as generated.
 
