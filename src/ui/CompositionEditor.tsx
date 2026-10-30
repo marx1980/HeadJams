@@ -17,7 +17,7 @@ import {
   replaceGeneratedArrangementChannel, replaceGeneratedBassChannel, replaceGeneratedChordChannel,
 } from '../model/arrangement';
 import { ARRANGEMENT_STYLES, generateChordAccompaniment } from '../library/arrangementStyles';
-import { detectKey, suggestProgressions, type Progression } from '../library/progressions';
+import { detectKey, MOODS, suggestProgressions, type Mood, type Progression } from '../library/progressions';
 import { ACCOMPANIMENTS, addProgressionTrack, auditionProject, type Accompaniment } from '../model/chordTrack';
 import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type HarmonyPreset, type PhraseVariation } from '../library/phrases';
 import { withNextPhrase } from '../model/phraseProject';
@@ -277,6 +277,8 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   const [arrangementPreview, setArrangementPreview] = useState<NoteEvent[] | null>(null);
   const [keyChoice, setKeyChoice] = useState('auto');
   const [rhythm, setRhythm] = useState<'auto' | 'bar' | 'half'>('auto');
+  const [mood, setMood] = useState<Mood>('any');
+  const [chordNames, setChordNames] = useState(true);
   const [accompaniment, setAccompaniment] = useState<Accompaniment>('guitar');
   const [progressions, setProgressions] = useState<Progression[] | null>(null);
   const [auditionId, setAuditionId] = useState('');
@@ -329,7 +331,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
   const halfBar = rhythm === 'half' || (rhythm === 'auto' && project.loopBars <= 2);
   const findProgressions = () => {
     if (!sourceChannel) return;
-    setProgressions(suggestProgressions(inputNotes, key, project.noteLength, project.loopBars, { halfBar }));
+    setProgressions(suggestProgressions(inputNotes, key, project.noteLength, project.loopBars, { halfBar, mood }));
   };
   const toggleAudition = (progression: Progression) => {
     if (auditionId === progression.id && playing) { onAudition(undefined); setAuditionId(''); return; }
@@ -579,6 +581,11 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
         <div className="bass-assistant chords-by-ear">
           <h4>Chords by ear</h4>
           <div className="arrangement-assistant-controls">
+            <label>Mood
+              <select id="progression-mood" value={mood} onChange={(event) => { setMood(event.target.value as Mood); setProgressions(null); }}>
+                {MOODS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
             <label>Key
               <select id="progression-key" value={keyChoice} onChange={(event) => { setKeyChoice(event.target.value); setProgressions(null); }}>
                 <option value="auto">Auto · {keyName(autoKey.root, autoKey.scaleId)}</option>
@@ -600,6 +607,8 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
                 {ACCOMPANIMENTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
               </select>
             </label>
+            <label className="check-label"><input id="progression-names" type="checkbox" checked={chordNames}
+              onChange={(event) => setChordNames(event.target.checked)} /> Chord names</label>
             <button id="find-chords" disabled={!sourceChannel || !inputNotes.length} onClick={findProgressions}>
               <Icon name="sparkle" className="inline-icon" /> Find chords
             </button>
@@ -610,7 +619,7 @@ export function SongEditor({ project, onChange, onAudition, playing }: {
                 <li key={progression.id} className="progression-item">
                   <div className="progression-text">
                     <span className="progression-name">{progression.label}</span>
-                    <span className="progression-chords">{progression.chords.map((chord) => formatChordSymbol(chord.root, chord.quality)).join(' · ')}</span>
+                    {chordNames && <span className="progression-chords">{progression.chords.map((chord) => formatChordSymbol(chord.root, chord.quality)).join(' · ')}</span>}
                   </div>
                   <button className="secondary" aria-label={`${auditionId === progression.id && playing ? 'Stop' : 'Play'} ${progression.label}`}
                     onClick={() => toggleAudition(progression)}>
