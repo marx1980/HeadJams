@@ -285,6 +285,10 @@ function normalizeProject(raw: string): Project | undefined {
       swingTemplate: normalizeSwingTemplate(p.swingTemplate),
       recognitionTakes: normalizeRecognitionTakes(p.recognitionTakes),
       seed: Number.isInteger(p.seed) && p.seed >= 0 ? p.seed : 1,
+      barNames: p.barNames && typeof p.barNames === 'object' && !Array.isArray(p.barNames)
+        ? Object.fromEntries(Object.entries(p.barNames).filter(([, names]) => Array.isArray(names))
+          .map(([key, names]) => [key, (names as unknown[]).slice(0, 8).map((name) => typeof name === 'string' ? name.slice(0, 24) : '')]))
+        : undefined,
       personalInstruments: Array.isArray(p.personalInstruments)
         ? p.personalInstruments.flatMap((item) => item && typeof item.id === 'string' && /^mine-\d+$/.test(item.id) && Array.isArray(item.samples)
           ? [{

@@ -33,6 +33,7 @@ import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
 import { SoundPicker } from './SoundPicker';
 import { PianoRoll, SongEditor } from './CompositionEditor';
+import { BarsView } from './BarsView';
 import { MidiInput } from './MidiInput';
 import { AppearanceSettings } from './AppearanceSettings';
 import { loadTheme, saveTheme, type ThemeId } from './themes';
@@ -48,6 +49,7 @@ import './styles.css';
 const COLORS = Array.from({ length: 8 }, (_, index) => `var(--channel-${index + 1})`);
 const SEEN_KEY = 'musicmaker.tutorialSeen';
 const VIEW_KEY = 'musicmaker.view';
+const BEAT_VIEW_KEY = 'musicmaker.beatView';
 type HeaderMenu = 'file' | 'settings' | 'help' | 'capture';
 
 const TABS: { id: View; icon: IconName; label: string }[] = [
@@ -70,6 +72,13 @@ export function App() {
   const updatePrefs = (patch: Partial<typeof prefs>) => setPrefs((p) => { const n = { ...p, ...patch }; savePreferences(n); return n; });
   const [nudge, setNudge] = useState<View | null>(null);
   const [midiOpen, setMidiOpen] = useState(false);
+  const [beatView, setBeatView] = useState<'tracks' | 'bars'>(() => {
+    try { return localStorage.getItem(BEAT_VIEW_KEY) === 'bars' ? 'bars' : 'tracks'; } catch { return 'tracks'; }
+  });
+  const pickBeatView = (next: 'tracks' | 'bars') => {
+    setBeatView(next);
+    try { localStorage.setItem(BEAT_VIEW_KEY, next); } catch { /* storage unavailable */ }
+  };
   const [view, setView] = useState<View>(() => {
     const saved = localStorage.getItem(VIEW_KEY);
     return isView(saved) ? saved : 'beat';
@@ -658,6 +667,17 @@ export function App() {
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
           </div>
+          <div className="beat-view-toggle" role="group" aria-label="View">
+            <button id="view-tracks" className={beatView === 'tracks' ? 'on' : 'secondary'} aria-pressed={beatView === 'tracks'}
+              onClick={() => pickBeatView('tracks')}>Tracks</button>
+            <button id="view-bars" className={beatView === 'bars' ? 'on' : 'secondary'} aria-pressed={beatView === 'bars'}
+              onClick={() => pickBeatView('bars')}>Bars</button>
+          </div>
+          {beatView === 'bars' && !tutorial ? (
+            <BarsView project={project} colors={COLORS} playStep={playStep} playing={playStep !== null}
+              onChange={setProject}
+              onAudition={(preview) => void audition(preview)} />
+          ) : (<>
           <section className="channels">
         {project.channels.map((c, ci) => {
           const color = COLORS[ci % COLORS.length];
@@ -750,6 +770,7 @@ export function App() {
               else midiActiveNotesRef.current.clear();
             }} />
           </details>
+          </>)}
         </div>
 
         <div id="pane-sound" role="tabpanel" aria-labelledby="tab-sound" className={`pane pane-sound${view === 'sound' ? ' active' : ''}`}>
