@@ -477,7 +477,7 @@ export class Engine {
         const stepLen = stepDuration(p.bpm, p.noteLength);
         for (const voice of compileStep(p, step, (steps) => stepLen * steps)) {
           if (voice.sound.instrumentId) this.playSampled(voice, time + voice.offsetSec);
-          else if (voice.kind === 'hit') this.play(voice.sound, time, voice.volume, voice.pan);
+          else if (voice.kind === 'hit') this.play(voice.sound, time + voice.offsetSec, voice.volume, voice.pan);
           else {
             this.playPitch(voice.sound, voice.pitch, time + voice.offsetSec, voice.durationSec, voice.volume, voice.pan,
               voice.velocity, voice.pitchBend);

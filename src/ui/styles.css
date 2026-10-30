@@ -443,3 +443,5 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .effect-controls label { min-width: 0; }
 .effect-controls select { width: 100%; box-sizing: border-box; height: 40px; }
 .toast.nudge { top: auto; bottom: calc(120px + env(safe-area-inset-bottom)); }
+.performance-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.performance-modes button { min-height: 40px; }

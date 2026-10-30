@@ -60,3 +60,24 @@ describe('compileStep', () => {
     expect(compileStep(p, 0, perStep).some((v) => v.channelId === 'gtr')).toBe(false);
   });
 });
+
+describe('play what I sang', () => {
+  it('starts the original recording at its aligned offset, only when the toggle is on', async () => {
+    const { renderProject } = await import('./render');
+    const { addSampleSound } = await import('../model/project');
+    let p = createProject();
+    p = addSampleSound(p, 'Take', 'smp');
+    const soundId = p.customSounds[0].id;
+    p.channels = [{ ...createChannel('m', 'Melody', noteSound.id), original: { soundId, offsetSec: 0.3 }, playOriginal: false }];
+    const stepSec = 60 / p.bpm / 4;
+    const step = Math.floor(0.3 / stepSec);
+    expect(compileStep(p, step, (n) => n * stepSec).some((v) => v.sound.id === soundId)).toBe(false);
+    p.channels[0].playOriginal = true;
+    const voice = compileStep(p, step, (n) => n * stepSec).find((v) => v.sound.id === soundId)!;
+    expect(voice.offsetSec).toBeCloseTo(0.3 - step * stepSec);
+    const samples = new Map([['smp', { id: 'smp', sampleRate: 44100, samples: new Float32Array(4410).fill(0.5) }]]);
+    const { left } = renderProject(p, 44100, samples);
+    const first = left.findIndex((value) => value !== 0);
+    expect(first / 44100).toBeCloseTo(0.3, 2);
+  });
+});

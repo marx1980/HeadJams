@@ -60,6 +60,10 @@ export interface Channel {
   notes: NoteEvent[];
   stepEventMetadata?: Record<number, StepEventMetadata>;
   chordEvents?: ChordEvent[];
+  /** The recording a hummed or beatboxed track came from, and where it starts in the loop. */
+  original?: { soundId: string; offsetSec: number };
+  /** Play the original recording along with the track ("play what I sang"). */
+  playOriginal?: boolean;
   generatedMetadata?: GeneratedTrackMetadata;
   kitId?: string;
   role?: DrumRole;

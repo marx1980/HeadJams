@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Project } from '../model/project';
 import { createRecognitionTake, SOUND_FOR_CLASS, type ApplyRecognitionOptions } from '../model/recognitionProject';
 import { correctRecognitionPitches } from '../model/recognitionProject';
+import { applyPerformanceMode, PERFORMANCE_MODES, type PerformanceMode } from '../model/performanceModes';
 import { quantiseRecognitionEvents, quantiseTime } from '../library/quantisation';
 import type { SoundDef } from '../model/project';
 import type {
@@ -105,6 +106,18 @@ export function RecognitionPanel({
     }
   };
 
+  const applyMode = (performance: PerformanceMode) => {
+    if (!activeTake) return;
+    const updated = applyPerformanceMode(activeTake, performance, project.bpm, project.noteLength, project.scaleRoot, project.scaleId);
+    if (!onApply(updated)) return;
+    setEventHistory((history) => [...history, activeTake.quantisedEvents]);
+    setEnabled(updated.quantisation.enabled);
+    setStrength(updated.quantisation.strength);
+    setSubdivision(updated.quantisation.subdivision);
+    setPitchCorrection(updated.pitchCorrection);
+    setScaleAwarePitch(updated.scaleAwarePitch);
+    onEdit();
+  };
   const cancel = () => controller.current?.abort();
   const commitEvents = (events: RecognitionEvent[], patch: Partial<RecognitionTake> = {}) => {
     if (!activeTake) return false;
@@ -335,6 +348,14 @@ export function RecognitionPanel({
       {error && <p className="error" role="alert">{error}</p>}
       {activeTake && (
         <div className="recognition-results" aria-label="Recognition result">
+          <div className="row performance-modes" role="group" aria-label="Performance">
+            {PERFORMANCE_MODES.map((item) => (
+              <button key={item.id} className={activeTake.performance === item.id ? 'on' : 'secondary'}
+                aria-pressed={activeTake.performance === item.id} onClick={() => applyMode(item.id)}>
+                {activeTake.mode === 'beat' ? item.beatLabel : item.label}
+              </button>
+            ))}
+          </div>
           <p>
             {activeTake.originalEvents.length} {activeTake.mode === 'beat' ? 'percussion events' : 'notes'} ·
             {' '}<strong>{activeTake.modelId} v{activeTake.modelVersion}</strong>
