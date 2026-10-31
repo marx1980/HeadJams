@@ -192,6 +192,8 @@ const BREATH_EVERY_SEC = 6;
 const HELD_BREATH_SEC = 0.55;
 const HELD_BREATH_AFTER_SEC = 1.5;
 const BREATH_CUT_SEC = 0.15;
+/** After a held note the breath is quicker, so the held note keeps most of its length. */
+const HELD_CUT_SEC = 0.08;
 const BREATH_SEC = 0.32;
 /** A recorded note this short and this much quieter than its neighbours is a slide, not a note. */
 const SLIDE_MAX_SEC = 0.22;
@@ -293,7 +295,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   // Phrases: split where the next note starts well after everything before it has ended,
   // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest, or a long held note ends well into a phrase.
   const phrases: NoteEvent[][] = [];
-  const breathCut = new Set<string>();
+  const breathCut = new Map<string, number>();
   let latestEnd = Number.NEGATIVE_INFINITY;
   let phraseStart = 0;
   for (const note of sorted) {
@@ -301,11 +303,11 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const rest = startSec(note) - latestEnd > PHRASE_BREAK_SEC;
     const previous = current?.at(-1);
     const connected = wind && current && previous && !rest && previous.step !== note.step && single(previous);
-    const needsBreath = connected && (
-      (startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0 && durationOf(previous.durationSteps) >= 0.25)
-      || (durationOf(previous.durationSteps) >= HELD_BREATH_SEC && startSec(note) - phraseStart >= HELD_BREATH_AFTER_SEC));
+    const longPhrase = connected && startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0 && durationOf(previous.durationSteps) >= 0.25;
+    const held = connected && durationOf(previous.durationSteps) >= HELD_BREATH_SEC && startSec(note) - phraseStart >= HELD_BREATH_AFTER_SEC;
+    const needsBreath = longPhrase || held;
     if (!current || rest || needsBreath) {
-      if (needsBreath && previous) breathCut.add(previous.id);
+      if (needsBreath && previous) breathCut.set(previous.id, longPhrase ? BREATH_CUT_SEC : HELD_CUT_SEC);
       phrases.push([]);
       phraseStart = startSec(note);
     }
@@ -328,9 +330,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const first = phrase[0];
     const before = p > 0 ? phrases[p - 1] : undefined;
     const gapBefore = before ? startSec(first) - Math.max(...before.map(endSec)) : Number.POSITIVE_INFINITY;
-    const afterCut = before ? breathCut.has(before.at(-1)!.id) : false;
+    const cutBefore = before ? breathCut.get(before.at(-1)!.id) : undefined;
+    const afterCut = cutBefore !== undefined;
     if (wind && feel.breath && (gapBefore >= 0.35 || afterCut)) {
-      const length = afterCut ? BREATH_CUT_SEC : BREATH_SEC;
+      const length = afterCut ? cutBefore : BREATH_SEC;
       const at = startSec(first) + lay(first) - length;
       const stepLength = durationOf(1);
       const step = Math.floor(at / stepLength + 1e-9);
@@ -370,7 +373,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
       const written = durationOf(note.durationSteps);
       // A slurred note holds a moment into the next one, so the next note is fully in before this one fades.
       let duration = slursInto ? durationOf(slursInto.step - note.step) + lay(slursInto) - offset : written;
-      if (breathCut.has(note.id)) duration = Math.max(written * 0.5, written - BREATH_CUT_SEC);
+      if (breathCut.has(note.id)) duration = Math.max(written * 0.5, written - breathCut.get(note.id)!);
       const firstOfPhrase = index === 0;
       const lastOfPhrase = index === starts.length - 1;
       const expression: VoiceExpression = {};
