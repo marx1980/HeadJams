@@ -170,6 +170,12 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
             </select>
           </label>
         )}
+        {channel && (
+          <label>Room
+            <input id="room" type="range" min={0} max={1} step={0.05} value={channel.room ?? 0} aria-label={`Room for ${channel.name}`}
+              onChange={(event) => onChange(updateChannel(project, channel.id, { room: Number(event.target.value) > 0 ? Number(event.target.value) : undefined }))} />
+          </label>
+        )}
       </div>
       {channel && (
         <details className="pitch-time-controls" aria-label="Pitch and time tools">

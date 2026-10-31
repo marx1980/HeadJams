@@ -182,6 +182,7 @@ function generatedNotes(take: RecognitionTake, bpm: number, noteLength: number):
       velocity: event.velocity,
       confidence: event.confidence,
       ...(event.pitchBend ? { pitchBend: event.pitchBend } : {}),
+      ...(event.sung ? { sung: event.sung } : {}),
       sourceTakeId: take.id,
     }];
   });

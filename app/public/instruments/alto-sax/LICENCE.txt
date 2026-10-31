@@ -1,3 +1,7 @@
 Weresax by Karoryfer Samples, CC0 1.0 Universal (public domain dedication): alto saxophone, dynamic microphone.
 Source: https://github.com/sfzinstruments/karoryfer.weresax (commit a4d756b21d2a573aca0d840cce7e71ba5effd4c6).
 This folder holds a processed subset; see processing notes in manifest.json.
+
+Breath and key noises (files br-*.wav and ky-*.wav): MTG Solo Saxophones (alto saxophone), samples by the Music Technology Group (MTG), Universitat Pompeu Fabra, SFZ by kinwie.
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/sfzinstruments/MTG.SoloSax (commit b494d256549b3d088fdec176ce82867f8a1f58b2). Changes: cut to 0.6 s / 0.2 s, mono 22.05 kHz 16-bit, levelled.

@@ -1,7 +1,7 @@
 import type { HearAsId } from './hearAs';
 import {
   createProject, fitTrackGrid, NOTE_LENGTHS, CURRENT_PROJECT_FORMAT_VERSION, normalizeEffects, normalizeSwingTemplate,
-  type Channel, type ChordEvent, type ChordRow, type KitLane, type NoteEvent, type Pattern, type Project, type StepEventMetadata,
+  type Channel, type ChordEvent, type ChordRow, type KitLane, type NoteEvent, type Pattern, type Project, type StepEventMetadata, type SungContour,
 } from './project';
 import { CHORD_ARTICULATIONS, CHORD_QUALITIES } from './music';
 import { normalizeTempoChanges } from './tempo';
@@ -12,6 +12,19 @@ import type {
 
 const KEY = 'musicmaker.project.v4';
 const LEGACY_KEYS = ['musicmaker.project.v3', 'musicmaker.project.v2', 'musicmaker.project.v1'];
+
+/** A hummed note's sung contour (see SungContour); undefined when missing or empty. */
+function normalizeSung(raw: unknown): SungContour | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const curve = (points: unknown, low: number, high: number) => Array.isArray(points)
+    ? (points as { time: unknown; value: unknown }[])
+      .filter((point) => point && Number.isFinite(point.time) && (point.time as number) >= 0 && Number.isFinite(point.value))
+      .map((point) => ({ time: point.time as number, value: Math.max(low, Math.min(high, point.value as number)) }))
+    : [];
+  const value = raw as { pitch?: unknown; level?: unknown };
+  const sung = { pitch: curve(value.pitch, -12, 12), level: curve(value.level, 0, 8) };
+  return sung.pitch.length || sung.level.length ? sung : undefined;
+}
 
 function normalizeNote(note: NoteEvent): NoteEvent {
   const confidence = Number.isFinite(note.confidence)
@@ -24,10 +37,12 @@ function normalizeNote(note: NoteEvent): NoteEvent {
   const sourceTakeId = typeof note.sourceTakeId === 'string' && note.sourceTakeId.length > 0
     ? note.sourceTakeId
     : undefined;
+  const sung = normalizeSung(note.sung);
   return {
     ...note,
     confidence,
     ...(pitchBend === undefined ? { pitchBend: undefined } : { pitchBend }),
+    sung,
     sourceTakeId,
   };
 }
@@ -102,6 +117,7 @@ function normalizeRecognitionEvents(value: unknown): RecognitionEvent[] {
       velocity: Math.max(0, Math.min(1, event.velocity!)),
       confidence: Math.max(0, Math.min(1, event.confidence!)),
       ...(pitchBend ? { pitchBend } : {}),
+      ...(normalizeSung(event.sung) ? { sung: normalizeSung(event.sung) } : {}),
     }];
   });
 }
@@ -256,7 +272,8 @@ export function normalizeProject(raw: string): Project | undefined {
         : [],
       ...(normalizeChordRow(channel.chordRow) ? { chordRow: normalizeChordRow(channel.chordRow) } : { chordRow: undefined }),
       ...(Array.isArray(channel.lanes) ? { lanes: normalizeLanes(channel.lanes, channel.steps?.length ?? 0) } : { lanes: undefined }),
-      phrasing: channel.phrasing === 'natural' || channel.phrasing === 'expressive' ? channel.phrasing : undefined,
+      phrasing: (['natural', 'expressive', 'jazz', 'classical', 'pop'] as unknown[]).includes(channel.phrasing) ? channel.phrasing : undefined,
+      room: Number.isFinite(channel.room) && channel.room! > 0 ? Math.min(1, channel.room!) : undefined,
     }, NOTE_LENGTHS.includes(p.noteLength) ? p.noteLength : 16, channel.steps?.length ?? 0);
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({

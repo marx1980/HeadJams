@@ -24,6 +24,8 @@ export interface DetectedNoteEvent {
   velocity: number;
   confidence: number;
   pitchBend?: DetectedPitchBend[];
+  /** Full sung contour (pitch offset and relative level over time), used by phrasing. */
+  sung?: { pitch: DetectedPitchBend[]; level: DetectedPitchBend[] };
 }
 
 export interface PercussionEvent {

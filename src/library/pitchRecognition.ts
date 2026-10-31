@@ -76,6 +76,18 @@ function detectFramePitch(
     : undefined;
 }
 
+/** Every other frame's pitch offset (semitones from the note's median) and level (relative to the median level). */
+function sungContour(group: PitchFrame[], startSeconds: number): { pitch: { time: number; value: number }[]; level: { time: number; value: number }[] } {
+  const center = median(group.map((frame) => frame.pitch));
+  const level = Math.max(1e-6, median(group.map((frame) => frame.rms)));
+  const round = (value: number) => Math.round(value * 1000) / 1000;
+  const picked = group.filter((_, index) => index % 2 === 0);
+  return {
+    pitch: picked.map((frame) => ({ time: round(Math.max(0, frame.time - startSeconds)), value: round(frame.pitch - center) })),
+    level: picked.map((frame) => ({ time: round(Math.max(0, frame.time - startSeconds)), value: round(frame.rms / level) })),
+  };
+}
+
 function makeEvents(frames: Array<PitchFrame | undefined>, frameDuration: number, peakRms: number): DetectedNoteEvent[] {
   const output: DetectedNoteEvent[] = [];
   let group: PitchFrame[] = [];
@@ -99,6 +111,7 @@ function makeEvents(frames: Array<PitchFrame | undefined>, frameDuration: number
         velocity: Math.max(0.05, Math.min(1, median(group.map((frame) => frame.rms)) / Math.max(peakRms, 0.01))),
         confidence: median(group.map((frame) => frame.confidence)),
         ...(pitchBend.length ? { pitchBend } : {}),
+        ...(group.length >= 4 ? { sung: sungContour(group, startSeconds) } : {}),
       });
     }
     group = [];

@@ -79,8 +79,10 @@ export interface Channel {
   lengthSteps?: number;
   /** Steps per bar the grid shows for this track (a coarser view of the project grid; display only). */
   viewSteps?: NoteLength;
-  /** Play the notes as phrased lines (legato, dynamics, vibrato); off when undefined. */
-  phrasing?: 'natural' | 'expressive';
+  /** Play the notes as phrased lines (legato, dynamics, vibrato) in this feel; off when undefined. */
+  phrasing?: PhrasingStyle;
+  /** Per-track room (reverb send), 0–1; none when undefined. */
+  room?: number;
 }
 
 export interface GeneratedTrackMetadata {
@@ -98,7 +100,16 @@ export interface NoteEvent {
   velocity?: number;
   confidence?: number;
   pitchBend?: PitchBendPoint[];
+  /** How the note was sung (hummed takes): pitch offset in semitones and level relative to the note's median, over time. */
+  sung?: SungContour;
   sourceTakeId?: string;
+}
+
+export type PhrasingStyle = 'natural' | 'expressive' | 'jazz' | 'classical' | 'pop';
+
+export interface SungContour {
+  pitch: PitchBendPoint[];
+  level: PitchBendPoint[];
 }
 
 export interface PitchBendPoint {

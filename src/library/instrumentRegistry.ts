@@ -235,7 +235,7 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   sampledInstrument('piccolo', 'Piccolo', 'Brass & Winds', 'Woodwind', VSCO),
   sampledInstrument('tuba', 'Tuba', 'Brass & Winds', 'Brass', VSCO),
   sampledInstrument('soprano-sax', 'Soprano Sax', 'Brass & Winds', 'Sax', MTG, { assetLicense: 'CC-BY-4.0' }),
-  sampledInstrument('alto-sax', 'Alto Sax', 'Brass & Winds', 'Sax', 'Weresax by Karoryfer Samples'),
+  sampledInstrument('alto-sax', 'Alto Sax', 'Brass & Winds', 'Sax', 'Weresax by Karoryfer Samples; breath and keys from MTG Solo Saxophones (CC BY 4.0)', { assetLicense: 'CC0-1.0 AND CC-BY-4.0' }),
   sampledInstrument('tenor-sax', 'Tenor Sax', 'Brass & Winds', 'Sax', MTG, { assetLicense: 'CC-BY-4.0' }),
   sampledInstrument('baritone-sax', 'Baritone Sax', 'Brass & Winds', 'Sax', 'Bear Sax by Karoryfer Samples'),
   sampledInstrument('viola', 'Viola', 'Strings', 'Ensemble', VSCO),

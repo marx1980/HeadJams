@@ -6,7 +6,7 @@ import { guitarChordPitches } from '../model/music';
 import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
 import { chordArticulation, recordedChordFor } from '../model/personalInstrument';
 import { automatedMix } from '../model/automation';
-import { phraseNotes, phrasingProfile, type VoiceExpression } from './phrasing';
+import { phraseTrack, phrasingProfile, type PhrasedTrack, type VoiceExpression } from './phrasing';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -22,6 +22,8 @@ interface VoiceBase {
   offsetSec: number;
   volume: number;
   pan: number;
+  /** Track's room send (0–1); none when undefined. */
+  room?: number;
 }
 
 /** A one-shot trigger from the step grid. */
@@ -48,6 +50,16 @@ export interface PitchedVoice extends VoiceBase {
 
 export type VoiceEvent = HitVoice | PitchedVoice;
 
+/** Phrasing looks at the whole track; compute it once per notes array and settings, not on every step. */
+const phrasingCache = new WeakMap<readonly unknown[], { key: string; value: PhrasedTrack }>();
+function cachedPhrasing(notes: readonly unknown[], key: string, make: () => PhrasedTrack): PhrasedTrack {
+  const hit = phrasingCache.get(notes);
+  if (hit && hit.key === key) return hit.value;
+  const value = make();
+  phrasingCache.set(notes, { key, value });
+  return value;
+}
+
 /**
  * Compile everything that starts on one playback step into voice events.
  * Shared by live playback (engine.ts) and WAV export (render.ts) so both always agree.
@@ -61,7 +73,7 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
       const sound = findSound(p, c.soundId);
       if (!sound) continue;
       const mix = automatedMix(p, c, step);
-      const base = { sound, channelId: c.id, volume: mix.volume, pan: mix.pan };
+      const base = { sound, channelId: c.id, volume: mix.volume, pan: mix.pan, ...(c.room ? { room: c.room } : {}) };
       // A track with a shorter Length repeats its grid steps (and kit lanes) across the loop.
       const gridStep = c.lengthSteps ? source.localStep % c.lengthSteps : source.localStep;
       if (c.steps[gridStep]) voices.push({ ...base, kind: 'hit', offsetSec: 0 });
@@ -71,14 +83,24 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         if (laneSound) voices.push({ ...base, sound: laneSound, kind: 'hit', offsetSec: 0 });
       }
       const starting = (c.notes ?? []).filter((note) => note.step === source.localStep);
-      const profile = c.phrasing && starting.length ? phrasingProfile(sound) : undefined;
-      const phrased = profile && c.phrasing
-        ? phraseNotes(c.notes, { style: c.phrasing, profile, durationOf, stepsPerBar: p.noteLength, seed: `${p.seed ?? 1}:${c.id}` })
+      const profile = c.phrasing && c.notes?.length ? phrasingProfile(sound) : undefined;
+      const phrasedTrack = profile && c.phrasing
+        ? cachedPhrasing(c.notes, `${c.phrasing}:${c.id}:${sound.id}:${p.seed ?? 1}:${p.noteLength}:${durationOf(1)}:${durationOf(p.noteLength * 4)}`,
+          () => phraseTrack(c.notes, { style: c.phrasing!, profile, durationOf, stepsPerBar: p.noteLength, seed: `${p.seed ?? 1}:${c.id}` }))
         : undefined;
+      const phrased = phrasedTrack?.notes;
+      // Breaths and key clicks are recordings, so only sampled instruments play them.
+      for (const extra of sound.instrumentId ? phrasedTrack?.extras ?? [] : []) {
+        if (extra.step !== source.localStep) continue;
+        voices.push({
+          ...base, volume: base.volume * extra.level, kind: 'pitched', origin: 'note', offsetSec: extra.offsetSec,
+          pitch: extra.pitch, durationSec: extra.durationSec, velocity: extra.velocity, expression: extra.expression,
+        });
+      }
       for (const note of starting) {
         const shaped = phrased?.get(note.id);
         voices.push({
-          ...base, kind: 'pitched', origin: 'note', offsetSec: 0, pitch: note.pitch,
+          ...base, kind: 'pitched', origin: 'note', offsetSec: shaped?.offsetSec ?? 0, pitch: note.pitch,
           durationSec: shaped?.durationSec ?? durationOf(note.durationSteps),
           velocity: shaped ? shaped.velocity : note.velocity,
           pitchBend: shaped?.pitchBend ?? note.pitchBend,
