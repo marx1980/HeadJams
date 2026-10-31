@@ -35,6 +35,7 @@ import { applyRecognitionTake, createRecognitionTake, rebaseRecognitionTakeForTe
 import type { RecognitionTake } from '../model/recognition';
 import { countNotes, TUTORIALS, type Tutorial, type TutorialStep, type View } from '../tutorial/tutorials';
 import { TutorialMenu, TutorialOverlay } from './Tutorial';
+import { Wordmark } from './Wordmark';
 import { loadDone, saveDone } from '../tutorial/progress';
 import { SoundDesigner } from './SoundDesigner';
 import { SampleLibrary } from './SampleLibrary';
@@ -728,7 +729,7 @@ export function App() {
   return (
     <main className="app" data-theme={theme} data-reduce-motion={prefs.reduceMotion || undefined} data-large-icons={prefs.largeIcons || undefined}>
       <header className="bar">
-        <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v2.png`} alt="" /><img className="app-wordmark" src={`${import.meta.env.BASE_URL}wordmark.svg`} alt="MusicMaker" /></h1>
+        <h1 className="app-brand"><img className="app-logo" src={`${import.meta.env.BASE_URL}icon-v3.png`} alt="" /><Wordmark className="app-wordmark" /></h1>
         <div className="header-menus">
           <div className="project-menu">
             <button className="secondary icon-btn" aria-haspopup="true" aria-expanded={openMenu === 'file'} aria-label="File menu" title="File" onClick={() => toggleMenu('file')}><Icon name="file" /></button>
