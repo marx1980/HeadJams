@@ -40,12 +40,14 @@ function readIds(key: string): string[] {
 }
 
 export function SoundPicker({
-  sounds, soundId, unavailableSoundIds = new Set(), loadingSoundIds = new Set(), onPreview, onSelect,
+  sounds, soundId, unavailableSoundIds = new Set(), loadingSoundIds = new Set(), placeholder, onPreview, onSelect,
 }: {
   sounds: SoundDef[];
   soundId: string;
   unavailableSoundIds?: ReadonlySet<string>;
   loadingSoundIds?: ReadonlySet<string>;
+  /** Shown while no sound is chosen yet (empty `soundId`). */
+  placeholder?: string;
   onPreview: (sound: SoundDef) => void;
   onSelect: (sound: SoundDef) => void;
 }) {
@@ -78,7 +80,8 @@ export function SoundPicker({
       ? matches.sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id))
       : recordedFirst(matches);
   }, [sounds, group, subgroup, favorites, recent, query]);
-  const selectedUnavailable = !selected || unavailableSoundIds.has(soundId);
+  const unchosen = !soundId && placeholder !== undefined;
+  const selectedUnavailable = !unchosen && (!selected || unavailableSoundIds.has(soundId));
   const selectedLoading = !selectedUnavailable && loadingSoundIds.has(soundId);
 
   useEffect(() => {
@@ -167,14 +170,14 @@ export function SoundPicker({
     buttons[next].focus();
   };
 
-  const title = selected?.name ?? `Missing sound (${soundId})`;
+  const title = unchosen ? placeholder : selected?.name ?? `Missing sound (${soundId})`;
   const selectedFamily = selected ? familyInfo(soundLibraryGroup(selected)) : undefined;
 
   return (
     <>
       <button className={`sound-picker-trigger${selectedUnavailable ? ' missing' : ''}${selectedLoading ? ' loading' : ''}`} aria-haspopup="dialog"
         aria-expanded={open} aria-invalid={selectedUnavailable}
-        aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : `Choose sound, current sound ${title}`}
+        aria-label={selectedUnavailable ? `${title} is unavailable. Choose a replacement sound.` : unchosen ? 'Choose sound' : `Choose sound, current sound ${title}`}
         onClick={() => { setGroup(''); setSubgroup(''); setQuery(''); setOpen(true); }}>
         {selectedUnavailable ? <Icon name="warning" className="inline-icon" /> : selectedFamily ? <Icon name={selectedFamily.icon} className={`family-icon family-${selectedFamily.className}`} /> : null}
         {selectedUnavailable ? `${title} · Replace` : <>{selectedLoading ? `${title} · Loading` : title} <Icon name="chevron" className="inline-icon" /></>}

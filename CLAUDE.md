@@ -28,4 +28,4 @@ Follow `skill.md` (layout rules) and keep on-screen text to labels and values, w
 ## Hum-to-music must keep working (`hum.md`)
 After any change to audio, recognition, recording or the Library/Beat UI, run the browser check: import a hummed-style WAV (generate one, e.g. sine notes C D E G E D C C with slight vibrato) → save in the Sample editor → recognise as Melody → confirm a melody track with the right notes appears and the original is kept. Report the detected notes.
 
-Also check the Capture flow end to end: launch Chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --use-file-for-fake-audio-capture=<hum.wav at 48 kHz>`, then Capture → Record → Stop → Melody, and confirm the Cleaned notes (C D E G E D C C) land on a new track.
+Also check the Capture flow end to end: launch Chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --use-file-for-fake-audio-capture=<hum.wav at 48 kHz>`, then Capture → Record → Stop → choose an instrument (the app picks none; Melody stays disabled until you do) → Melody, and confirm the Cleaned notes (C D E G E D C C) land on a new track.

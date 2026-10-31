@@ -463,6 +463,8 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .capture-main.recording { background: var(--danger, #e5484d); color: #fff; }
 .capture-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .capture-kinds button { min-height: 48px; }
+.capture-kinds button:disabled { opacity: 0.4; }
+.capture-sheet .sound-picker-trigger { width: 100%; min-height: 48px; justify-content: center; }
 .capture-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .capture-actions button { min-height: 40px; }
 .capture-status { margin: 0; }

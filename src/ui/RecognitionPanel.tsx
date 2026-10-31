@@ -13,6 +13,7 @@ import type { SampleData } from '../library/sampleStorage';
 import { localRecognitionAdapter, type RecognitionProgress } from '../library/recognitionAdapter';
 import { recordedFirst } from '../library/instrumentRegistry';
 import { Icon } from './Icon';
+import { SoundPicker } from './SoundPicker';
 
 const MODES: Array<{ value: RecognitionMode; label: string }> = [
   { value: 'melody', label: 'Melody' },
@@ -24,7 +25,7 @@ const PERCUSSION_CLASSES: PercussionClass[] = [
 ];
 
 export function RecognitionPanel({
-  project, samples, sounds, onApply, onBpmChange, onPreviewSample, onEdit,
+  project, samples, sounds, onApply, onBpmChange, onPreviewSample, onPreviewSound, onEdit,
 }: {
   project: Project;
   samples: ReadonlyMap<string, SampleData>;
@@ -32,10 +33,13 @@ export function RecognitionPanel({
   onApply: (take: RecognitionTake, options?: ApplyRecognitionOptions) => boolean;
   onBpmChange: (bpm: number, take?: RecognitionTake) => void;
   onPreviewSample: (sample: SampleData) => void;
+  onPreviewSound: (sound: SoundDef) => void;
   onEdit: () => void;
 }) {
   const [sampleId, setSampleId] = useState('');
   const [mode, setMode] = useState<RecognitionMode>('melody');
+  // The instrument for a new melody or bass track is the user's choice: nothing is picked for them.
+  const [soundId, setSoundId] = useState('');
   const [useCleaned, setUseCleaned] = useState(true);
   const [enabled, setEnabled] = useState(true);
   const [strength, setStrength] = useState(0.75);
@@ -51,6 +55,7 @@ export function RecognitionPanel({
   const sample = samples.get(sampleId);
   const activeTake = project.recognitionTakes.find((take) => take.id === activeTakeId)
     ?? project.recognitionTakes.at(-1);
+  const needsSound = mode !== 'beat' && !(replaceResult && activeTake?.mode === mode);
   const availableSamples = useMemo(() => [...samples.values()].sort((a, b) => (b.recordedAt ?? 0) - (a.recordedAt ?? 0)), [samples]);
 
   useEffect(() => {
@@ -90,7 +95,7 @@ export function RecognitionPanel({
       take.source = sample.source;
       take.label = previous?.label
         ?? `${MODES.find((item) => item.value === mode)?.label ?? 'Idea'} ${project.recognitionTakes.filter((item) => item.mode === mode).length + 1}`;
-      if (!onApply(take)) {
+      if (!onApply(take, mode === 'beat' || replaceResult ? undefined : { soundId })) {
         setError('There is not enough channel space for this recognition result. Remove a channel and try again.');
         setProgress(undefined);
         return;
@@ -324,7 +329,11 @@ export function RecognitionPanel({
         </label>
       </div>
       <div className="row">
-        <button className="wide" disabled={!sample || Boolean(progress)} onClick={() => void runRecognition()}>
+        {needsSound && (
+          <SoundPicker sounds={sounds} soundId={soundId} placeholder="Choose instrument"
+            onPreview={onPreviewSound} onSelect={(sound) => { setSoundId(sound.id); onPreviewSound(sound); }} />
+        )}
+        <button className="wide" disabled={!sample || Boolean(progress) || (needsSound && !soundId)} onClick={() => void runRecognition()}>
           {progress ? 'Recognizing…' : `Recognize ${MODES.find((item) => item.value === mode)?.label}`}
         </button>
         {progress && <button className="secondary" onClick={cancel}>Cancel</button>}

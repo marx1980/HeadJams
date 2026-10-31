@@ -189,6 +189,7 @@ export function SampleLibrary({
         onApply={onRecognize}
         onBpmChange={onRecognitionBpmChange}
         onPreviewSample={onPreviewSample}
+        onPreviewSound={onPreview}
         onEdit={onRecognitionEdit}
       />
       </details>
