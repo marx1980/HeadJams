@@ -82,3 +82,19 @@ if [ "$VSCO" != "-" ]; then
   vsco OrganQuiet.sfz church-organ "Church Organ" keys acoustic,warm,soft,sustained "organ, quiet" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 300 --pitch-limit 3 --polyphony 24 --level-zones
   vsco CelloEnsPizz.sfz pizzicato-strings "Pizzicato Strings" strings acoustic,punchy,plucky "cello section, pizzicato" --round-robins 1 --seconds 1.5 --fade-ms 300 --release-ms 150 --pitch-limit 3 --polyphony 24
 fi
+if [ "$VSCO" != "-" ]; then
+  # More VSCO-2-CE instruments (extra SFZ files: BassoonSus OboeSusVib PiccoloSus TubaSus ContrabassSusVB ViolaEnsSusVib Timpani Xylophone TubularBells).
+  vsco BassoonSus.sfz bassoon Bassoon brass acoustic,warm,soft,sustained "bassoon, sustain" --round-robins 1 --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco OboeSusVib.sfz oboe Oboe brass acoustic,bright,smooth,sustained "oboe, sustain with vibrato" --round-robins 1 --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco PiccoloSus.sfz piccolo Piccolo brass acoustic,bright,soft,sustained "piccolo, sustain" --round-robins 1 --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco TubaSus.sfz tuba Tuba brass acoustic,warm,punchy,sustained "tuba, sustain" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco ContrabassSusVB.sfz contrabass Contrabass strings acoustic,warm,dark,sustained "contrabass, sustain with vibrato" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 300 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco ViolaEnsSusVib.sfz viola Viola strings acoustic,warm,smooth,sustained "viola, sustain with vibrato" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 300 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco Timpani.sfz timpani Timpani percussion acoustic,warm,punchy timpani --round-robins 1 --seconds 3.0 --fade-ms 500 --release-ms 300 --pitch-limit 3 --polyphony 16
+  vsco Xylophone.sfz xylophone Xylophone keys acoustic,bright,plucky xylophone --round-robins 1 --seconds 2.0 --fade-ms 400 --release-ms 200 --pitch-limit 3 --polyphony 24
+  vsco TubularBells.sfz tubular-bells "Tubular Bells" keys acoustic,bright,warm "tubular bells" --round-robins 1 --seconds 4.0 --fade-ms 800 --release-ms 500 --pitch-limit 3 --polyphony 16
+fi
+# Saxophones (not from VSCO). WERE, BEAR, MTG are clones of karoryfer.weresax, karoryfer.bear-sax, sfzinstruments/MTG.SoloSax (CC BY 4.0 for MTG).
+#   alto:     sfz-import.py WERE/Programs/alto_map_piano_dynamic.sfz WERE/Programs/alto_map_forte_dynamic.sfz --id alto-sax --layers first,last --round-robins 1 --rate 22050 --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones ...
+#   baritone: an SFZ listing only the *_looped_f samples of BEAR/Programs/poly/dynfade_map.sfz (the p/f pair is crossfaded on CC1, which the importer does not model), then --loop 1.0-2.5
+#   tenor, soprano: sfz-import.py "MTG/MTG Solo Saxophones/MTG Tenor Sax.sfz" --require "_[fp]_[0-9]+\." --layers first,last --round-robins 1 --loop 1.0-2.5 ...

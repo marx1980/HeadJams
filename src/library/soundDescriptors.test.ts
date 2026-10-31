@@ -24,7 +24,8 @@ describe('find the sound', () => {
 
   it('ranks by chosen words, against opposites, preferring real instruments, and keeps bass lines on bass sounds', () => {
     const warmAcoustic = rankSounds(sounds, ['warm', 'acoustic', 'sustained'], { bass: false });
-    expect(['strings', 'church-organ', 'clarinet', 'french-horn']).toContain(warmAcoustic[0].sound.id);
+    expect(warmAcoustic[0].sound.instrumentId).toBeDefined();
+    expect(warmAcoustic[0].matches).toEqual(expect.arrayContaining(['warm', 'acoustic', 'sustained']));
     expect(warmAcoustic.every((item) => item.matches.length > 0)).toBe(true);
     const brightElectronic = rankSounds(sounds, ['bright', 'electronic', 'punchy'], { bass: false });
     expect(brightElectronic.slice(0, 3).every((item) => item.sound.id.startsWith('lead') || item.sound.id === 'brass-1')).toBe(true);

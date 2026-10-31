@@ -195,6 +195,7 @@ const sampledInstrument = (
 });
 
 const VSCO = 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)';
+const MTG = 'MTG Solo Saxophones by the Music Technology Group (CC BY 4.0)';
 
 /** Built-in sounds played by sampled instruments (app/public/instruments). */
 export const SAMPLED_SOUNDS: SoundDef[] = [
@@ -229,6 +230,19 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   sampledInstrument('church-organ', 'Church Organ', 'Keys', 'Organ', VSCO),
   sampledInstrument('marimba', 'Marimba', 'Keys', 'Mallets', VSCO),
   sampledInstrument('glockenspiel', 'Glockenspiel', 'Keys', 'Mallets', VSCO),
+  sampledInstrument('bassoon', 'Bassoon', 'Brass & Winds', 'Woodwind', VSCO),
+  sampledInstrument('oboe', 'Oboe', 'Brass & Winds', 'Woodwind', VSCO),
+  sampledInstrument('piccolo', 'Piccolo', 'Brass & Winds', 'Woodwind', VSCO),
+  sampledInstrument('tuba', 'Tuba', 'Brass & Winds', 'Brass', VSCO),
+  sampledInstrument('soprano-sax', 'Soprano Sax', 'Brass & Winds', 'Sax', MTG, { assetLicense: 'CC-BY-4.0' }),
+  sampledInstrument('alto-sax', 'Alto Sax', 'Brass & Winds', 'Sax', 'Weresax by Karoryfer Samples'),
+  sampledInstrument('tenor-sax', 'Tenor Sax', 'Brass & Winds', 'Sax', MTG, { assetLicense: 'CC-BY-4.0' }),
+  sampledInstrument('baritone-sax', 'Baritone Sax', 'Brass & Winds', 'Sax', 'Bear Sax by Karoryfer Samples'),
+  sampledInstrument('viola', 'Viola', 'Strings', 'Ensemble', VSCO),
+  sampledInstrument('contrabass', 'Contrabass', 'Strings', 'Ensemble', VSCO),
+  sampledInstrument('xylophone', 'Xylophone', 'Keys', 'Mallets', VSCO),
+  sampledInstrument('tubular-bells', 'Tubular Bells', 'Keys', 'Mallets', VSCO),
+  sampledInstrument('timpani', 'Timpani', 'Percussion', 'Tuned', VSCO),
 ];
 
 /** A synthesised sound (no recorded audio): library lists show these after the recorded ones. */

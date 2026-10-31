@@ -1,0 +1,3 @@
+Bear Sax by Karoryfer Samples, CC0 1.0 Universal (public domain dedication): baritone saxophone, sustained notes.
+Source: https://github.com/sfzinstruments/karoryfer.bear-sax (commit 7abb3c652525a15dfac80e1b5dfbba9964ee568f).
+This folder holds a processed subset; see processing notes in manifest.json.

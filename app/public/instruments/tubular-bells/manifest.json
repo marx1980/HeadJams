@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "id": "tubular-bells",
+  "name": "Tubular Bells",
+  "family": "keys",
+  "version": 1,
+  "engine": "sampler",
+  "defaultArticulation": "sustain",
+  "maxPolyphony": 16,
+  "pitchShiftLimitSemitones": 3,
+  "preloadStrategy": "range",
+  "tags": [
+    "acoustic",
+    "bright",
+    "warm"
+  ],
+  "envelope": {
+    "mode": "sustain",
+    "attackMs": 1,
+    "releaseMs": 500.0
+  },
+  "provenance": {
+    "source": "VS Chamber Orchestra 2: Community Edition (tubular bells)",
+    "url": "https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e",
+    "creator": "Versilian Studios (Sam Gossner, Simon Dalzell)",
+    "licence": "CC0-1.0",
+    "obtained": "2026-10-31",
+    "redistribution": true,
+    "modification": true,
+    "processing": "Imported from TubularBells.sfz with scripts/sfz-import.py: velocity layers first,last, up to 1 round robins, MIDI roots 0-127; mono, 22050 Hz, cut to 4 s with a 800 ms fade; one gain for all files (peak -1 dBFS); 16-bit WAV."
+  },
+  "regions": [
+    {
+      "id": "n60-v1-rr1",
+      "file": "n60-v1-rr1.wav",
+      "rootMidi": 60,
+      "lowMidi": 60,
+      "highMidi": 63,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n60-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n67-v1-rr1",
+      "file": "n67-v1-rr1.wav",
+      "rootMidi": 67,
+      "lowMidi": 64,
+      "highMidi": 69,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n67-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n72-v1-rr1",
+      "file": "n72-v1-rr1.wav",
+      "rootMidi": 72,
+      "lowMidi": 70,
+      "highMidi": 74,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n72-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n77-v1-rr1",
+      "file": "n77-v1-rr1.wav",
+      "rootMidi": 77,
+      "lowMidi": 75,
+      "highMidi": 79,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n77-v1",
+      "roundRobinIndex": 0
+    }
+  ]
+}

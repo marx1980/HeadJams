@@ -1,0 +1,4 @@
+MTG Solo Saxophones (tenor saxophone): samples by the Music Technology Group (MTG), Universitat Pompeu Fabra (https://freesound.org/people/MTG/), SFZ programming by kinwie.
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/sfzinstruments/MTG.SoloSax (commit b494d256549b3d088fdec176ce82867f8a1f58b2).
+Changes: trimmed and looped, converted to mono 22.05 kHz 16-bit WAV, subset of notes and velocity layers; see processing notes in manifest.json.
