@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { phraseNotes, phraseTrack, phrasingProfile, type PhrasingOptions, type PhrasingStyle } from './phrasing';
+import { monophonicLine, phraseNotes, phraseTrack, phrasingProfile, type PhrasingOptions, type PhrasingStyle } from './phrasing';
 import { compileStep, type PitchedVoice } from './performance';
 import { createChannel, createProject, setLoopBars, type NoteEvent } from '../model/project';
 import { findSound } from '../library/sounds';
@@ -44,7 +44,7 @@ describe('phrasing', () => {
 
   it('slurs connected notes on sustained instruments: crossfade, glide, no re-attack', () => {
     const shaped = phraseNotes(line, options('tenor-sax'));
-    expect(shaped.get('a')!.expression).toMatchObject({ releaseSec: 0.1 });
+    expect(shaped.get('a')!.expression).toMatchObject({ releaseSec: 0.05 });
     expect(shaped.get('a')!.expression?.legato).toBeUndefined();
     expect(shaped.get('b')!.expression?.legato).toBe(true);
     expect(shaped.get('b')!.pitchBend?.slice(0, 2)).toEqual([{ time: 0, value: -2 }, { time: 0.045, value: 0 }]);
@@ -87,7 +87,8 @@ describe('phrasing', () => {
     p = { ...p, channels: [{ ...createChannel('s', 'Sax', 'alto-sax', 32), notes: line }] };
     const off = compileStep(p, 2, (steps) => steps * STEP)[0] as PitchedVoice;
     expect(off.velocity).toBeUndefined();
-    expect(off.expression).toBeUndefined();
+    // Off: no phrasing, only the one-note-at-a-time handover of a monophonic sax.
+    expect(off.expression).toEqual({ releaseSec: 0.05 });
     const on = { ...p, channels: [{ ...p.channels[0], phrasing: 'natural' as const }] };
     const voice = compileStep(on, 2, (steps) => steps * STEP)[0] as PitchedVoice;
     expect(voice.expression?.legato).toBe(true);
@@ -199,5 +200,31 @@ describe('phrasing, round two', () => {
     expect(blended.blend).toBeDefined();
     expect(blended.blend!.weight[0].value).toBeLessThan(blended.blend!.weight[1].value);
     expect(blended.region.velocityLow).toBe(1);
+  });
+});
+
+describe('one note at a time', () => {
+  it('hands each note of a wind line over to the next instead of ringing under it, and leaves chords alone', () => {
+    const durationOf = (steps: number) => steps * STEP;
+    const notes = [note('a', 0, 60, 3), note('b', 2, 62, 2), note('c', 4, 64, 2), note('d', 7, 65, 2), note('e', 12, 67, 2), note('x', 16, 60, 2), note('y', 16, 64, 2)];
+    const line = monophonicLine(notes, durationOf);
+    // 'a' overlaps 'b': it stops 15 ms after b starts and fades in 50 ms.
+    expect(line.get('a')!.durationSec).toBeCloseTo(0.265, 5);
+    expect(line.get('a')!.releaseSec).toBe(0.05);
+    // 'b' meets 'c': no overlap, a short release.
+    expect(line.get('b')).toEqual({ releaseSec: 0.05 });
+    // 'c' ends 125 ms before 'd': its release lasts the gap.
+    expect(line.get('c')!.releaseSec).toBeCloseTo(0.125, 5);
+    // 'd' is followed by a long rest, and 'e' by a chord: untouched.
+    expect(line.has('d')).toBe(false);
+    expect(line.has('e')).toBe(false);
+
+    let p = setLoopBars(createProject(), 2);
+    p = { ...p, channels: [{ ...createChannel('s', 'Sax', 'alto-sax', 32), notes }] };
+    const voice = compileStep(p, 0, durationOf)[0] as PitchedVoice;
+    expect(voice.durationSec).toBeCloseTo(0.265, 5);
+    expect(voice.expression).toEqual({ releaseSec: 0.05 });
+    const piano = { ...p, channels: [{ ...p.channels[0], soundId: 'grand-piano' }] };
+    expect((compileStep(piano, 0, durationOf)[0] as PitchedVoice).expression).toBeUndefined();
   });
 });

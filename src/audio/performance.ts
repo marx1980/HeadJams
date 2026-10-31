@@ -6,7 +6,7 @@ import { guitarChordPitches } from '../model/music';
 import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
 import { chordArticulation, recordedChordFor } from '../model/personalInstrument';
 import { automatedMix } from '../model/automation';
-import { phraseTrack, phrasingProfile, type PhrasedTrack, type VoiceExpression } from './phrasing';
+import { monophonicLine, phraseTrack, phrasingProfile, type PhrasedTrack, type VoiceExpression } from './phrasing';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -97,14 +97,18 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
           pitch: extra.pitch, durationSec: extra.durationSec, velocity: extra.velocity, expression: extra.expression,
         });
       }
+      // A sax or other wind plays one note at a time, with or without phrasing (sampled instruments).
+      const mono = !phrased && starting.length && sound.instrumentId && phrasingProfile(sound)?.kind === 'wind'
+        ? monophonicLine(c.notes, durationOf) : undefined;
       for (const note of starting) {
         const shaped = phrased?.get(note.id);
+        const handover = mono?.get(note.id);
         voices.push({
           ...base, kind: 'pitched', origin: 'note', offsetSec: shaped?.offsetSec ?? 0, pitch: note.pitch,
-          durationSec: shaped?.durationSec ?? durationOf(note.durationSteps),
+          durationSec: shaped?.durationSec ?? handover?.durationSec ?? durationOf(note.durationSteps),
           velocity: shaped ? shaped.velocity : note.velocity,
           pitchBend: shaped?.pitchBend ?? note.pitchBend,
-          ...(shaped?.expression ? { expression: shaped.expression } : {}),
+          ...(shaped?.expression ? { expression: shaped.expression } : handover ? { expression: { releaseSec: handover.releaseSec } } : {}),
         });
       }
       if (c.playOriginal && c.original) {

@@ -175,8 +175,11 @@ function unit(key: string): number {
 
 /** Gap, in seconds, that ends a phrase. */
 const PHRASE_BREAK_SEC = 0.3;
-const LEGATO_CROSSFADE_SEC = 0.1;
-const LEGATO_OVERLAP_SEC = 0.03;
+/** A slur hands over quickly: the old note fades in 50 ms, 15 ms after the new one starts (one reed, one note). */
+const LEGATO_CROSSFADE_SEC = 0.05;
+const LEGATO_OVERLAP_SEC = 0.015;
+/** Monophonic instruments: a note's release never rings on under the next note for longer than this. */
+const HANDOVER_SEC = 0.05;
 /** Detached notes this short use the staccato recording. */
 const STACCATO_MAX_SEC = 0.22;
 /** Winds take a breath inside a phrase after this long. */
@@ -192,6 +195,37 @@ export interface PhrasingOptions {
   stepsPerBar: number;
   /** Seeds the small per-note variations (project seed and channel id). */
   seed: string;
+}
+
+/**
+ * One note at a time: how a monophonic instrument's note ends when the next one follows closely.
+ * It stops when the next starts (plus a short overlap) and fades fast, instead of ringing on under it.
+ */
+function monoHandover(start: number, duration: number, nextStart: number): { durationSec?: number; releaseSec: number } | undefined {
+  const end = start + duration;
+  if (nextStart < end) return { durationSec: Math.max(0.03, nextStart - start + LEGATO_OVERLAP_SEC), releaseSec: HANDOVER_SEC };
+  const gap = nextStart - end;
+  return gap < 0.25 ? { releaseSec: Math.max(HANDOVER_SEC, gap) } : undefined;
+}
+
+/**
+ * Monophonic sampled instruments (saxes, woodwinds, brass) play one note at a time even with phrasing off:
+ * in a single-note line each note hands over to the next instead of overlapping it. Chords are left alone.
+ */
+export function monophonicLine(notes: readonly NoteEvent[], durationOf: (steps: number) => number): Map<string, { durationSec?: number; releaseSec: number }> {
+  const sorted = [...notes].filter((note) => Number.isFinite(note.step) && Number.isFinite(note.pitch)).sort((a, b) => a.step - b.step);
+  const startsAt = new Map<number, number>();
+  for (const note of sorted) startsAt.set(note.step, (startsAt.get(note.step) ?? 0) + 1);
+  const result = new Map<string, { durationSec?: number; releaseSec: number }>();
+  for (let i = 0; i < sorted.length; i++) {
+    const note = sorted[i];
+    if (startsAt.get(note.step) !== 1) continue;
+    const next = sorted.slice(i + 1).find((other) => other.step > note.step);
+    if (!next || startsAt.get(next.step) !== 1) continue;
+    const handover = monoHandover(durationOf(note.step), durationOf(Math.max(0, note.durationSteps)), durationOf(next.step));
+    if (handover) result.set(note.id, handover);
+  }
+  return result;
 }
 
 /** Phrase a track's notes (see phraseTrack). */
@@ -318,6 +352,14 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
         expression.startJitterSec = Math.round(unit(`${seed}:${note.id}:o`) * 0.05 * 1000) / 1000;
       }
       if (slursInto) expression.releaseSec = LEGATO_CROSSFADE_SEC;
+      else if (wind) {
+        const after = sorted.find((other) => other.step > note.step);
+        const handover = after && single(after) ? monoHandover(startSec(note) + offset, duration, startSec(after) + lay(after)) : undefined;
+        if (handover) {
+          duration = handover.durationSec ?? duration;
+          expression.releaseSec = handover.releaseSec;
+        }
+      }
       if (duration !== written) phrased.durationSec = duration;
       if (!slurredFrom && !slursInto && duration <= STACCATO_MAX_SEC && profile.kind !== 'organ') {
         expression.articulation = 'staccato';
