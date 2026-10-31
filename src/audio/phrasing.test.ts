@@ -175,12 +175,14 @@ describe('phrasing, round two', () => {
     expect(phraseNotes(line, sax('classical')).get('e')!.pitchBend?.[0].value).toBe(0);
   });
 
-  it('breathes after a long held note well into a phrase, and not after short ones', () => {
+  it('breathes after a long held note well into a phrase (without cutting it), and not after short ones', () => {
     // STEP 0.125 s: C D E G (G held 5 steps = 0.625 s, 2.0 s in) then E.
     const held = [note('c', 0, 60, 4), note('d', 4, 62, 4), note('e', 8, 64, 4), note('g', 12, 67, 5), note('e2', 17, 64, 3)];
     const track = phraseTrack(held, options('alto-sax'));
     expect(track.extras.filter((extra) => extra.expression.articulation === 'breath').length).toBe(1);
-    expect(track.notes.get('g')!.durationSec).toBeLessThan(5 * STEP);
+    // The held note lingers a little; the breath follows it and the next note starts late.
+    expect(track.notes.get('g')!.durationSec).toBeGreaterThan(5 * STEP);
+    expect(track.notes.get('e2')!.offsetSec).toBeCloseTo(0.14, 5);
     expect(track.notes.get('e2')!.expression?.legato).toBeUndefined();
     const short = [note('c', 0, 60, 4), note('d', 4, 62, 4), note('e', 8, 64, 4), note('g', 12, 67, 3), note('e2', 15, 64, 3)];
     expect(phraseTrack(short, options('alto-sax')).extras.filter((extra) => extra.expression.articulation === 'breath').length).toBe(0);

@@ -192,8 +192,9 @@ const BREATH_EVERY_SEC = 6;
 const HELD_BREATH_SEC = 0.55;
 const HELD_BREATH_AFTER_SEC = 1.5;
 const BREATH_CUT_SEC = 0.15;
-/** After a held note the breath is quicker, so the held note keeps most of its length. */
-const HELD_CUT_SEC = 0.08;
+/** After a held note the breath follows it: the note lingers a little and the next one starts this much later. */
+const HELD_LINGER_SEC = 0.04;
+const HELD_BREATH_GAP_SEC = 0.14;
 const BREATH_SEC = 0.32;
 /** A recorded note this short and this much quieter than its neighbours is a slide, not a note. */
 const SLIDE_MAX_SEC = 0.22;
@@ -296,6 +297,8 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest, or a long held note ends well into a phrase.
   const phrases: NoteEvent[][] = [];
   const breathCut = new Map<string, number>();
+  /** Notes that start late to leave room for the breath after a held note. */
+  const breathDelay = new Map<string, number>();
   let latestEnd = Number.NEGATIVE_INFINITY;
   let phraseStart = 0;
   for (const note of sorted) {
@@ -307,7 +310,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const held = connected && durationOf(previous.durationSteps) >= HELD_BREATH_SEC && startSec(note) - phraseStart >= HELD_BREATH_AFTER_SEC;
     const needsBreath = longPhrase || held;
     if (!current || rest || needsBreath) {
-      if (needsBreath && previous) breathCut.set(previous.id, longPhrase ? BREATH_CUT_SEC : HELD_CUT_SEC);
+      if (needsBreath && previous) {
+        breathCut.set(previous.id, longPhrase ? BREATH_CUT_SEC : -HELD_LINGER_SEC);
+        if (!longPhrase) breathDelay.set(note.id, HELD_BREATH_GAP_SEC);
+      }
       phrases.push([]);
       phraseStart = startSec(note);
     }
@@ -319,7 +325,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   const notesOut = new Map<string, PhrasedNote>();
   for (const id of slides) notesOut.set(id, { velocity: 0, silent: true });
   const extras: PhrasedExtra[] = [];
-  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0);
+  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0) + (breathDelay.get(note.id) ?? 0);
 
   for (let p = 0; p < phrases.length; p++) {
     const phrase = phrases[p];
@@ -333,7 +339,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const cutBefore = before ? breathCut.get(before.at(-1)!.id) : undefined;
     const afterCut = cutBefore !== undefined;
     if (wind && feel.breath && (gapBefore >= 0.35 || afterCut)) {
-      const length = afterCut ? cutBefore : BREATH_SEC;
+      const length = afterCut ? breathDelay.get(first.id) ?? cutBefore : BREATH_SEC;
       const at = startSec(first) + lay(first) - length;
       const stepLength = durationOf(1);
       const step = Math.floor(at / stepLength + 1e-9);
