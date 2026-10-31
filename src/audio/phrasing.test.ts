@@ -134,7 +134,9 @@ describe('phrasing, round two', () => {
     // The slide is kept, and the hold is centred on the sung median (the 0.2 sharpness is removed).
     expect(shaped.pitchBend![0].value).toBeCloseTo(-0.9, 5);
     expect(shaped.pitchBend![3].value).toBeCloseTo(0, 5);
-    expect(shaped.expression?.gain?.map((point) => point.value)[0]).toBeLessThan(0.8);
+    // The hummed onset dip is humming articulation and is not copied; the phrase-end fade is.
+    expect(shaped.expression?.gain?.map((point) => point.value)[0]).toBeGreaterThan(0.85);
+    expect(shaped.expression?.gain?.map((point) => point.value).at(-1)).toBeLessThan(0.75);
     // A struck instrument ignores the contour.
     expect(phraseNotes([note('s', 0, 60, 8, { sung })], options('grand-piano')).get('s')!.pitchBend).toBeUndefined();
   });
@@ -226,5 +228,34 @@ describe('one note at a time', () => {
     expect(voice.expression).toEqual({ releaseSec: 0.05 });
     const piano = { ...p, channels: [{ ...p.channels[0], soundId: 'grand-piano' }] };
     expect((compileStep(piano, 0, durationOf)[0] as PitchedVoice).expression).toBeUndefined();
+  });
+});
+
+describe('hummed takes', () => {
+  it('drops slides the recognition heard as short quiet notes, and the line glides over them', () => {
+    const take = { sourceTakeId: 't' };
+    const notes = [note('g', 9, 67, 4, { velocity: 0.99, ...take }), note('f', 12, 65, 1, { velocity: 0.21, ...take }),
+      note('e', 13, 64, 3, { velocity: 0.99, ...take }), note('c', 19, 60, 4, { velocity: 0.99, ...take }),
+      note('cs', 19, 61, 1, { velocity: 0.2, ...take })];
+    const shaped = phraseNotes(notes, options('alto-sax'));
+    expect(shaped.get('f')!.silent).toBe(true);
+    expect(shaped.get('cs')!.silent).toBe(true);
+    // G is no longer cut by the slide: it holds into E and E slurs from G with a glide.
+    expect(shaped.get('g')!.durationSec).toBeCloseTo(4 * STEP + 0.015, 5);
+    expect(shaped.get('e')!.pitchBend?.[0]).toEqual({ time: 0, value: 3 });
+    // Written (not hummed) quiet short notes are real notes.
+    const written = phraseNotes(notes.map(({ sourceTakeId, ...n }) => n), options('alto-sax'));
+    expect(written.get('f')!.silent).toBeUndefined();
+  });
+
+  it('keeps the sung body level: the hum onset dip is not copied, the phrase-end fade is', () => {
+    const level = [0.3, 0.8, 1, 1, 1, 1, 0.7, 0.3].map((value, i) => ({ time: i * 0.06, value }));
+    const sung = { pitch: [], level };
+    const line = [note('a', 0, 60, 4, { sung }), note('b', 4, 62, 4, { sung })];
+    const shaped = phraseNotes(line, options('alto-sax'));
+    const gain = (id: string) => shaped.get(id)!.expression!.gain!.map((point) => point.value);
+    expect(Math.min(...gain('a'))).toBeGreaterThan(0.8);
+    expect(gain('b')[0]).toBeGreaterThan(0.8);
+    expect(gain('b').at(-1)).toBeLessThan(0.65);
   });
 });

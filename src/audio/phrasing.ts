@@ -57,6 +57,8 @@ export interface VoiceExpression {
 
 export interface PhrasedNote {
   velocity: number;
+  /** A slide the recognition heard as a note (hummed takes): not played; its neighbours glide instead. */
+  silent?: boolean;
   /** Seconds after the note's step (feel: laid-back timing). */
   offsetSec?: number;
   durationSec?: number;
@@ -186,6 +188,11 @@ const STACCATO_MAX_SEC = 0.22;
 const BREATH_EVERY_SEC = 6;
 const BREATH_CUT_SEC = 0.15;
 const BREATH_SEC = 0.32;
+/** A recorded note this short and this much quieter than its neighbours is a slide, not a note. */
+const SLIDE_MAX_SEC = 0.22;
+const SLIDE_LEVEL = 0.45;
+/** Sung level above this (relative to the note's median) is the note's body; dips outside it are humming articulation. */
+const SUNG_BODY = 0.75;
 
 export interface PhrasingOptions {
   style: PhrasingStyle;
@@ -255,8 +262,21 @@ const usableSung = (sung: SungContour | undefined, key: 'pitch' | 'level') => (s
 export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOptions): PhrasedTrack {
   const { style, profile, durationOf, stepsPerBar, seed } = options;
   const feel = FEELS[style] ?? FEELS.natural;
-  const sorted = [...notes].filter((note) => Number.isFinite(note.step) && Number.isFinite(note.pitch))
+  const all = [...notes].filter((note) => Number.isFinite(note.step) && Number.isFinite(note.pitch))
     .sort((a, b) => a.step - b.step || b.pitch - a.pitch);
+  // Slides in a hummed take: very short, much quieter notes next to (or under) a full note. Playing them as
+  // notes gives a blip between two notes, so they are dropped and the line glides from neighbour to neighbour.
+  const slides = new Set<string>();
+  for (const note of all) {
+    if (note.sourceTakeId === undefined || durationOf(note.durationSteps) > SLIDE_MAX_SEC) continue;
+    const level = note.velocity ?? 1;
+    const before = all.filter((other) => other.step < note.step).at(-1);
+    const after = all.find((other) => other.step > note.step);
+    const together = all.filter((other) => other !== note && other.step === note.step);
+    const louder = Math.max(0, ...[before, after, ...together].map((other) => other ? other.velocity ?? 1 : 0));
+    if (louder > 0 && level <= louder * SLIDE_LEVEL) slides.add(note.id);
+  }
+  const sorted = all.filter((note) => !slides.has(note.id));
   const startsAt = new Map<number, number>();
   for (const note of sorted) startsAt.set(note.step, (startsAt.get(note.step) ?? 0) + 1);
   const single = (note: NoteEvent) => startsAt.get(note.step) === 1;
@@ -289,6 +309,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
 
   const sustained = profile.kind !== 'struck';
   const notesOut = new Map<string, PhrasedNote>();
+  for (const id of slides) notesOut.set(id, { velocity: 0, silent: true });
   const extras: PhrasedExtra[] = [];
   const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0);
 
@@ -366,8 +387,14 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
       }
 
       if (usableSung(note.sung, 'level')) {
-        // Loudness as sung, relative to the note's own level.
-        const gain = shapeContour(note.sung!.level, feel.sungLevel, 0.3, 1.25, 1).filter((point) => point.time <= duration + 0.05);
+        // Loudness as sung, relative to the note's own level. The dip where each hummed note starts (and ends,
+        // inside a phrase) is how humming separates syllables, not dynamics: the instrument keeps its body level there.
+        const raw = note.sung!.level;
+        const first = raw.findIndex((point) => point.value >= SUNG_BODY);
+        const last = raw.length - 1 - [...raw].reverse().findIndex((point) => point.value >= SUNG_BODY);
+        const body = first < 0 ? raw : raw.map((point, k) => k < first ? { ...point, value: raw[first].value }
+          : k > last && !lastOfPhrase ? { ...point, value: raw[last].value } : point);
+        const gain = shapeContour(body, feel.sungLevel, 0.3, 1.25, 1).filter((point) => point.time <= duration + 0.05);
         if (gain.length) expression.gain = gain;
       } else if (profile.kind !== 'organ' && duration >= 0.45) {
         const end = lastOfPhrase ? feel.taper : 1 - (1 - feel.taper) / 3;
