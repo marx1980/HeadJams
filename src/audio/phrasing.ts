@@ -297,7 +297,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest, or a long held note ends well into a phrase.
   const phrases: NoteEvent[][] = [];
   const breathCut = new Map<string, number>();
-  /** Notes that start late to leave room for the breath after a held note. */
+  /** Notes that start a phrase late to leave room for the breath after a held note: from there the whole line moves later. */
   const breathDelay = new Map<string, number>();
   let latestEnd = Number.NEGATIVE_INFINITY;
   let phraseStart = 0;
@@ -325,7 +325,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   const notesOut = new Map<string, PhrasedNote>();
   for (const id of slides) notesOut.set(id, { velocity: 0, silent: true });
   const extras: PhrasedExtra[] = [];
-  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0) + (breathDelay.get(note.id) ?? 0);
+  const heldGaps = [...breathDelay.keys()].map((id) => startSec(sorted.find((other) => other.id === id)!));
+  /** Late timing: the feel's lay-back, plus a breath's gap for every held-note breath before the note (the line lingers). */
+  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0)
+    + heldGaps.filter((at) => at <= startSec(note) + 1e-9).length * HELD_BREATH_GAP_SEC;
 
   for (let p = 0; p < phrases.length; p++) {
     const phrase = phrases[p];

@@ -183,6 +183,9 @@ describe('phrasing, round two', () => {
     // The held note lingers a little; the breath follows it and the next note starts late.
     expect(track.notes.get('g')!.durationSec).toBeGreaterThan(5 * STEP);
     expect(track.notes.get('e2')!.offsetSec).toBeCloseTo(0.14, 5);
+    // The next note is not cut short: the whole line moves later by the breath.
+    expect(track.notes.get('e2')!.durationSec).toBeUndefined();
+    expect(track.notes.get('g')!.offsetSec ?? 0).toBe(0);
     expect(track.notes.get('e2')!.expression?.legato).toBeUndefined();
     const short = [note('c', 0, 60, 4), note('d', 4, 62, 4), note('e', 8, 64, 4), note('g', 12, 67, 3), note('e2', 15, 64, 3)];
     expect(phraseTrack(short, options('alto-sax')).extras.filter((extra) => extra.expression.articulation === 'breath').length).toBe(0);
