@@ -231,6 +231,7 @@ button.on { background: var(--color, var(--accent)); color: var(--accent-contras
 .sound-picker-item.current { outline: 2px solid var(--accent); }
 .sound-picker-item.missing { border-color: var(--danger); }
 .sound-picker-item.loading { opacity: .8; }
+.sound-picker-item.synth:not(.current) { opacity: .72; }
 .sound-picker-item > span { display: flex; flex-direction: column; gap: 3px; }
 .sound-picker-item small { opacity: .7; }
 .sound-picker-item strong { display: flex; align-items: center; }

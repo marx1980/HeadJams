@@ -8,6 +8,7 @@
 #          git -C VCSL checkout origin/sfz -- "Chordophones/Zithers/Grand Piano, Steinway B.sfz" "Electrophones/TX81Z - FM Piano.sfz"
 #   VSCO   git clone https://github.com/sgossner/VSCO-2-CE, then (SFZ files live on the SFZ branch):
 #          git -C VSCO checkout origin/SFZ -- CelloEnsSusVib.sfz ViolaEnsSusVib.sfz ViolinEnsSusVib.sfz TromboneSus.sfz TrumpetSus.sfz
+#          Harp.sfz FluteSusVib.sfz ClarinetSus.sfz FHornSus.sfz Marimba.sfz Glockenspiel.sfz OrganQuiet.sfz CelloEnsPizz.sfz
 #
 # Usage: scripts/build-instruments.sh NYLON EMILY BASS VCSL VSCO   (pass "-" to skip one)
 set -e
@@ -64,4 +65,20 @@ if [ "$VSCO" != "-" ]; then
     --licence CC0-1.0 --source "VS Chamber Orchestra 2: Community Edition (tenor trombone and trumpet, sustain)" \
     --url https://github.com/sgossner/VSCO-2-CE --commit "$(commit "$VSCO")" --layers first,last --rate 22050 \
     --loop 1.0-3.0 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 24 --level-zones --gain-db 0
+fi
+if [ "$VSCO" != "-" ]; then
+  CR="Versilian Studios (Sam Gossner, Simon Dalzell)"; URL=https://github.com/sgossner/VSCO-2-CE
+  vsco() { # file id name family tags source extra...
+    f=$1; id=$2; name=$3; fam=$4; tags=$5; src=$6; shift 6
+    $IMPORT "$VSCO/$f" --id "$id" --tags "$tags" --name "$name" --family "$fam" --creator "$CR" --licence CC0-1.0 \
+      --source "VS Chamber Orchestra 2: Community Edition ($src)" --url $URL --commit "$(commit "$VSCO")" --layers first,last --rate 22050 "$@"
+  }
+  vsco Harp.sfz harp Harp strings acoustic,warm,soft,plucky harp --seconds 3.0 --fade-ms 500 --release-ms 400 --pitch-limit 3 --polyphony 24
+  vsco FluteSusVib.sfz flute Flute brass acoustic,soft,smooth,sustained "flute, sustain with vibrato" --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco ClarinetSus.sfz clarinet Clarinet brass acoustic,warm,smooth,sustained "clarinet, sustain" --round-robins 1 --loop 1.0-2.5 --crossfade-ms 300 --release-ms 250 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco FHornSus.sfz french-horn "French Horn" brass acoustic,warm,soft,sustained "French horn, sustain" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 300 --pitch-limit 3 --polyphony 16 --level-zones
+  vsco Marimba.sfz marimba Marimba keys acoustic,warm,plucky,punchy marimba --round-robins 1 --seconds 2.0 --fade-ms 400 --release-ms 200 --pitch-limit 3 --polyphony 24
+  vsco Glockenspiel.sfz glockenspiel Glockenspiel keys acoustic,bright,plucky glockenspiel --round-robins 1 --seconds 2.0 --fade-ms 500 --release-ms 400 --pitch-limit 3 --polyphony 24
+  vsco OrganQuiet.sfz church-organ "Church Organ" keys acoustic,warm,soft,sustained "organ, quiet" --round-robins 1 --loop 1.0-3.0 --crossfade-ms 300 --release-ms 300 --pitch-limit 3 --polyphony 24 --level-zones
+  vsco CelloEnsPizz.sfz pizzicato-strings "Pizzicato Strings" strings acoustic,punchy,plucky "cello section, pizzicato" --round-robins 1 --seconds 1.5 --fade-ms 300 --release-ms 150 --pitch-limit 3 --polyphony 24
 fi

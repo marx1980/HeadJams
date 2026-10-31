@@ -71,6 +71,14 @@ function sampledProjects(): Record<string, Project> {
     'electric-bass': one('electric-bass', { notes: melody.map((n) => ({ ...n, pitch: n.pitch - 24 })) }),
     strings: one('strings', { notes: notes([[0, 57, 16], [0, 64, 16], [16, 55, 16], [16, 62, 16]]) }),
     brass: one('brass', { notes: melody.map((n) => ({ ...n, pitch: n.pitch - 5 })) }),
+    harp: one('harp', { notes: melody }),
+    'pizzicato-strings': one('pizzicato-strings', { notes: melody }),
+    flute: one('flute', { notes: melody.map((n) => ({ ...n, pitch: n.pitch + 7 })) }),
+    clarinet: one('clarinet', { notes: melody }),
+    'french-horn': one('french-horn', { notes: melody.map((n) => ({ ...n, pitch: n.pitch - 12 })) }),
+    'church-organ': one('church-organ', { notes: notes([[0, 48, 16], [0, 55, 16], [0, 64, 16], [16, 53, 16], [16, 57, 16], [16, 65, 16]]) }),
+    marimba: one('marimba', { notes: melody }),
+    glockenspiel: one('glockenspiel', { notes: melody.map((n) => ({ ...n, pitch: n.pitch + 12 })) }),
   };
 }
 

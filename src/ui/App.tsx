@@ -12,7 +12,7 @@ import {
   projectJson, saveNamedProject, type SavedProjectEntry,
 } from '../model/projectLibrary';
 import { allSounds, findSound, STARTER_SOUNDS } from '../library/sounds';
-import { addKitChannel, applyDrumKit, CORE_LANES, DRUM_KITS, findDrumKit, setKitChannelKit } from '../library/drumKits';
+import { addKitChannel, applyDrumKit, CORE_LANES, DRUM_KITS_RECORDED_FIRST, findDrumKit, setKitChannelKit } from '../library/drumKits';
 import { getSample, saveSample, type SampleData } from '../library/sampleStorage';
 import { Engine } from '../audio/engine';
 import { startCapture, type CaptureResult } from '../audio/capture';
@@ -994,7 +994,7 @@ export function App() {
             <label>Drum kit
               <select aria-label="Drum kit" value={drumKitId} onChange={(e) => setDrumKitId(e.target.value)}>
                 <option value="">Choose a kit…</option>
-                {DRUM_KITS.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
+                {DRUM_KITS_RECORDED_FIRST.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
               </select>
             </label>
             <button id="apply-kit" className="secondary" disabled={!drumKitId} onClick={applySelectedDrumKit}>Apply kit</button>
@@ -1038,7 +1038,7 @@ export function App() {
                       if (kit) setProject(setKitChannelKit(project, c.id, kit));
                     }}>
                     {!findDrumKit(c.kitId ?? '') && <option value="">Kit</option>}
-                    {DRUM_KITS.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
+                    {DRUM_KITS_RECORDED_FIRST.map((kit) => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
                   </select>
                 ) : <SoundPicker sounds={sounds} soundId={c.soundId} unavailableSoundIds={unavailableSoundIds}
                   loadingSoundIds={loadingSoundIds}
