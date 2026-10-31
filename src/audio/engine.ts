@@ -11,7 +11,7 @@ import { compileStep, type HitVoice, type PitchedVoice, type VoiceEvent } from '
 import type { InstrumentStore } from './sampler/instrumentStore';
 import { instrumentNeeds } from './sampler/instrumentStore';
 import { ROOM_SEND, roomImpulse } from './room';
-import { blendGains, planSampledVoice, sanitizeBends, type DecodedRegion, type SampledVoicePlan } from './sampler/sampledVoice';
+import { POWER_FADE_POINTS, blendGains, planSampledVoice, sanitizeBends, type DecodedRegion, type SampledVoicePlan } from './sampler/sampledVoice';
 import { RoundRobin } from './sampler/selectRegion';
 import { CUT_FADE_SEC, VoiceTracker } from './sampler/voices';
 
@@ -127,10 +127,12 @@ export class Engine {
     const source = makeSource(plan.audio, plan.rate, plan.loop);
     const envelope = ctx.createGain();
     envelope.gain.setValueAtTime(0, start);
-    envelope.gain.linearRampToValueAtTime(plan.level, start + plan.attackSec);
+    if (plan.powerFades?.in) for (const [x, g] of POWER_FADE_POINTS.slice(1)) envelope.gain.linearRampToValueAtTime(plan.level * g, start + plan.attackSec * x);
+    else envelope.gain.linearRampToValueAtTime(plan.level, start + plan.attackSec);
     if (plan.mode === 'sustain' && !sustainUntilStopped) {
       envelope.gain.setValueAtTime(plan.level, start + Math.max(plan.attackSec, plan.durationSec));
-      envelope.gain.linearRampToValueAtTime(0, start + plan.durationSec + plan.releaseSec);
+      if (plan.powerFades?.out) for (const [x] of POWER_FADE_POINTS.slice(1)) envelope.gain.linearRampToValueAtTime(plan.level * Math.cos((x * Math.PI) / 2), start + plan.durationSec + plan.releaseSec * x);
+      else envelope.gain.linearRampToValueAtTime(0, start + plan.durationSec + plan.releaseSec);
     }
     const cut = ctx.createGain();
     const panner = ctx.createStereoPanner();

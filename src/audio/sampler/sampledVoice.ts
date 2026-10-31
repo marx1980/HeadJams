@@ -20,6 +20,8 @@ export interface SampledVoicePlan {
   durationSec: number;
   attackSec: number;
   releaseSec: number;
+  /** Equal-power fades for slur crossfades: the old note fades out as the new one fades in, at one steady level. */
+  powerFades?: { in?: boolean; out?: boolean };
   /** Seconds after the voice start when the note is released. */
   noteEndSec: number;
   /** Seconds after the voice start when the voice is silent (before any cut). */
@@ -46,7 +48,7 @@ export interface SampledVoicePlan {
 
 /** A slurred note skips at most this much of its sample's attack. */
 const LEGATO_MAX_SKIP_SEC = 0.35;
-const LEGATO_ATTACK_SEC = 0.03;
+export const LEGATO_ATTACK_SEC = 0.06;
 const steadyStarts = new WeakMap<Float32Array, number>();
 
 /**
@@ -166,8 +168,9 @@ export function planSampledVoice(
     level: Math.max(0, voice.volume * velocity * choice.gain),
     mode,
     durationSec,
-    attackSec: expression?.legato ? Math.min(attackSec, LEGATO_ATTACK_SEC) : attackSec,
+    attackSec: expression?.crossfade?.in ? LEGATO_ATTACK_SEC : expression?.legato ? Math.min(attackSec, LEGATO_ATTACK_SEC) : attackSec,
     releaseSec: release,
+    ...(expression?.crossfade ? { powerFades: expression.crossfade } : {}),
     noteEndSec: mode === 'sustain' ? Math.min(durationSec, endSec) : 0,
     endSec,
     pitchBend: pitched && !expression?.optional ? voice.pitchBend : undefined,
@@ -204,13 +207,18 @@ export function blendGains(weight: number, gainRatio: number): [number, number] 
   return [Math.cos((w * Math.PI) / 2), Math.sin((w * Math.PI) / 2) * gainRatio];
 }
 
+/** Points (fraction of the fade, gain) of a quarter-sine fade in, for ramping a gain node in segments. */
+export const POWER_FADE_POINTS: readonly (readonly [number, number])[] = Array.from({ length: 9 }, (_, k) => [k / 8, Math.sin((k / 8) * Math.PI / 2)] as const);
+
 /** Envelope gain (0–1) at `t` seconds after the voice start, before level and cuts. */
 export function envelopeAt(plan: SampledVoicePlan, t: number): number {
   if (t < 0 || t >= plan.endSec) return 0;
-  const attack = plan.attackSec > 0 ? Math.min(1, t / plan.attackSec) : 1;
+  const rise = plan.attackSec > 0 ? Math.min(1, t / plan.attackSec) : 1;
+  const attack = plan.powerFades?.in ? Math.sin((rise * Math.PI) / 2) : rise;
   const swell = plan.gainCurve ? curveAt(plan.gainCurve, t) : 1;
   if (plan.mode === 'one-shot' || t <= plan.durationSec) return attack * swell;
-  return attack * swell * Math.max(0, 1 - (t - plan.durationSec) / Math.max(1e-6, plan.releaseSec));
+  const left = Math.max(0, 1 - (t - plan.durationSec) / Math.max(1e-6, plan.releaseSec));
+  return attack * swell * (plan.powerFades?.out ? Math.sin((left * Math.PI) / 2) : left);
 }
 
 /** Value of a sorted, linearly interpolated curve at `t` (held before the first and after the last point). */

@@ -42,12 +42,12 @@ describe('phrasing', () => {
     expect(spread(wider)).toBeGreaterThan(spread(first));
   });
 
-  it('slurs connected notes on sustained instruments: crossfade, glide, no re-attack', () => {
+  it('slurs connected notes on sustained instruments: equal-power crossfade, no re-attack', () => {
     const shaped = phraseNotes(line, options('tenor-sax'));
-    expect(shaped.get('a')!.expression).toMatchObject({ releaseSec: 0.03 });
+    expect(shaped.get('a')!.expression).toMatchObject({ releaseSec: 0.06, crossfade: { out: true } });
     expect(shaped.get('a')!.expression?.legato).toBeUndefined();
     expect(shaped.get('b')!.expression?.legato).toBe(true);
-    expect(shaped.get('b')!.pitchBend?.slice(0, 2)).toEqual([{ time: 0, value: -2 }, { time: 0.02, value: 0 }]);
+    expect(shaped.get('b')!.pitchBend?.slice(0, 2)).toEqual([{ time: 0, value: -2 }, { time: 0.045, value: 0 }]);
     // The phrase break before 'e' starts a fresh, attacked note.
     expect(shaped.get('e')!.expression?.legato).toBeUndefined();
     // The last note of a phrase does not slur into the next phrase.
@@ -61,15 +61,12 @@ describe('phrasing', () => {
     expect(Math.max(...bends.map((point) => point.value))).toBeCloseTo(0.24, 2);
     expect(shaped.expression?.gain?.map((point) => point.value)).toEqual([0.88, 1, 0.72]);
     const hummed = [note('h', 0, 60, 8, { pitchBend: [{ time: 0, value: 0.3 }, { time: 0.5, value: 0 }] })];
-    expect(phraseNotes(hummed, options('alto-sax')).get('h')!.pitchBend).toEqual(hummed[0].pitchBend);
+    expect(phraseNotes(hummed, options('alto-sax')).get('h')!.pitchBend).toBeUndefined();
   });
 
   it('scoops into and falls off phrases on sax in the expressive style only', () => {
-    // Natural: no scoop into the phrase ('a' only bends at its end, gliding into 'b').
-    const natural = phraseNotes(line, options('alto-sax')).get('a')!.pitchBend!;
-    expect(natural[0].value).toBe(0);
-    expect(natural.at(-1)!.value).toBe(2);
-    expect(natural.at(-1)!.time).toBeCloseTo(0.27, 5);
+    const natural = phraseNotes(line, options('alto-sax')).get('a')!.pitchBend;
+    expect(natural).toBeUndefined();
     const expressive = phraseNotes(line, options('alto-sax', 'expressive'));
     expect(expressive.get('e')!.pitchBend?.[0]).toEqual({ time: 0, value: -0.7 });
     expect(expressive.get('e')!.pitchBend?.at(-1)).toEqual({ time: 1.1, value: -2 });
@@ -213,8 +210,8 @@ describe('one note at a time', () => {
     const durationOf = (steps: number) => steps * STEP;
     const notes = [note('a', 0, 60, 3), note('b', 2, 62, 2), note('c', 4, 64, 2), note('d', 7, 65, 2), note('e', 12, 67, 2), note('x', 16, 60, 2), note('y', 16, 64, 2)];
     const line = monophonicLine(notes, durationOf);
-    // 'a' overlaps 'b': it stops when b starts and fades in 50 ms.
-    expect(line.get('a')!.durationSec).toBeCloseTo(0.25, 5);
+    // 'a' overlaps 'b': it stops 15 ms after b starts and fades in 50 ms.
+    expect(line.get('a')!.durationSec).toBeCloseTo(0.265, 5);
     expect(line.get('a')!.releaseSec).toBe(0.05);
     // 'b' meets 'c': no overlap, a short release.
     expect(line.get('b')).toEqual({ releaseSec: 0.05 });
@@ -227,7 +224,7 @@ describe('one note at a time', () => {
     let p = setLoopBars(createProject(), 2);
     p = { ...p, channels: [{ ...createChannel('s', 'Sax', 'alto-sax', 32), notes }] };
     const voice = compileStep(p, 0, durationOf)[0] as PitchedVoice;
-    expect(voice.durationSec).toBeCloseTo(0.25, 5);
+    expect(voice.durationSec).toBeCloseTo(0.265, 5);
     expect(voice.expression).toEqual({ releaseSec: 0.05 });
     const piano = { ...p, channels: [{ ...p.channels[0], soundId: 'grand-piano' }] };
     expect((compileStep(piano, 0, durationOf)[0] as PitchedVoice).expression).toBeUndefined();
@@ -235,7 +232,7 @@ describe('one note at a time', () => {
 });
 
 describe('hummed takes', () => {
-  it('drops slides the recognition heard as short quiet notes, and the line glides over them', () => {
+  it('drops slides the recognition heard as short quiet notes, and the line slurs over them', () => {
     const take = { sourceTakeId: 't' };
     const notes = [note('g', 9, 67, 4, { velocity: 0.99, ...take }), note('f', 12, 65, 1, { velocity: 0.21, ...take }),
       note('e', 13, 64, 3, { velocity: 0.99, ...take }), note('c', 19, 60, 4, { velocity: 0.99, ...take }),
@@ -244,8 +241,8 @@ describe('hummed takes', () => {
     expect(shaped.get('f')!.silent).toBe(true);
     expect(shaped.get('cs')!.silent).toBe(true);
     // G is no longer cut by the slide: it holds into E and E slurs from G with a glide.
-    expect(shaped.get('g')!.durationSec).toBeUndefined(); // its full written length
-    expect(shaped.get('e')!.pitchBend?.[0]).toEqual({ time: 0, value: 3 });
+    expect(shaped.get('g')!.durationSec ?? 4 * STEP).toBeCloseTo(4 * STEP, 5);
+    expect(shaped.get('e')!.expression?.legato).toBe(true);
     // Written (not hummed) quiet short notes are real notes.
     const written = phraseNotes(notes.map(({ sourceTakeId, ...n }) => n), options('alto-sax'));
     expect(written.get('f')!.silent).toBeUndefined();
@@ -260,23 +257,5 @@ describe('hummed takes', () => {
     expect(Math.min(...gain('a'))).toBeGreaterThan(0.8);
     expect(gain('b')[0]).toBeGreaterThan(0.8);
     expect(gain('b').at(-1)).toBeLessThan(0.65);
-  });
-});
-
-describe('glides between slurred notes', () => {
-  it('moves both notes together, briefly, a little longer where the voice slid', () => {
-    const take = { sourceTakeId: 't', velocity: 0.99 };
-    const notes = [note('g', 9, 67, 4, take), note('f', 12, 65, 1, { ...take, velocity: 0.21 }), note('e', 13, 64, 3, take)];
-    const shaped = phraseNotes(notes, options('alto-sax'));
-    const g = shaped.get('g')!;
-    const e = shaped.get('e')!;
-    // The slide note lasted one step (0.125 s): E glides in from G, capped at 0.06 s (a sax changes notes with its keys).
-    expect(e.pitchBend!.slice(0, 2)).toEqual([{ time: 0, value: 3 }, { time: 0.06, value: 0 }]);
-    // G, fading out, bends to E over the same 0.06 s from the moment E starts (4 steps in).
-    expect(g.pitchBend!.slice(-2)).toEqual([{ time: 0.5, value: 0 }, { time: 0.56, value: -3 }]);
-    expect(g.expression?.releaseSec).toBe(0.03);
-    // An ordinary slur (no sung slide) glides for the feel's 20 ms.
-    const plain = phraseNotes([note('a', 0, 60, 4), note('b', 4, 64, 4)], options('alto-sax'));
-    expect(plain.get('b')!.pitchBend!.slice(0, 2)).toEqual([{ time: 0, value: -4 }, { time: 0.02, value: 0 }]);
   });
 });
