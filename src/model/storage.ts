@@ -256,6 +256,7 @@ export function normalizeProject(raw: string): Project | undefined {
         : [],
       ...(normalizeChordRow(channel.chordRow) ? { chordRow: normalizeChordRow(channel.chordRow) } : { chordRow: undefined }),
       ...(Array.isArray(channel.lanes) ? { lanes: normalizeLanes(channel.lanes, channel.steps?.length ?? 0) } : { lanes: undefined }),
+      phrasing: channel.phrasing === 'natural' || channel.phrasing === 'expressive' ? channel.phrasing : undefined,
     }, NOTE_LENGTHS.includes(p.noteLength) ? p.noteLength : 16, channel.steps?.length ?? 0);
     const patterns: Pattern[] = Array.isArray(p.patterns)
       ? p.patterns.map((pattern) => ({

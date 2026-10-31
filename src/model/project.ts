@@ -79,6 +79,8 @@ export interface Channel {
   lengthSteps?: number;
   /** Steps per bar the grid shows for this track (a coarser view of the project grid; display only). */
   viewSteps?: NoteLength;
+  /** Play the notes as phrased lines (legato, dynamics, vibrato); off when undefined. */
+  phrasing?: 'natural' | 'expressive';
 }
 
 export interface GeneratedTrackMetadata {

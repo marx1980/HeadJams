@@ -128,8 +128,22 @@ export class Engine {
     const cut = ctx.createGain();
     const panner = ctx.createStereoPanner();
     panner.pan.value = Math.max(-1, Math.min(1, pan));
-    source.connect(envelope).connect(cut).connect(panner).connect(destination);
-    source.start(start);
+    if (plan.gainCurve?.length) {
+      // Phrasing swell: its own gain stage, so the attack/release envelope above stays as it was.
+      const swell = ctx.createGain();
+      swell.gain.setValueAtTime(plan.gainCurve[0].value, start);
+      let last = start;
+      for (const point of plan.gainCurve) {
+        const at = start + point.time;
+        if (at <= last) continue;
+        swell.gain.linearRampToValueAtTime(point.value, at);
+        last = at;
+      }
+      source.connect(envelope).connect(swell).connect(cut).connect(panner).connect(destination);
+    } else {
+      source.connect(envelope).connect(cut).connect(panner).connect(destination);
+    }
+    source.start(start, plan.startSec ?? 0);
     if (!sustainUntilStopped) source.stop(start + plan.endSec + 0.005);
     return { source, envelope, cut };
   }

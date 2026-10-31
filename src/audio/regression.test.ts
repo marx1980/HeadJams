@@ -91,6 +91,10 @@ function sampledProjects(): Record<string, Project> {
     xylophone: one('xylophone', { notes: melody.map((n) => ({ ...n, pitch: n.pitch + 12 })) }),
     'tubular-bells': one('tubular-bells', { notes: melody }),
     timpani: one('timpani', { notes: melody.map((n) => ({ ...n, pitch: n.pitch - 12 })) }),
+    'phrased-tenor-sax': one('tenor-sax', { notes: melody.map((n) => ({ ...n, pitch: n.pitch - 7 })), phrasing: 'natural' }),
+    'phrased-strings': one('strings', { notes: melody, phrasing: 'expressive' }),
+    'phrased-alto-sax': one('alto-sax', { notes: melody, phrasing: 'expressive' }),
+    'phrased-lead-synth': one('lead-2', { notes: melody, phrasing: 'natural' }),
     glockenspiel: one('glockenspiel', { notes: melody.map((n) => ({ ...n, pitch: n.pitch + 12 })) }),
   };
 }

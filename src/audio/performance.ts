@@ -6,6 +6,7 @@ import { guitarChordPitches } from '../model/music';
 import { CHORD_STRING_LEVEL, performChord, voiceChordSequence } from '../library/guitar/performer';
 import { chordArticulation, recordedChordFor } from '../model/personalInstrument';
 import { automatedMix } from '../model/automation';
+import { phraseNotes, phrasingProfile, type VoiceExpression } from './phrasing';
 
 /** Seconds between strings in a strummed chord. */
 export const STRUM_STAGGER_SEC = 0.018;
@@ -39,6 +40,8 @@ export interface PitchedVoice extends VoiceBase {
   /** Left undefined when the source event has none, so renderers keep their own default. */
   velocity?: number;
   pitchBend?: PitchBendPoint[];
+  /** Phrasing: legato starts, release override and swells (sampled instruments). */
+  expression?: VoiceExpression;
   /** Sampled guitars: voices sharing a key on a channel cut each other (one per string, or the whole chord when tight). */
   chokeKey?: string | string[];
 }
@@ -67,11 +70,19 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         const laneSound = findSound(p, lane.soundId);
         if (laneSound) voices.push({ ...base, sound: laneSound, kind: 'hit', offsetSec: 0 });
       }
-      for (const note of c.notes ?? []) {
-        if (note.step !== source.localStep) continue;
+      const starting = (c.notes ?? []).filter((note) => note.step === source.localStep);
+      const profile = c.phrasing && starting.length ? phrasingProfile(sound) : undefined;
+      const phrased = profile && c.phrasing
+        ? phraseNotes(c.notes, { style: c.phrasing, profile, durationOf, stepsPerBar: p.noteLength, seed: `${p.seed ?? 1}:${c.id}` })
+        : undefined;
+      for (const note of starting) {
+        const shaped = phrased?.get(note.id);
         voices.push({
           ...base, kind: 'pitched', origin: 'note', offsetSec: 0, pitch: note.pitch,
-          durationSec: durationOf(note.durationSteps), velocity: note.velocity, pitchBend: note.pitchBend,
+          durationSec: shaped?.durationSec ?? durationOf(note.durationSteps),
+          velocity: shaped ? shaped.velocity : note.velocity,
+          pitchBend: shaped?.pitchBend ?? note.pitchBend,
+          ...(shaped?.expression ? { expression: shaped.expression } : {}),
         });
       }
       if (c.playOriginal && c.original) {
