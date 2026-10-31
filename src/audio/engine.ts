@@ -10,7 +10,8 @@ import { pitchToFrequency } from '../model/music';
 import { compileStep, type HitVoice, type PitchedVoice, type VoiceEvent } from './performance';
 import type { InstrumentStore } from './sampler/instrumentStore';
 import { instrumentNeeds } from './sampler/instrumentStore';
-import { planSampledVoice, sanitizeBends, type DecodedRegion, type SampledVoicePlan } from './sampler/sampledVoice';
+import { ROOM_SEND, roomImpulse } from './room';
+import { blendGains, planSampledVoice, sanitizeBends, type DecodedRegion, type SampledVoicePlan } from './sampler/sampledVoice';
 import { RoundRobin } from './sampler/selectRegion';
 import { CUT_FADE_SEC, VoiceTracker } from './sampler/voices';
 
@@ -34,9 +35,11 @@ export class Engine {
   private reverbWet?: GainNode;
   private reverbDry?: GainNode;
   private convolver?: ConvolverNode;
+  /** Per-track room send (mono) into a shared room response (src/audio/room.ts). */
+  private roomBus?: GainNode;
   private roundRobin = new RoundRobin(1);
   private tracker = new VoiceTracker();
-  private sampledVoices = new Map<number, { source: AudioBufferSourceNode; cut: GainNode }>();
+  private sampledVoices = new Map<number, { source: AudioBufferSourceNode; blendSource?: AudioBufferSourceNode; cut: GainNode }>();
   private nextVoiceId = 0;
   private regionBuffers = new WeakMap<Float32Array, AudioBuffer>();
   private metronome = false;
@@ -102,22 +105,26 @@ export class Engine {
   /** Build source -> envelope gain -> cut gain -> panner -> destination for a sampled voice. */
   private startSampledNodes(plan: SampledVoicePlan, start: number, pan: number, destination: AudioNode, sustainUntilStopped = false) {
     const ctx = this.ctx!;
-    const source = ctx.createBufferSource();
-    source.buffer = this.regionBuffer(plan.audio);
-    if (plan.loop) {
-      source.loop = true;
-      source.loopStart = plan.loop.startSec;
-      source.loopEnd = plan.loop.endSec;
-    }
     const bends = sanitizeBends(plan.pitchBend);
-    source.playbackRate.setValueAtTime(plan.rate, start);
-    let previous = start;
-    for (const point of bends) {
-      const at = start + point.time;
-      if (at <= previous) continue;
-      source.playbackRate.linearRampToValueAtTime(plan.rate * 2 ** (point.value / 12), at);
-      previous = at;
-    }
+    const makeSource = (audio: DecodedRegion, rate: number, loop?: { startSec: number; endSec: number }) => {
+      const node = ctx.createBufferSource();
+      node.buffer = this.regionBuffer(audio);
+      if (loop) {
+        node.loop = true;
+        node.loopStart = loop.startSec;
+        node.loopEnd = loop.endSec;
+      }
+      node.playbackRate.setValueAtTime(rate, start);
+      let previous = start;
+      for (const point of bends) {
+        const at = start + point.time;
+        if (at <= previous) continue;
+        node.playbackRate.linearRampToValueAtTime(rate * 2 ** (point.value / 12), at);
+        previous = at;
+      }
+      return node;
+    };
+    const source = makeSource(plan.audio, plan.rate, plan.loop);
     const envelope = ctx.createGain();
     envelope.gain.setValueAtTime(0, start);
     envelope.gain.linearRampToValueAtTime(plan.level, start + plan.attackSec);
@@ -128,6 +135,33 @@ export class Engine {
     const cut = ctx.createGain();
     const panner = ctx.createStereoPanner();
     panner.pan.value = Math.max(-1, Math.min(1, pan));
+    let blendSource: AudioBufferSourceNode | undefined;
+    let head: AudioNode = source;
+    if (plan.blend) {
+      // Soft and loud recordings, crossfaded by the blend weight (equal power), into one envelope.
+      const blend = plan.blend;
+      blendSource = makeSource(blend.audio, blend.rate, blend.loop);
+      const softGain = ctx.createGain();
+      const loudGain = ctx.createGain();
+      const [soft0, loud0] = blendGains(blend.weight[0]?.value ?? 0, blend.gainRatio);
+      softGain.gain.setValueAtTime(soft0, start);
+      loudGain.gain.setValueAtTime(loud0, start);
+      let last = start;
+      for (const point of blend.weight) {
+        const at = start + point.time;
+        if (at <= last) continue;
+        const [softValue, loudValue] = blendGains(point.value, blend.gainRatio);
+        softGain.gain.linearRampToValueAtTime(softValue, at);
+        loudGain.gain.linearRampToValueAtTime(loudValue, at);
+        last = at;
+      }
+      const sum = ctx.createGain();
+      source.connect(softGain).connect(sum);
+      blendSource.connect(loudGain).connect(sum);
+      head = sum;
+      blendSource.start(start, blend.startSec ?? 0);
+      if (!sustainUntilStopped) blendSource.stop(start + plan.endSec + 0.005);
+    }
     if (plan.gainCurve?.length) {
       // Phrasing swell: its own gain stage, so the attack/release envelope above stays as it was.
       const swell = ctx.createGain();
@@ -139,13 +173,13 @@ export class Engine {
         swell.gain.linearRampToValueAtTime(point.value, at);
         last = at;
       }
-      source.connect(envelope).connect(swell).connect(cut).connect(panner).connect(destination);
+      head.connect(envelope).connect(swell).connect(cut).connect(panner).connect(destination);
     } else {
-      source.connect(envelope).connect(cut).connect(panner).connect(destination);
+      head.connect(envelope).connect(cut).connect(panner).connect(destination);
     }
     source.start(start, plan.startSec ?? 0);
     if (!sustainUntilStopped) source.stop(start + plan.endSec + 0.005);
-    return { source, envelope, cut };
+    return { source, blendSource, envelope, cut, panner };
   }
 
   private playSampled(voice: VoiceEvent, time: number) {
@@ -165,11 +199,13 @@ export class Engine {
       victim.cut.gain.setValueAtTime(1, cut.at);
       victim.cut.gain.linearRampToValueAtTime(0, cut.at + CUT_FADE_SEC);
       try { victim.source.stop(cut.at + CUT_FADE_SEC + 0.002); } catch { /* already stopped */ }
+      try { victim.blendSource?.stop(cut.at + CUT_FADE_SEC + 0.002); } catch { /* already stopped */ }
       this.sampledVoices.delete(cut.id);
     }
     const nodes = this.startSampledNodes(plan, start, voice.pan, this.master!);
+    this.sendToRoom(nodes.panner, voice.room);
     nodes.source.onended = () => this.sampledVoices.delete(id);
-    this.sampledVoices.set(id, { source: nodes.source, cut: nodes.cut });
+    this.sampledVoices.set(id, { source: nodes.source, blendSource: nodes.blendSource, cut: nodes.cut });
   }
 
   private buffer(def: SoundDef): AudioBuffer | undefined {
@@ -259,6 +295,18 @@ export class Engine {
     this.delay.connect(this.delayFeedback).connect(this.delay);
     delaySum.connect(this.reverbDry).connect(ctx.destination);
     delaySum.connect(convolver).connect(this.reverbWet).connect(ctx.destination);
+
+    const [roomLeft, roomRight] = roomImpulse(ctx.sampleRate);
+    const roomBuffer = ctx.createBuffer(2, roomLeft.length, ctx.sampleRate);
+    roomBuffer.copyToChannel(roomLeft as Float32Array<ArrayBuffer>, 0);
+    roomBuffer.copyToChannel(roomRight as Float32Array<ArrayBuffer>, 1);
+    const room = ctx.createConvolver();
+    room.normalize = false;
+    room.buffer = roomBuffer;
+    this.roomBus = ctx.createGain();
+    this.roomBus.channelCount = 1;
+    this.roomBus.channelCountMode = 'explicit';
+    this.roomBus.connect(room).connect(this.master);
   }
 
   private updateEffects() {
@@ -277,7 +325,15 @@ export class Engine {
     this.reverbWet.gain.setTargetAtTime(effects.reverb * 0.45, now, 0.02);
   }
 
-  private play(def: SoundDef, time: number, volume: number, pan: number, skipSec = 0) {
+  /** Also send a voice's output to the room, when its track has one. */
+  private sendToRoom(node: AudioNode, room?: number) {
+    if (!room || room <= 0 || !this.roomBus || !this.ctx) return;
+    const send = this.ctx.createGain();
+    send.gain.value = Math.min(1, room) * ROOM_SEND;
+    node.connect(send).connect(this.roomBus);
+  }
+
+  private play(def: SoundDef, time: number, volume: number, pan: number, skipSec = 0, room?: number) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource();
     const buffer = this.buffer(def);
@@ -289,6 +345,7 @@ export class Engine {
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
     src.connect(gain).connect(panner).connect(this.master!);
+    this.sendToRoom(panner, room);
     if (skipSec > 0 && skipSec >= buffer.duration) return;
     src.start(time, skipSec > 0 ? skipSec : 0);
   }
@@ -306,7 +363,7 @@ export class Engine {
 
   private playPitch(
     def: SoundDef, pitch: number, time: number, duration: number, volume: number, pan: number, velocity = 1,
-    pitchBend: PitchBendPoint[] = [],
+    pitchBend: PitchBendPoint[] = [], room?: number,
   ) {
     const ctx = this.ctx!;
     const start = Math.max(time, ctx.currentTime);
@@ -334,6 +391,7 @@ export class Engine {
     gain.gain.linearRampToValueAtTime(0, end + 0.03);
     panner.pan.setValueAtTime(pan, start);
     gain.connect(panner).connect(this.master!);
+    this.sendToRoom(panner, room);
 
     if (def.sampleId) {
       const buffer = this.buffer(def);
@@ -522,10 +580,11 @@ export class Engine {
           if (voice.sound.instrumentId && this.instruments?.status(voice.sound.instrumentId)?.state !== 'error') {
             this.playSampled(voice, time + voice.offsetSec);
           }
-          else if (voice.kind === 'hit') this.play(voice.sound, time + voice.offsetSec, voice.volume, voice.pan, voice.skipSec);
+          else if (voice.kind === 'pitched' && voice.expression?.optional) continue;
+          else if (voice.kind === 'hit') this.play(voice.sound, time + voice.offsetSec, voice.volume, voice.pan, voice.skipSec, voice.room);
           else {
             this.playPitch(voice.sound, voice.pitch, time + voice.offsetSec, voice.durationSec, voice.volume, voice.pan,
-              voice.velocity, voice.pitchBend);
+              voice.velocity, voice.pitchBend, voice.room);
           }
         }
         window.setTimeout(() => this.playing && this.onStep(step), Math.max(0, (time - ctx.currentTime) * 1000));

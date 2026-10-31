@@ -95,6 +95,10 @@ function sampledProjects(): Record<string, Project> {
     'phrased-strings': one('strings', { notes: melody, phrasing: 'expressive' }),
     'phrased-alto-sax': one('alto-sax', { notes: melody, phrasing: 'expressive' }),
     'phrased-lead-synth': one('lead-2', { notes: melody, phrasing: 'natural' }),
+    // Jazz feel with short detached notes (staccato recordings), breaths and key noise.
+    'phrased-flute-jazz': one('flute', { notes: notes([[2, 72, 1], [4, 74, 1], [6, 76, 1], [12, 79, 6], [20, 77, 2], [22, 76, 8]]), phrasing: 'jazz' }),
+    'phrased-baritone-classical': one('baritone-sax', { notes: melody.map((n) => ({ ...n, step: n.step + 4, pitch: n.pitch - 19 })), phrasing: 'classical' }),
+    'room-strings': one('strings', { notes: melody, room: 0.6 }),
     glockenspiel: one('glockenspiel', { notes: melody.map((n) => ({ ...n, pitch: n.pitch + 12 })) }),
   };
 }

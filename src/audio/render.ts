@@ -5,6 +5,7 @@ import { stepDuration } from './scheduler';
 import { durationAt, hasTempoMap, stepSeconds } from '../model/tempo';
 import { pitchToFrequency } from '../model/music';
 import { compileStep, type VoiceEvent } from './performance';
+import { addRoom, ROOM_SEND } from './room';
 import type { InstrumentManifest } from './sampler/manifest';
 import { RoundRobin } from './sampler/selectRegion';
 import { planSampledVoice, renderSampledVoice, type SampledVoicePlan } from './sampler/sampledVoice';
@@ -148,14 +149,22 @@ export function renderProject(
     elapsed += stepSeconds(p, step);
   }
   const loopLen = Math.round(elapsed * sr);
-  const tail = sr * (1 + (p.effects.delay > 0 ? 1.5 : 0) + (p.effects.reverb > 0 ? 0.5 : 0));
+  const usesRoom = [p.channels, ...(p.patterns ?? []).map((pattern) => pattern.channels)].some((channels) => channels.some((c) => (c.room ?? 0) > 0));
+  const tail = sr * (1 + (p.effects.delay > 0 ? 1.5 : 0) + (p.effects.reverb > 0 ? 0.5 : 0) + (usesRoom ? 1 : 0));
   const left = new Float32Array(loopLen + tail);
   const right = new Float32Array(loopLen + tail);
+  // Tracks with a Room also send (mono) to the shared room, convolved once at the end (src/audio/room.ts).
+  const roomSend = usesRoom ? new Float32Array(loopLen + tail) : undefined;
+  let room = 0;
   const cache = new Map<string, Float32Array>();
   const mix = (data: Float32Array, start: number, gl: number, gr: number) => {
     for (let k = 0; k < data.length && start + k < left.length; k++) {
       left[start + k] += data[k] * gl;
       right[start + k] += data[k] * gr;
+    }
+    if (roomSend && room > 0) {
+      const send = ((gl + gr) / 2) * Math.min(1, room) * ROOM_SEND;
+      for (let k = 0; k < data.length && start + k < roomSend.length; k++) roomSend[start + k] += data[k] * send;
     }
   };
   const renderSampleNote = (
@@ -209,11 +218,14 @@ export function renderProject(
     const durationOf = tempoMap ? (steps: number) => durationAt(p, step, steps) : (steps: number) => steps * stepLen / sr;
     for (const voice of compileStep(p, step, durationOf)) {
       const def = voice.sound;
+      room = voice.room ?? 0;
       // A sampled sound whose instrument could not be loaded falls back to its synth parameters.
       if (def.instrumentId && instruments?.manifests.has(def.instrumentId)) {
         sampled.push({ voice, start: start + Math.round(voice.offsetSec * sr) });
         continue;
       }
+      // Breath and key noise are recordings only; no synth stand-in.
+      if (voice.kind === 'pitched' && voice.expression?.optional) continue;
       const [gl, gr] = panGains(voice.volume, voice.pan);
       if (voice.kind === 'hit') {
         let data = cache.get(def.id);
@@ -233,9 +245,9 @@ export function renderProject(
           const audio = def.sampleVersion === 'original'
             ? { ...sample, samples: sample.originalSamples ?? sample.samples }
             : sample;
-          mix(renderSampleNote(audio, def.params.freq, voice.pitch, voice.durationSec, voice.velocity, voice.pitchBend), start, gl, gr);
+          mix(renderSampleNote(audio, def.params.freq, voice.pitch, voice.durationSec, voice.velocity, voice.pitchBend), start + Math.round(voice.offsetSec * sr), gl, gr);
         }
-        else if (!def.sampleId) mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr, voice.pitchBend), start, gl, gr);
+        else if (!def.sampleId) mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr, voice.pitchBend), start + Math.round(voice.offsetSec * sr), gl, gr);
       } else {
         mix(renderPitchedNote(def.params, voice.pitch, voice.durationSec, voice.velocity, sr),
           start + Math.round(voice.offsetSec * sr), gl, gr);
@@ -264,9 +276,11 @@ export function renderProject(
     }
     for (const { plan, start, voice, cut } of planned) {
       const [gl, gr] = panGains(1, voice.pan);
+      room = voice.room ?? 0;
       mix(renderSampledVoice(plan, sr, cut), start, gl, gr);
     }
   }
+  if (roomSend) addRoom(roomSend, left, right, sr);
   return {
     left: processEffects(left, p.effects, sr),
     right: processEffects(right, p.effects, sr),

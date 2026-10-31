@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { phraseNotes, phrasingProfile, type PhrasingOptions } from './phrasing';
+import { phraseNotes, phraseTrack, phrasingProfile, type PhrasingOptions, type PhrasingStyle } from './phrasing';
 import { compileStep, type PitchedVoice } from './performance';
 import { createChannel, createProject, setLoopBars, type NoteEvent } from '../model/project';
 import { findSound } from '../library/sounds';
@@ -12,7 +12,7 @@ import type { InstrumentManifest } from './sampler/manifest';
 const STEP = 0.125;
 const note = (id: string, step: number, pitch: number, durationSteps: number, extra: Partial<NoteEvent> = {}): NoteEvent =>
   ({ id, step, pitch, durationSteps, ...extra });
-const options = (sound: string, style: 'natural' | 'expressive' = 'natural'): PhrasingOptions => ({
+const options = (sound: string, style: PhrasingStyle = 'natural'): PhrasingOptions => ({
   style, profile: phrasingProfile(findSound({ customSounds: [] }, sound)!)!, durationOf: (steps) => steps * STEP, stepsPerBar: 16, seed: '1:a',
 });
 // Two phrases: a slurred run of four notes, a rest, then a long held note.
@@ -116,5 +116,88 @@ describe('phrasing', () => {
     const plain = planSampledVoice({ ...voice, expression: undefined }, manifest, (region) => audio.get(region.id))!;
     expect(plain.startSec).toBeUndefined();
     expect(plain.gainCurve).toBeUndefined();
+  });
+});
+
+describe('phrasing, round two', () => {
+  const sax = (style: 'natural' | 'expressive' | 'jazz' | 'classical' | 'pop' = 'natural') => options('tenor-sax', style);
+
+  it('plays a hummed note the way it was sung: level and pitch contour, centred and in tune', () => {
+    const sung = {
+      // A slide up into the note, then a slightly sharp hold.
+      pitch: [0, 0.1, 0.2, 0.3, 0.4, 0.5].map((t, i) => ({ time: t, value: 0.2 + [-0.9, -0.5, 0, 0.05, 0, -0.05][i] })),
+      level: [0, 0.1, 0.2, 0.3, 0.4, 0.5].map((t, i) => ({ time: t, value: [0.5, 0.9, 1, 1.1, 1, 0.6][i] })),
+    };
+    const shaped = phraseNotes([note('s', 0, 60, 8, { sung })], sax('expressive')).get('s')!;
+    expect(shaped.pitchBend?.length).toBe(6);
+    // The slide is kept, and the hold is centred on the sung median (the 0.2 sharpness is removed).
+    expect(shaped.pitchBend![0].value).toBeCloseTo(-0.9, 5);
+    expect(shaped.pitchBend![3].value).toBeCloseTo(0, 5);
+    expect(shaped.expression?.gain?.map((point) => point.value)[0]).toBeLessThan(0.8);
+    // A struck instrument ignores the contour.
+    expect(phraseNotes([note('s', 0, 60, 8, { sung })], options('grand-piano')).get('s')!.pitchBend).toBeUndefined();
+  });
+
+  it('uses the staccato recording for short detached notes only', () => {
+    const run = [note('a', 0, 60, 1), note('b', 2, 62, 1), note('c', 3, 64, 1), note('d', 4, 65, 4)];
+    const shaped = phraseNotes(run, sax());
+    expect(shaped.get('a')!.expression?.articulation).toBe('staccato');
+    // 'b' slurs into 'c' and 'c' into 'd', so they stay legato.
+    expect(shaped.get('b')!.expression?.articulation).toBeUndefined();
+    expect(shaped.get('c')!.expression?.legato).toBe(true);
+  });
+
+  it('breathes before phrases and inside very long ones, and clicks keys in expressive feels', () => {
+    const long = Array.from({ length: 16 }, (_, i) => note(`l${i}`, 8 + i * 4, 60 + (i % 3), 4));
+    const track = phraseTrack(long, sax('expressive'));
+    const breaths = track.extras.filter((extra) => extra.expression.articulation === 'breath');
+    expect(breaths[0]).toMatchObject({ step: 5, expression: { optional: true } });
+    // 64 steps at 0.125 s = 8 s without a rest: one breath break, with the note before it shortened.
+    expect(breaths.length).toBe(2);
+    const cut = [...track.notes.entries()].find(([, shaped]) => shaped.durationSec !== undefined && shaped.durationSec < 0.5);
+    expect(cut?.[1].durationSec).toBeCloseTo(0.35, 5);
+    expect(track.extras.some((extra) => extra.expression.articulation === 'keys')).toBe(true);
+    expect(phraseTrack(long, sax('natural')).extras.some((extra) => extra.expression.articulation === 'keys')).toBe(false);
+    expect(phraseTrack(long, options('grand-piano')).extras).toEqual([]);
+  });
+
+  it('feels differ: jazz lays back off-beats and bends, classical slurs wider and does not', () => {
+    const offbeat = [note('o', 2, 60, 4), note('p', 8, 62, 8)];
+    expect(phraseNotes(offbeat, sax('jazz')).get('o')!.offsetSec).toBeCloseTo(0.03, 5);
+    expect(phraseNotes(offbeat, sax('jazz')).get('p')!.offsetSec).toBeCloseTo(0.012, 5);
+    expect(phraseNotes(offbeat, sax('natural')).get('o')!.offsetSec).toBeUndefined();
+    const gap = [note('g', 0, 60, 3), note('h', 4, 62, 4)];
+    expect(phraseNotes(gap, sax('classical')).get('h')!.expression?.legato).toBe(true);
+    expect(phraseNotes(gap, sax('pop')).get('h')!.expression?.legato).toBeUndefined();
+    expect(phraseNotes(line, sax('classical')).get('e')!.pitchBend?.[0].value).toBe(0);
+  });
+
+  it('compiles breaths only for sampled instruments, and the sampler skips missing noises and blends layers', () => {
+    let p = setLoopBars(createProject(), 2);
+    const notes = [note('a', 4, 60, 4), note('b', 8, 62, 8)];
+    p = { ...p, channels: [{ ...createChannel('s', 'Sax', 'tenor-sax', 32), notes, phrasing: 'natural' as const }] };
+    const durationOf = (steps: number) => steps * STEP;
+    const breath = compileStep(p, 1, durationOf).find((voice) => (voice as PitchedVoice).expression?.articulation === 'breath');
+    expect(breath).toBeDefined();
+    const synth = { ...p, channels: [{ ...p.channels[0], soundId: 'lead-2' }] };
+    expect(compileStep(synth, 1, durationOf)).toEqual([]);
+
+    const dir = new URL('instruments/flute/', PUBLIC_DIR);
+    const manifest = JSON.parse(readFileSync(new URL('manifest.json', dir), 'utf8')) as InstrumentManifest;
+    const read = (file: string) => { const bytes = readFileSync(new URL(file, dir)); return decodeWav16(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)); };
+    const audio = new Map(manifest.regions.map((region) => [region.id, read(region.file)]));
+    const get = (region: { id: string }) => audio.get(region.id);
+    const base: PitchedVoice = {
+      sound: findSound({ customSounds: [] }, 'flute')!, channelId: 'c', kind: 'pitched', origin: 'note', offsetSec: 0,
+      volume: 1, pan: 0, pitch: 72, durationSec: 1, velocity: 0.9,
+    };
+    expect(planSampledVoice({ ...base, expression: { articulation: 'breath', optional: true } }, manifest, get)).toBeUndefined();
+    const staccato = planSampledVoice({ ...base, durationSec: 0.15, expression: { articulation: 'staccato' } }, manifest, get)!;
+    expect(staccato.region.articulation).toBe('staccato');
+    expect(staccato.mode).toBe('one-shot');
+    const blended = planSampledVoice({ ...base, expression: { blend: true, gain: [{ time: 0, value: 0.6 }, { time: 1, value: 1 }] } }, manifest, get)!;
+    expect(blended.blend).toBeDefined();
+    expect(blended.blend!.weight[0].value).toBeLessThan(blended.blend!.weight[1].value);
+    expect(blended.region.velocityLow).toBe(1);
   });
 });

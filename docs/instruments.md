@@ -31,7 +31,7 @@ Every sampled instrument the app ships, where it came from, and how to rebuild i
 | Timpani (`timpani`) | [VS Chamber Orchestra 2: Community Edition (timpani)](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) | Versilian Studios (Sam Gossner, Simon Dalzell) | CC0-1.0 | 10 | 1.3 MB | 5 MB |
 | Xylophone (`xylophone`) | [VS Chamber Orchestra 2: Community Edition (xylophone)](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) | Versilian Studios (Sam Gossner, Simon Dalzell) | CC0-1.0 | 8 | 0.6 MB | 2 MB |
 | Tubular Bells (`tubular-bells`) | [VS Chamber Orchestra 2: Community Edition (tubular bells)](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) | Versilian Studios (Sam Gossner, Simon Dalzell) | CC0-1.0 | 4 | 0.7 MB | 3 MB |
-| Alto Sax (`alto-sax`) | [Weresax by Karoryfer Samples (alto saxophone, dynamic mic)](https://github.com/sfzinstruments/karoryfer.weresax/tree/a4d756b21d2a573aca0d840cce7e71ba5effd4c6) | Karoryfer Samples | CC0-1.0 | 64 | 7.1 MB | 28 MB |
+| Alto Sax (`alto-sax`) | [Weresax by Karoryfer Samples (alto saxophone, dynamic mic)](https://github.com/sfzinstruments/karoryfer.weresax/tree/a4d756b21d2a573aca0d840cce7e71ba5effd4c6) | Karoryfer Samples | CC0-1.0 (breath and keys CC-BY-4.0) | 64 | 7.1 MB | 28 MB |
 | Baritone Sax (`baritone-sax`) | [Bear Sax by Karoryfer Samples (baritone saxophone, sustain)](https://github.com/sfzinstruments/karoryfer.bear-sax/tree/7abb3c652525a15dfac80e1b5dfbba9964ee568f) | Karoryfer Samples | CC0-1.0 | 32 | 3.5 MB | 14 MB |
 | Tenor Sax (`tenor-sax`) | [MTG Solo Saxophones (Tenor)](https://github.com/sfzinstruments/MTG.SoloSax/tree/b494d256549b3d088fdec176ce82867f8a1f58b2) | Music Technology Group (MTG), SFZ by kinwie | CC-BY-4.0 | 66 | 7.3 MB | 29 MB |
 | Soprano Sax (`soprano-sax`) | [MTG Solo Saxophones (Soprano)](https://github.com/sfzinstruments/MTG.SoloSax/tree/b494d256549b3d088fdec176ce82867f8a1f58b2) | Music Technology Group (MTG), SFZ by kinwie | CC-BY-4.0 | 66 | 7.3 MB | 29 MB |
@@ -39,7 +39,16 @@ Every sampled instrument the app ships, where it came from, and how to rebuild i
 
 Decoded sizes assume every region is loaded at the 44.1 kHz decode rate (4 bytes per sample). Pitched instruments load only the regions a project needs (`preloadStrategy: range`), so a typical song uses a fraction; the per-instrument decoded budget is 40 MB and the global LRU cache 150 MB.
 
-Attribution: **Tenor Sax** and **Soprano Sax** are CC BY 4.0 (MTG Solo Saxophones by the Music Technology Group, SFZ by kinwie); their licence files and the sound list carry the credit. Everything else is CC0.
+Attribution: **Tenor Sax** and **Soprano Sax** are CC BY 4.0, and so are the **Alto Sax** breath and key noises (MTG Solo Saxophones by the Music Technology Group, SFZ by kinwie); their licence files and the sound list carry the credit. Everything else is CC0.
+
+## Articulations
+
+Besides the default sustain (or one-shot) recordings, some instruments carry extra articulations that phrasing (`src/audio/phrasing.ts`) uses:
+
+- **staccato** (short detached notes): flute, piccolo, clarinet, oboe, bassoon, brass, French horn, tuba, strings, viola and contrabass (spiccato for the strings) from VSCO-2-CE; baritone sax from Bear Sax.
+- **breath** and **keys** (unpitched noise before phrases and on note changes): all four saxes (MTG Solo Saxophones for soprano, alto and tenor; Bear Sax for baritone).
+
+They are added after the main import with `scripts/add-articulation.py`, which levels them against the sustained sound and bumps the manifest version; `scripts/build-articulations.sh` rebuilds all of them. The sizes in the table above are before these additions (about 0.5–1 MB more per instrument).
 
 ## Processing
 

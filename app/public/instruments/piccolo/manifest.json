@@ -3,7 +3,7 @@
   "id": "piccolo",
   "name": "Piccolo",
   "family": "brass",
-  "version": 1,
+  "version": 3,
   "engine": "sampler",
   "defaultArticulation": "sustain",
   "maxPolyphony": 16,
@@ -28,7 +28,7 @@
     "obtained": "2026-10-31",
     "redistribution": true,
     "modification": true,
-    "processing": "Imported from PiccoloSus.sfz with scripts/sfz-import.py: velocity layers first,last, up to 1 round robins, MIDI roots 0-127; mono, 22050 Hz, looped 1-2.5 s with a 300 ms crossfade; zone levels evened out (\u00b112 dB max); one gain for all files (peak -1 dBFS); 16-bit WAV."
+    "processing": "Imported from PiccoloSus.sfz with scripts/sfz-import.py: velocity layers first,last, up to 1 round robins, MIDI roots 0-127; mono, 22050 Hz, looped 1-2.5 s with a 300 ms crossfade; zone levels evened out (\u00b112 dB max); one gain for all files (peak -1 dBFS); 16-bit WAV. Added staccato (5 regions, PiccoloStac.sfz) with scripts/add-articulation.py, levelled +0.2 dB against the sustain."
   },
   "regions": [
     {
@@ -100,6 +100,71 @@
       "roundRobinIndex": 0,
       "loopStartMs": 1000,
       "loopEndMs": 2500
+    },
+    {
+      "id": "st-n70-v1-rr1",
+      "file": "st-n70-v1-rr1.wav",
+      "rootMidi": 70,
+      "lowMidi": 70,
+      "highMidi": 74,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "staccato",
+      "roundRobinGroup": "n70-v1",
+      "roundRobinIndex": 0,
+      "gainDb": 0.22
+    },
+    {
+      "id": "st-n79-v1-rr1",
+      "file": "st-n79-v1-rr1.wav",
+      "rootMidi": 79,
+      "lowMidi": 75,
+      "highMidi": 80,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "staccato",
+      "roundRobinGroup": "n79-v1",
+      "roundRobinIndex": 0,
+      "gainDb": 0.22
+    },
+    {
+      "id": "st-n82-v1-rr1",
+      "file": "st-n82-v1-rr1.wav",
+      "rootMidi": 82,
+      "lowMidi": 81,
+      "highMidi": 86,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "staccato",
+      "roundRobinGroup": "n82-v1",
+      "roundRobinIndex": 0,
+      "gainDb": 0.22
+    },
+    {
+      "id": "st-n91-v1-rr1",
+      "file": "st-n91-v1-rr1.wav",
+      "rootMidi": 91,
+      "lowMidi": 87,
+      "highMidi": 92,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "staccato",
+      "roundRobinGroup": "n91-v1",
+      "roundRobinIndex": 0,
+      "gainDb": 0.22
+    },
+    {
+      "id": "st-n94-v1-rr1",
+      "file": "st-n94-v1-rr1.wav",
+      "rootMidi": 94,
+      "lowMidi": 93,
+      "highMidi": 94,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "staccato",
+      "roundRobinGroup": "n94-v1",
+      "roundRobinIndex": 0,
+      "gainDb": 0.22
     }
   ]
 }
