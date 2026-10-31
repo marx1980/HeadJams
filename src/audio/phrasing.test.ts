@@ -61,12 +61,15 @@ describe('phrasing', () => {
     expect(Math.max(...bends.map((point) => point.value))).toBeCloseTo(0.24, 2);
     expect(shaped.expression?.gain?.map((point) => point.value)).toEqual([0.88, 1, 0.72]);
     const hummed = [note('h', 0, 60, 8, { pitchBend: [{ time: 0, value: 0.3 }, { time: 0.5, value: 0 }] })];
-    expect(phraseNotes(hummed, options('alto-sax')).get('h')!.pitchBend).toBeUndefined();
+    expect(phraseNotes(hummed, options('alto-sax')).get('h')!.pitchBend).toEqual(hummed[0].pitchBend);
   });
 
   it('scoops into and falls off phrases on sax in the expressive style only', () => {
-    const natural = phraseNotes(line, options('alto-sax')).get('a')!.pitchBend;
-    expect(natural).toBeUndefined();
+    // Natural: no scoop into the phrase ('a' only bends at its end, gliding into 'b').
+    const natural = phraseNotes(line, options('alto-sax')).get('a')!.pitchBend!;
+    expect(natural[0].value).toBe(0);
+    expect(natural.at(-1)!.value).toBe(2);
+    expect(natural.at(-1)!.time).toBeCloseTo(0.295, 5);
     const expressive = phraseNotes(line, options('alto-sax', 'expressive'));
     expect(expressive.get('e')!.pitchBend?.[0]).toEqual({ time: 0, value: -0.7 });
     expect(expressive.get('e')!.pitchBend?.at(-1)).toEqual({ time: 1.1, value: -2 });
@@ -257,5 +260,20 @@ describe('hummed takes', () => {
     expect(Math.min(...gain('a'))).toBeGreaterThan(0.8);
     expect(gain('b')[0]).toBeGreaterThan(0.8);
     expect(gain('b').at(-1)).toBeLessThan(0.65);
+  });
+});
+
+describe('glides between slurred notes', () => {
+  it('moves both notes together and glides as long as the sung slide', () => {
+    const take = { sourceTakeId: 't', velocity: 0.99 };
+    const notes = [note('g', 9, 67, 4, take), note('f', 12, 65, 1, { ...take, velocity: 0.21 }), note('e', 13, 64, 3, take)];
+    const shaped = phraseNotes(notes, options('alto-sax'));
+    const g = shaped.get('g')!;
+    const e = shaped.get('e')!;
+    // The slide note lasted one step (0.125 s): E glides in from G over 0.125 s.
+    expect(e.pitchBend!.slice(0, 2)).toEqual([{ time: 0, value: 3 }, { time: 0.125, value: 0 }]);
+    // G, fading out, bends to E over the same 0.125 s from the moment E starts (4 steps in).
+    expect(g.pitchBend!.slice(-2)).toEqual([{ time: 0.5, value: 0 }, { time: 0.625, value: -3 }]);
+    expect(g.expression?.releaseSec).toBeCloseTo(0.1125, 5);
   });
 });
