@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "HeadJams",
   "short_name": "HeadJams",
   "start_url": "./",
@@ -7,6 +8,12 @@
   "background_color": "#111827",
   "theme_color": "#111827",
   "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "./icon-v3.png",
       "sizes": "512x512",
