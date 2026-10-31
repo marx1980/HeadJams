@@ -129,6 +129,7 @@ interface Feel {
   vibratoDelay: number;
   scoops: boolean;
   falls: boolean;
+  /** Seconds a slur glides between pitches. Keyed instruments change notes almost at once, so this only smooths the join. */
   glide: number;
   /** Notes closer than this are slurred. */
   slurGap: number;
@@ -147,23 +148,23 @@ interface Feel {
 
 const FEELS: Record<PhrasingStyle, Feel> = {
   natural: {
-    depth: 0.18, jitter: 0.06, vibrato: 1, vibratoDelay: 0.3, scoops: false, falls: false, glide: 0.045, slurGap: 0.12,
+    depth: 0.18, jitter: 0.06, vibrato: 1, vibratoDelay: 0.3, scoops: false, falls: false, glide: 0.02, slurGap: 0.12,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.88, taper: 0.72, sungPitch: 0.7, sungLevel: 0.6,
   },
   expressive: {
-    depth: 0.3, jitter: 0.1, vibrato: 1.4, vibratoDelay: 0.2, scoops: true, falls: true, glide: 0.07, slurGap: 0.12,
+    depth: 0.3, jitter: 0.1, vibrato: 1.4, vibratoDelay: 0.2, scoops: true, falls: true, glide: 0.035, slurGap: 0.12,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: true, swellFrom: 0.8, taper: 0.55, sungPitch: 1, sungLevel: 0.85,
   },
   jazz: {
-    depth: 0.26, jitter: 0.08, vibrato: 1.3, vibratoDelay: 0.4, scoops: true, falls: true, glide: 0.06, slurGap: 0.1,
+    depth: 0.26, jitter: 0.08, vibrato: 1.3, vibratoDelay: 0.4, scoops: true, falls: true, glide: 0.03, slurGap: 0.1,
     layBack: 0.012, offbeatLayBack: 0.018, breath: true, keys: true, swellFrom: 0.84, taper: 0.6, sungPitch: 0.9, sungLevel: 0.8,
   },
   classical: {
-    depth: 0.22, jitter: 0.04, vibrato: 1, vibratoDelay: 0.12, scoops: false, falls: false, glide: 0.035, slurGap: 0.2,
+    depth: 0.22, jitter: 0.04, vibrato: 1, vibratoDelay: 0.12, scoops: false, falls: false, glide: 0.02, slurGap: 0.2,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.85, taper: 0.7, sungPitch: 0.6, sungLevel: 0.7,
   },
   pop: {
-    depth: 0.14, jitter: 0.05, vibrato: 0.6, vibratoDelay: 0.35, scoops: true, falls: false, glide: 0.04, slurGap: 0.1,
+    depth: 0.14, jitter: 0.05, vibrato: 0.6, vibratoDelay: 0.35, scoops: true, falls: false, glide: 0.02, slurGap: 0.1,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.9, taper: 0.8, sungPitch: 0.7, sungLevel: 0.6,
   },
 };
@@ -177,9 +178,13 @@ function unit(key: string): number {
 
 /** Gap, in seconds, that ends a phrase. */
 const PHRASE_BREAK_SEC = 0.3;
-/** A slur hands over quickly: the old note fades in 50 ms, 15 ms after the new one starts (one reed, one note). */
-const LEGATO_CROSSFADE_SEC = 0.05;
-const LEGATO_OVERLAP_SEC = 0.015;
+/**
+ * A slur hands over exactly: the old note starts fading when the new one starts, over the same 30 ms the new
+ * one takes to come in (src/audio/sampler/sampledVoice.ts LEGATO_ATTACK_SEC). Both are at the same pitch then,
+ * so the two add up to one note's level instead of swelling.
+ */
+const LEGATO_CROSSFADE_SEC = 0.03;
+const LEGATO_OVERLAP_SEC = 0;
 /** Monophonic instruments: a note's release never rings on under the next note for longer than this. */
 const HANDOVER_SEC = 0.05;
 /** Detached notes this short use the staccato recording. */
@@ -192,8 +197,8 @@ const BREATH_SEC = 0.32;
 const SLIDE_MAX_SEC = 0.22;
 const SLIDE_LEVEL = 0.45;
 /** A sung slide between two notes becomes a glide this long (seconds). */
-const SLIDE_GLIDE_MIN_SEC = 0.08;
-const SLIDE_GLIDE_MAX_SEC = 0.18;
+const SLIDE_GLIDE_MIN_SEC = 0.03;
+const SLIDE_GLIDE_MAX_SEC = 0.06;
 /** Sung level above this (relative to the note's median) is the note's body; dips outside it are humming articulation. */
 const SUNG_BODY = 0.75;
 
@@ -400,9 +405,8 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
         expression.legato = true;
         expression.startJitterSec = Math.round(unit(`${seed}:${note.id}:o`) * 0.05 * 1000) / 1000;
       }
-      // The old note fades while it glides along with the new one, so a longer glide gets a longer crossfade.
-      if (slursInto) expression.releaseSec = slursInto.pitch !== note.pitch && profile.kind !== 'organ'
-        ? Math.max(LEGATO_CROSSFADE_SEC, glideInto(slursInto) * 0.9) : LEGATO_CROSSFADE_SEC;
+      // The old note fades as the new one comes in (and glides along with it while it does).
+      if (slursInto) expression.releaseSec = LEGATO_CROSSFADE_SEC;
       else if (wind) {
         const after = sorted.find((other) => other.step > note.step);
         const handover = after && single(after) ? monoHandover(startSec(note) + offset, duration, startSec(after) + lay(after)) : undefined;
