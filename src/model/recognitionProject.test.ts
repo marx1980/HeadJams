@@ -163,4 +163,13 @@ describe('hear as (hum.md H2)', () => {
     expect(again.channels).toHaveLength(count);
     expect(hearTakeAs(again, 'bt', 'acoustic').channels.find((c) => c.id === kick.id)!.soundId).toBe('acoustic-kick');
   });
+  it('puts a new melody track on the instrument the user chose, and a re-apply keeps it', () => {
+    const take = createRecognitionTake('sample-a', melodyResult, { enabled: true, strength: 1, subdivision: 'sixteenth' }, 120, 16, 'take-a');
+    const chosen = applyRecognitionTake(createProject(), take, undefined, { soundId: 'alto-sax' })!;
+    expect(chosen.channels.at(-1)!.soundId).toBe('alto-sax');
+    const again = applyRecognitionTake(chosen, chosen.recognitionTakes[0])!;
+    expect(again.channels.at(-1)!.soundId).toBe('alto-sax');
+    // Without a choice the take's own default still applies (older callers).
+    expect(applyRecognitionTake(createProject(), take)!.channels.at(-1)!.soundId).not.toBe('alto-sax');
+  });
 });

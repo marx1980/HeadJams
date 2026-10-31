@@ -629,7 +629,7 @@ export function App() {
     if (captureEngineRef.current) { engine.stop(); auditionRef.current = undefined; }
     captureEngineRef.current = false;
   };
-  const applyCapture = async (rawCapture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => {
+  const applyCapture = async (rawCapture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number, soundId?: string) => {
     // Start the take where the sound starts, so the empty steps before the first hum are not recorded.
     const capture = trimLeadingSilence(rawCapture);
     const current = projectRef.current;
@@ -671,7 +671,7 @@ export function App() {
       ...applyPerformanceMode(placed, 'cleaned', withSound.bpm, withSound.noteLength, withSound.scaleRoot, withSound.scaleId),
       source: 'mic' as const, label, ...(into ? { targetChannelId: into } : {}),
     };
-    const updated = applyRecognitionTake(withSound, take);
+    const updated = applyRecognitionTake(withSound, take, undefined, soundId ? { soundId } : {});
     if (!updated) {
       setProject(withSound);
       flash('No room for another track. Remove a channel or capture into an existing one.');
@@ -937,6 +937,10 @@ export function App() {
             start={startCaptureSession}
             stop={stopCaptureSession}
             onUse={applyCapture}
+            sounds={sounds}
+            unavailableSoundIds={unavailableSoundIds}
+            loadingSoundIds={loadingSoundIds}
+            onPreviewSound={(sound) => preview(sound)}
             onPlay={(capture) => void engine.previewSample({ id: 'capture', samples: capture.samples, sampleRate: capture.sampleRate })}
           />
         </HeaderTile>

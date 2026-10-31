@@ -69,7 +69,7 @@ function TargetHarness() {
     }),
     createElement(RecognitionPanel, {
       project, samples, sounds, onApply: () => true, onBpmChange: () => undefined,
-      onPreviewSample: () => undefined, onEdit: () => undefined,
+      onPreviewSample: () => undefined, onPreviewSound: () => undefined, onEdit: () => undefined,
     }),
     createElement(PianoRoll, { project, channelId: project.channels[0]!.id, onChange: () => undefined }),
     createElement(PianoRoll, {

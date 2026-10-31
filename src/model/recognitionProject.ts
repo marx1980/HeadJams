@@ -144,6 +144,8 @@ function eventsByClass(events: readonly RecognitionEvent[]): Map<string, { type:
 export interface ApplyRecognitionOptions {
   /** Throw away grid edits on this take's tracks and write the recognition result fresh. */
   discardEdits?: boolean;
+  /** Sound for a new melody or bass track (chosen by the user); without it the take's default is used. */
+  soundId?: string;
 }
 
 const noteKey = (note: { step: number; pitch: number; durationSteps: number }) => `${note.step}:${note.pitch}:${note.durationSteps}`;
@@ -320,7 +322,7 @@ export function applyRecognitionTake(
       applied.notes = snapshot;
       createdChannelIds.push(channelId);
     } else if (generated.length && !(previous && previous.channelIds.length)) {
-      next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', trackSoundFor(take));
+      next = addChannel(next, take.mode === 'bass' ? 'Recognized Bass' : 'Recognized Melody', options.soundId ?? trackSoundFor(take));
       const channel = next.channels.at(-1)!;
       next = updateChannel(next, channel.id, { notes: generated });
       applied.notes = Object.fromEntries(generated.map((note) => [note.id, noteKey(note)]));

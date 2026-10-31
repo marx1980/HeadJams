@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CaptureResult, CaptureSession } from '../audio/capture';
 import type { RecognitionMode } from '../model/recognition';
-import type { Channel } from '../model/project';
+import type { Channel, SoundDef } from '../model/project';
+import { SoundPicker } from './SoundPicker';
 import { guessCaptureKind } from '../library/captureGuess';
 import { Icon } from './Icon';
 import { barNames } from '../model/bars';
@@ -35,6 +36,7 @@ const PLAY_ALONG_KEY = 'musicmaker.capturePlayAlong';
  */
 export function CaptureSheet({
   channels, beatChannels, hasSound, start, stop, onUse, onPlay, onOpenSong, project, startTap, beatZeroMs, onUseRhythm, onUseDrawn, onAudition, playing,
+  sounds, unavailableSoundIds, loadingSoundIds, onPreviewSound,
 }: {
   /** Channels a melody or bass can be captured into. */
   channels: Channel[];
@@ -46,7 +48,12 @@ export function CaptureSheet({
   start: (metronome: boolean, bar?: number, playAlong?: boolean) => Promise<CaptureSession>;
   /** Called when recording ends or is cancelled, to stop playback and the metronome. */
   stop: () => void;
-  onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number) => Promise<void>;
+  onUse: (capture: CaptureResult, kind: RecognitionMode, into: string | undefined, bar?: number, soundId?: string) => Promise<void>;
+  /** Sounds to choose from for a new melody or bass track. */
+  sounds: SoundDef[];
+  unavailableSoundIds?: ReadonlySet<string>;
+  loadingSoundIds?: ReadonlySet<string>;
+  onPreviewSound: (sound: SoundDef) => void;
   onPlay: (capture: CaptureResult) => void;
   onOpenSong: (section: 'chords' | 'harmony') => void;
   project: Project;
@@ -67,6 +74,8 @@ export function CaptureSheet({
   const pad = part === 'tap' || part === 'draw';
   const targets = part === 'beat' ? beatChannels : part === 'auto' ? [...channels, ...beatChannels] : channels;
   const intoValue = targets.some((channel) => channel.id === into) ? into : 'new';
+  /** Melody and bass go onto a new track unless an existing melodic track was chosen: its instrument is then used. */
+  const newPitchedTrack = !channels.some((channel) => channel.id === intoValue);
   const [metronome, setMetronome] = useState(true);
   // Hearing the existing tracks while humming is optional (off by default): the metronome alone keeps time.
   const [playAlong, setPlayAlongState] = useState(() => { try { return localStorage.getItem(PLAY_ALONG_KEY) === '1'; } catch { return false; } });
@@ -77,6 +86,8 @@ export function CaptureSheet({
   const [elapsed, setElapsed] = useState(0);
   const [capture, setCapture] = useState<CaptureResult>();
   const [guess, setGuess] = useState<RecognitionMode>('melody');
+  // The instrument for a new melody or bass track is the user's choice: nothing is picked for them.
+  const [soundId, setSoundId] = useState('');
   const [error, setError] = useState('');
   const session = useRef<CaptureSession | undefined>(undefined);
   const timer = useRef<number | undefined>(undefined);
@@ -113,8 +124,8 @@ export function CaptureSheet({
     try {
       const result = await current.stop();
       setCapture(result);
-      if (part === 'melody' || part === 'bass' || part === 'beat') { await use(part, result); return; }
-      setGuess(guessCaptureKind(result.samples, result.sampleRate));
+      if (part === 'beat') { await use(part, result); return; }
+      setGuess(part === 'melody' || part === 'bass' ? part : guessCaptureKind(result.samples, result.sampleRate));
       setPhase('review');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Recording failed.');
@@ -129,8 +140,9 @@ export function CaptureSheet({
     // Beatbox only goes into kit channels; melody and bass only into melodic channels.
     const fits = (kind === 'beat' ? beatChannels : channels).some((channel) => channel.id === intoValue);
     try {
-      await onUse(recorded, kind, fits ? intoValue : undefined, recordedBar.current);
+      await onUse(recorded, kind, fits ? intoValue : undefined, recordedBar.current, !fits && kind !== 'beat' ? soundId : undefined);
       setCapture(undefined);
+      setSoundId('');
       setPhase('idle');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Recognition failed.');
@@ -194,9 +206,15 @@ export function CaptureSheet({
       )}
       {phase === 'review' && capture && (
         <>
+          {newPitchedTrack && (
+            <SoundPicker sounds={sounds} soundId={soundId} placeholder="Choose instrument"
+              unavailableSoundIds={unavailableSoundIds} loadingSoundIds={loadingSoundIds}
+              onPreview={onPreviewSound} onSelect={(sound) => { setSoundId(sound.id); onPreviewSound(sound); }} />
+          )}
           <div className="capture-kinds" role="group" aria-label="What was it">
             {KINDS.map((kind) => (
               <button key={kind.id} className={kind.id === guess ? 'on' : 'secondary'} aria-pressed={kind.id === guess}
+                disabled={kind.id !== 'beat' && newPitchedTrack && !soundId}
                 onClick={() => void use(kind.id)}>{kind.label}</button>
             ))}
           </div>
