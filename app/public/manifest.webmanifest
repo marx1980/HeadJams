@@ -1,6 +1,6 @@
 {
-  "name": "MusicMaker",
-  "short_name": "MusicMaker",
+  "name": "HeadJams",
+  "short_name": "HeadJams",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -8,7 +8,7 @@
   "theme_color": "#111827",
   "icons": [
     {
-      "src": "./icon-v2.png",
+      "src": "./icon-v3.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

@@ -110,7 +110,7 @@ Direction: `strategy.md` (free, open, offline, no ads, no accounts). Reach featu
 
 ## OPEN (carried over)
 - UI check across all eight skins at small widths, and on a real iPhone.
-- Confirm that the iOS home-screen icon refresh (`icon-v2.png`) works on a device.
+- Confirm that the iOS home-screen icon refresh (`icon-v3.png`) works on a device.
 - Tutorials: broader tests for `done()` predicates, a dedicated permission-denied step, and a generic per-step optional/selector fallback.
 - `npm run dev` does not load the app (the `app/` root cannot resolve `../src/main.tsx`). Use build + preview until this is fixed.
 - Optional: drum-map MIDI slots (the E2 kit lanes are the basis).

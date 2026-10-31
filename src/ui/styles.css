@@ -142,7 +142,7 @@ body { margin: 0; background: var(--app-bg); color: var(--text); }
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .bar h1 { font-size: 1.3rem; margin: 0 8px 0 0; align-self: center; }
 .bar h1.app-brand { display: flex; align-items: center; justify-content: center; gap: 8px; flex-basis: 100%; margin: 0; }
-.app-wordmark { height: 30px; width: auto; }
+.app-wordmark { height: 30px; width: auto; display: block; color: inherit; }
 .app-logo { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
 .inline-icon { display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: middle; }
 .is-favorite { color: var(--warning); fill: currentColor; }
