@@ -194,6 +194,8 @@ const sampledInstrument = (
   ...extra,
 });
 
+const VSCO = 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)';
+
 /** Built-in sounds played by sampled instruments (app/public/instruments). */
 export const SAMPLED_SOUNDS: SoundDef[] = [
   acoustic('kick', 'Acoustic Kick', 36),
@@ -219,7 +221,23 @@ export const SAMPLED_SOUNDS: SoundDef[] = [
   sampledInstrument('strings', 'Strings', 'Strings', 'Ensemble', 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)'),
   sampledInstrument('electric-piano', 'Electric Piano', 'Keys', 'Electric piano', 'Versilian Community Sample Library (VCSL)'),
   sampledInstrument('brass', 'Brass', 'Brass & Winds', 'Brass', 'VS Chamber Orchestra 2: Community Edition (Versilian Studios)'),
+  sampledInstrument('harp', 'Harp', 'Strings', 'Solo', VSCO),
+  sampledInstrument('pizzicato-strings', 'Pizzicato Strings', 'Strings', 'Ensemble', VSCO),
+  sampledInstrument('flute', 'Flute', 'Brass & Winds', 'Woodwind', VSCO),
+  sampledInstrument('clarinet', 'Clarinet', 'Brass & Winds', 'Woodwind', VSCO),
+  sampledInstrument('french-horn', 'French Horn', 'Brass & Winds', 'Brass', VSCO),
+  sampledInstrument('church-organ', 'Church Organ', 'Keys', 'Organ', VSCO),
+  sampledInstrument('marimba', 'Marimba', 'Keys', 'Mallets', VSCO),
+  sampledInstrument('glockenspiel', 'Glockenspiel', 'Keys', 'Mallets', VSCO),
 ];
+
+/** A synthesised sound (no recorded audio): library lists show these after the recorded ones. */
+export const isSynthSound = (sound: SoundDef): boolean => !sound.instrumentId && !sound.sampleId;
+
+/** Recorded sounds first, synthesised last, keeping the given order within each part. */
+export function recordedFirst<T extends SoundDef>(sounds: readonly T[]): T[] {
+  return [...sounds.filter((sound) => !isSynthSound(sound)), ...sounds.filter(isSynthSound)];
+}
 
 export function createInstrumentRegistry(customSounds: readonly SoundDef[]): InstrumentRegistryEntry[] {
   return [

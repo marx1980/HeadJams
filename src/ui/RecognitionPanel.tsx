@@ -11,6 +11,7 @@ import type {
 } from '../model/recognition';
 import type { SampleData } from '../library/sampleStorage';
 import { localRecognitionAdapter, type RecognitionProgress } from '../library/recognitionAdapter';
+import { recordedFirst } from '../library/instrumentRegistry';
 import { Icon } from './Icon';
 
 const MODES: Array<{ value: RecognitionMode; label: string }> = [
@@ -391,7 +392,7 @@ export function RecognitionPanel({
               <select aria-label={`Sound for ${event.id}`}
                 value={event.assignedSoundId ?? (activeTake ? soundForClass(activeTake, event.type) : SOUND_FOR_CLASS[event.type])}
                 onChange={(change) => assignSound(event.id, change.target.value)}>
-                {sounds.map((sound) => <option key={sound.id} value={sound.id}>{sound.name}</option>)}
+                {recordedFirst(sounds).map((sound) => <option key={sound.id} value={sound.id}>{sound.name}</option>)}
               </select>
               {event.confidence !== undefined && <span>{Math.round(event.confidence * 100)}% confidence</span>}
               <button className="secondary" onClick={() => quantiseEventStart(event.id, event.startSeconds)}>Quantise</button>

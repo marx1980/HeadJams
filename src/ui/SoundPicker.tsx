@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SoundDef } from '../model/project';
-import { soundLibraryGroup } from '../library/instrumentRegistry';
+import { isSynthSound, recordedFirst, soundLibraryGroup } from '../library/instrumentRegistry';
 import { Icon, type IconName } from './Icon';
 
 const FAVORITES_KEY = 'musicmaker.favoriteSounds';
@@ -22,6 +22,12 @@ const FAMILIES: Record<string, { icon: IconName; className: string }> = {
 
 function familyInfo(name: string) {
   return FAMILIES[name] ?? { icon: 'sound', className: 'other' };
+}
+
+function orderRecordedFirst(sounds: SoundDef[], key: (sound: SoundDef) => string | undefined): string[] {
+  const names = [...new Set(sounds.map(key).filter((value): value is string => Boolean(value)))].sort();
+  const hasRecorded = (name: string) => sounds.some((sound) => key(sound) === name && !isSynthSound(sound));
+  return [...names.filter(hasRecorded), ...names.filter((name) => !hasRecorded(name))];
 }
 
 function readIds(key: string): string[] {
@@ -51,11 +57,10 @@ export function SoundPicker({
   const [recent, setRecent] = useState<string[]>(readIds(RECENT_KEY).slice(0, 10));
   const closeButton = useRef<HTMLButtonElement>(null);
   const selected = sounds.find((sound) => sound.id === soundId);
-  const groups = useMemo(() => [...new Set(sounds.map(soundLibraryGroup))].sort(), [sounds]);
-  const subgroups = useMemo(() => [...new Set(sounds
-    .filter((sound) => soundLibraryGroup(sound) === group)
-    .map((sound) => sound.subcategory)
-    .filter((value): value is string => Boolean(value)))].sort(), [sounds, group]);
+  // Groups and subgroups with recorded sounds come first; those holding only synthesised sounds go last.
+  const groups = useMemo(() => orderRecordedFirst(sounds, soundLibraryGroup), [sounds]);
+  const subgroups = useMemo(() => orderRecordedFirst(
+    sounds.filter((sound) => soundLibraryGroup(sound) === group), (sound) => sound.subcategory), [sounds, group]);
   const matchingSounds = useMemo(() => {
     const matches = sounds.filter((sound) => {
       const matchesGroup = group === 'Favorites'
@@ -71,7 +76,7 @@ export function SoundPicker({
     });
     return group === 'Recent'
       ? matches.sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id))
-      : matches;
+      : recordedFirst(matches);
   }, [sounds, group, subgroup, favorites, recent, query]);
   const selectedUnavailable = !selected || unavailableSoundIds.has(soundId);
   const selectedLoading = !selectedUnavailable && loadingSoundIds.has(soundId);
@@ -223,7 +228,7 @@ export function SoundPicker({
             ) : (
               <div className="sound-picker-list">
                 {matchingSounds.map((sound) => (
-                  <div className={`sound-picker-item family-${familyInfo(soundLibraryGroup(sound)).className}${sound.id === soundId ? ' current' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}${loadingSoundIds.has(sound.id) ? ' loading' : ''}`} key={sound.id}>
+                  <div className={`sound-picker-item family-${familyInfo(soundLibraryGroup(sound)).className}${sound.id === soundId ? ' current' : ''}${isSynthSound(sound) ? ' synth' : ''}${unavailableSoundIds.has(sound.id) ? ' missing' : ''}${loadingSoundIds.has(sound.id) ? ' loading' : ''}`} key={sound.id}>
                     <span>
                       <strong><Icon name={familyInfo(soundLibraryGroup(sound)).icon} className={`family-icon family-${familyInfo(soundLibraryGroup(sound)).className}`} /> {sound.name}</strong>
                       <small>

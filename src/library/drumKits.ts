@@ -219,3 +219,9 @@ export function setKitChannelKit(project: Project, channelId: string, kit: DrumK
     kitId: kit.id, lanes, soundId: lanes[0]?.soundId ?? channel.soundId, name: channel.name === findDrumKit(channel.kitId ?? '')?.name ? kit.name : channel.name,
   });
 }
+
+/** Kits for dropdowns: recorded kits first, kits made of synthesised sounds last. */
+export const DRUM_KITS_RECORDED_FIRST: DrumKit[] = [
+  ...DRUM_KITS.filter((kit) => kit.lanes.every((lane) => lane.soundId.startsWith('acoustic-'))),
+  ...DRUM_KITS.filter((kit) => !kit.lanes.every((lane) => lane.soundId.startsWith('acoustic-'))),
+];
