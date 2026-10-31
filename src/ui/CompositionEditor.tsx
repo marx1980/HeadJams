@@ -23,7 +23,8 @@ import { HARMONY_PRESETS, harmonyFor, nextPhrase, PHRASE_VARIATIONS, type Phrase
 import { withNextPhrase } from '../model/phraseProject';
 import { Automation, PlayFrom, TempoMap } from './SongTiming';
 import { buildSong, DENSITIES, SONG_TEMPLATES, templateSections, type SongSection, type SongTemplate } from '../model/songBuilder';
-import { createChannel } from '../model/project';
+import { createChannel, updateChannel } from '../model/project';
+import { PHRASING_STYLES, isPhrasingStyle, phrasingProfile } from '../audio/phrasing';
 
 const HARMONY_SOUNDS: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'strings', label: 'Strings' },
@@ -60,6 +61,7 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
   const [guitarArticulation, setGuitarArticulation] = useState<ChordArticulation>('down-strum');
   const [guitarStep, setGuitarStep] = useState(0);
   const channel = project.channels.find((item) => item.id === channelId);
+  const channelSound = channel ? findSound(project, channel.soundId) : undefined;
   const notePitches = (channel?.notes ?? []).map((note) => note.pitch).filter((pitch) => Number.isFinite(pitch));
   const lowPitch = notePitches.length ? Math.max(0, Math.min(LOW_PITCH, Math.floor(Math.min(...notePitches) / 12) * 12)) : LOW_PITCH;
   const highPitch = notePitches.length
@@ -159,6 +161,15 @@ export function PianoRoll({ project, onChange, channelId, onKeyboardNavigate }: 
             {[1, 2, 4, 8].map((value) => <option key={value} value={value}>{value} step{value > 1 ? 's' : ''}</option>)}
           </select>
         </label>
+        {channel && channelSound && phrasingProfile(channelSound) && (
+          <label>Phrasing
+            <select id="phrasing" value={channel.phrasing ?? 'off'}
+              onChange={(event) => onChange(updateChannel(project, channel.id, { phrasing: isPhrasingStyle(event.target.value) ? event.target.value : undefined }))}>
+              <option value="off">Off</option>
+              {PHRASING_STYLES.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}
+            </select>
+          </label>
+        )}
       </div>
       {channel && (
         <details className="pitch-time-controls" aria-label="Pitch and time tools">

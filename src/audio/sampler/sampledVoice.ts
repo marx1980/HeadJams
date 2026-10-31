@@ -28,6 +28,42 @@ export interface SampledVoicePlan {
   chokeKey?: string | string[];
   /** Sustained regions with loop points keep playing between them until the note is released. */
   loop?: { startSec: number; endSec: number };
+  /** Seconds into the file to start from (slurred notes skip their attack). */
+  startSec?: number;
+  /** Level multiplier over the voice (phrasing swells), linearly interpolated. */
+  gainCurve?: PitchBendPoint[];
+}
+
+/** A slurred note skips at most this much of its sample's attack. */
+const LEGATO_MAX_SKIP_SEC = 0.35;
+const LEGATO_ATTACK_SEC = 0.03;
+const steadyStarts = new WeakMap<Float32Array, number>();
+
+/**
+ * Where a sample reaches its steady level (70% of its sustained loudness), so a slurred note can start there
+ * instead of replaying the attack. Measured once per region in 10 ms windows.
+ */
+export function steadyStartSec(audio: DecodedRegion, loop?: { startSec: number; endSec: number }): number {
+  const cached = steadyStarts.get(audio.data);
+  if (cached !== undefined) return cached;
+  const { data, sampleRate } = audio;
+  const rms = (from: number, to: number) => {
+    const a = Math.max(0, Math.floor(from * sampleRate));
+    const b = Math.min(data.length, Math.floor(to * sampleRate));
+    let sum = 0;
+    for (let i = a; i < b; i++) sum += data[i] * data[i];
+    return b > a ? Math.sqrt(sum / (b - a)) : 0;
+  };
+  const fileSec = data.length / sampleRate;
+  const target = loop ? rms(loop.startSec, loop.endSec) : rms(Math.min(0.15, fileSec / 4), Math.min(0.6, fileSec / 2));
+  const limit = Math.min(LEGATO_MAX_SKIP_SEC, loop ? loop.endSec - 0.05 : fileSec / 3);
+  let start = limit;
+  for (let t = 0; t < limit; t += 0.01) {
+    if (rms(t, t + 0.01) >= target * 0.7) { start = t; break; }
+  }
+  start = Math.max(0.02, start);
+  steadyStarts.set(audio.data, start);
+  return start;
 }
 
 /** Grid hits use the middle velocity layer by default, leaving the loudest layer for accents. */
@@ -65,8 +101,13 @@ export function planSampledVoice(
     && loopStartMs >= 0 && loopEndMs - loopStartMs >= 10 && loopEndMs / 1000 <= fileSec + 1e-3
     ? { startSec: loopStartMs / 1000, endSec: Math.min(fileSec, loopEndMs / 1000) }
     : undefined;
-  const naturalSec = loop ? Number.POSITIVE_INFINITY : fileSec / choice.rate;
-  const endSec = mode === 'sustain' ? Math.min(naturalSec, durationSec + releaseSec) : naturalSec;
+  const expression = pitched ? voice.expression : undefined;
+  const startSec = expression?.legato ? steadyStartSec(audio, loop) : 0;
+  const release = expression?.releaseSec !== undefined && Number.isFinite(expression.releaseSec)
+    ? Math.max(0.005, expression.releaseSec) : releaseSec;
+  const naturalSec = loop ? Number.POSITIVE_INFINITY : (fileSec - startSec) / choice.rate;
+  const endSec = mode === 'sustain' ? Math.min(naturalSec, durationSec + release) : naturalSec;
+  const gainCurve = expression?.gain?.length ? sanitizeBends(expression.gain).map((point) => ({ ...point, value: Math.max(0, point.value) })) : undefined;
   return {
     region: choice.region,
     audio,
@@ -74,12 +115,14 @@ export function planSampledVoice(
     level: Math.max(0, voice.volume * velocity * choice.gain),
     mode,
     durationSec,
-    attackSec,
-    releaseSec,
+    attackSec: expression?.legato ? Math.min(attackSec, LEGATO_ATTACK_SEC) : attackSec,
+    releaseSec: release,
     noteEndSec: mode === 'sustain' ? Math.min(durationSec, endSec) : 0,
     endSec,
     pitchBend: pitched ? voice.pitchBend : undefined,
     ...(loop ? { loop } : {}),
+    ...(startSec > 0 ? { startSec } : {}),
+    ...(gainCurve ? { gainCurve } : {}),
     chokeKey: choice.region.chokeGroup
       ? `${manifest.id}:${choice.region.chokeGroup}`
       // Guitar keys are per channel (not per instrument), so recorded and built chords on one track cut each other.
@@ -93,8 +136,21 @@ export function planSampledVoice(
 export function envelopeAt(plan: SampledVoicePlan, t: number): number {
   if (t < 0 || t >= plan.endSec) return 0;
   const attack = plan.attackSec > 0 ? Math.min(1, t / plan.attackSec) : 1;
-  if (plan.mode === 'one-shot' || t <= plan.durationSec) return attack;
-  return attack * Math.max(0, 1 - (t - plan.durationSec) / Math.max(1e-6, plan.releaseSec));
+  const swell = plan.gainCurve ? curveAt(plan.gainCurve, t) : 1;
+  if (plan.mode === 'one-shot' || t <= plan.durationSec) return attack * swell;
+  return attack * swell * Math.max(0, 1 - (t - plan.durationSec) / Math.max(1e-6, plan.releaseSec));
+}
+
+/** Value of a sorted, linearly interpolated curve at `t` (held before the first and after the last point). */
+export function curveAt(curve: readonly PitchBendPoint[], t: number): number {
+  if (!curve.length) return 1;
+  if (t <= curve[0].time) return curve[0].value;
+  for (let i = 1; i < curve.length; i++) {
+    const a = curve[i - 1];
+    const b = curve[i];
+    if (t <= b.time) return b.time > a.time ? a.value + (b.value - a.value) * ((t - a.time) / (b.time - a.time)) : b.value;
+  }
+  return curve[curve.length - 1].value;
 }
 
 /** Gain of a voice cut at `cutSec` (relative to its start). */
@@ -118,7 +174,7 @@ export function renderSampledVoice(plan: SampledVoicePlan, sr: number, cutSec?: 
   const bends = sanitizeBends(plan.pitchBend);
   let bendIndex = 0;
   let currentBend = { time: 0, value: 0 };
-  let position = 0;
+  let position = (plan.startSec ?? 0) * sampleRate;
   const loopStart = plan.loop ? plan.loop.startSec * sampleRate : 0;
   const loopEnd = plan.loop ? Math.min(data.length - 1, plan.loop.endSec * sampleRate) : 0;
   for (let i = 0; i < length; i++) {
