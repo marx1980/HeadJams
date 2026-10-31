@@ -188,6 +188,9 @@ const HANDOVER_SEC = 0.05;
 const STACCATO_MAX_SEC = 0.22;
 /** Winds take a breath inside a phrase after this long. */
 const BREATH_EVERY_SEC = 6;
+/** A player holding a note this long, well into a phrase, breathes before the next note. */
+const HELD_BREATH_SEC = 0.55;
+const HELD_BREATH_AFTER_SEC = 1.5;
 const BREATH_CUT_SEC = 0.15;
 const BREATH_SEC = 0.32;
 /** A recorded note this short and this much quieter than its neighbours is a slide, not a note. */
@@ -288,7 +291,7 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   const beat = Math.max(1, Math.round(stepsPerBar / 4));
 
   // Phrases: split where the next note starts well after everything before it has ended,
-  // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest.
+  // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest, or a long held note ends well into a phrase.
   const phrases: NoteEvent[][] = [];
   const breathCut = new Set<string>();
   let latestEnd = Number.NEGATIVE_INFINITY;
@@ -297,9 +300,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const current = phrases.at(-1);
     const rest = startSec(note) - latestEnd > PHRASE_BREAK_SEC;
     const previous = current?.at(-1);
-    const needsBreath = wind && current && previous && !rest && previous.step !== note.step
-      && startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0
-      && durationOf(previous.durationSteps) >= 0.25 && single(previous);
+    const connected = wind && current && previous && !rest && previous.step !== note.step && single(previous);
+    const needsBreath = connected && (
+      (startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0 && durationOf(previous.durationSteps) >= 0.25)
+      || (durationOf(previous.durationSteps) >= HELD_BREATH_SEC && startSec(note) - phraseStart >= HELD_BREATH_AFTER_SEC));
     if (!current || rest || needsBreath) {
       if (needsBreath && previous) breathCut.add(previous.id);
       phrases.push([]);
