@@ -45,6 +45,8 @@ export interface VoiceExpression {
   startJitterSec?: number;
   /** Release override, so a slurred note crossfades into the next. */
   releaseSec?: number;
+  /** Equal-power fades: `in` on the attack of a slurred note, `out` on the release of a note slurring into the next. */
+  crossfade?: { in?: boolean; out?: boolean };
   /** Level multiplier over the note (seconds from the start), linearly interpolated. */
   gain?: PitchBendPoint[];
   /** Blend from the soft to the loud recording as the level rises. */
@@ -129,7 +131,6 @@ interface Feel {
   vibratoDelay: number;
   scoops: boolean;
   falls: boolean;
-  /** Seconds a slur glides between pitches. Keyed instruments change notes almost at once, so this only smooths the join. */
   glide: number;
   /** Notes closer than this are slurred. */
   slurGap: number;
@@ -148,23 +149,23 @@ interface Feel {
 
 const FEELS: Record<PhrasingStyle, Feel> = {
   natural: {
-    depth: 0.18, jitter: 0.06, vibrato: 1, vibratoDelay: 0.3, scoops: false, falls: false, glide: 0.02, slurGap: 0.12,
+    depth: 0.18, jitter: 0.06, vibrato: 1, vibratoDelay: 0.3, scoops: false, falls: false, glide: 0.045, slurGap: 0.12,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.88, taper: 0.72, sungPitch: 0.7, sungLevel: 0.6,
   },
   expressive: {
-    depth: 0.3, jitter: 0.1, vibrato: 1.4, vibratoDelay: 0.2, scoops: true, falls: true, glide: 0.035, slurGap: 0.12,
+    depth: 0.3, jitter: 0.1, vibrato: 1.4, vibratoDelay: 0.2, scoops: true, falls: true, glide: 0.07, slurGap: 0.12,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: true, swellFrom: 0.8, taper: 0.55, sungPitch: 1, sungLevel: 0.85,
   },
   jazz: {
-    depth: 0.26, jitter: 0.08, vibrato: 1.3, vibratoDelay: 0.4, scoops: true, falls: true, glide: 0.03, slurGap: 0.1,
+    depth: 0.26, jitter: 0.08, vibrato: 1.3, vibratoDelay: 0.4, scoops: true, falls: true, glide: 0.06, slurGap: 0.1,
     layBack: 0.012, offbeatLayBack: 0.018, breath: true, keys: true, swellFrom: 0.84, taper: 0.6, sungPitch: 0.9, sungLevel: 0.8,
   },
   classical: {
-    depth: 0.22, jitter: 0.04, vibrato: 1, vibratoDelay: 0.12, scoops: false, falls: false, glide: 0.02, slurGap: 0.2,
+    depth: 0.22, jitter: 0.04, vibrato: 1, vibratoDelay: 0.12, scoops: false, falls: false, glide: 0.035, slurGap: 0.2,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.85, taper: 0.7, sungPitch: 0.6, sungLevel: 0.7,
   },
   pop: {
-    depth: 0.14, jitter: 0.05, vibrato: 0.6, vibratoDelay: 0.35, scoops: true, falls: false, glide: 0.02, slurGap: 0.1,
+    depth: 0.14, jitter: 0.05, vibrato: 0.6, vibratoDelay: 0.35, scoops: true, falls: false, glide: 0.04, slurGap: 0.1,
     layBack: 0, offbeatLayBack: 0, breath: true, keys: false, swellFrom: 0.9, taper: 0.8, sungPitch: 0.7, sungLevel: 0.6,
   },
 };
@@ -178,27 +179,26 @@ function unit(key: string): number {
 
 /** Gap, in seconds, that ends a phrase. */
 const PHRASE_BREAK_SEC = 0.3;
-/**
- * A slur hands over exactly: the old note starts fading when the new one starts, over the same 30 ms the new
- * one takes to come in (src/audio/sampler/sampledVoice.ts LEGATO_ATTACK_SEC). Both are at the same pitch then,
- * so the two add up to one note's level instead of swelling.
- */
-const LEGATO_CROSSFADE_SEC = 0.03;
-const LEGATO_OVERLAP_SEC = 0;
+/** A slur hands over quickly: the old note fades in 50 ms, 15 ms after the new one starts (one reed, one note). */
+const LEGATO_CROSSFADE_SEC = 0.06;
+const LEGATO_OVERLAP_SEC = 0.015;
 /** Monophonic instruments: a note's release never rings on under the next note for longer than this. */
 const HANDOVER_SEC = 0.05;
 /** Detached notes this short use the staccato recording. */
 const STACCATO_MAX_SEC = 0.22;
 /** Winds take a breath inside a phrase after this long. */
 const BREATH_EVERY_SEC = 6;
+/** A player holding a note this long, well into a phrase, breathes before the next note. */
+const HELD_BREATH_SEC = 0.55;
+const HELD_BREATH_AFTER_SEC = 1.5;
 const BREATH_CUT_SEC = 0.15;
+/** After a held note the breath follows it: the note lingers a little and the next one starts this much later. */
+const HELD_LINGER_SEC = 0.04;
+const HELD_BREATH_GAP_SEC = 0.14;
 const BREATH_SEC = 0.32;
 /** A recorded note this short and this much quieter than its neighbours is a slide, not a note. */
 const SLIDE_MAX_SEC = 0.22;
 const SLIDE_LEVEL = 0.45;
-/** A sung slide between two notes becomes a glide this long (seconds). */
-const SLIDE_GLIDE_MIN_SEC = 0.03;
-const SLIDE_GLIDE_MAX_SEC = 0.06;
 /** Sung level above this (relative to the note's median) is the note's body; dips outside it are humming articulation. */
 const SUNG_BODY = 0.75;
 
@@ -264,18 +264,6 @@ function shapeContour(points: readonly PitchBendPoint[], scale: number, low: num
   }));
 }
 
-/** A bend curve's value at `time` (linear between points, held at the ends, 0 when empty). */
-function valueAt(points: readonly PitchBendPoint[], time: number): number {
-  if (!points.length) return 0;
-  if (time <= points[0].time) return points[0].time === 0 ? points[0].value : 0;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1];
-    const b = points[i];
-    if (time <= b.time) return b.time > a.time ? a.value + (b.value - a.value) * ((time - a.time) / (b.time - a.time)) : b.value;
-  }
-  return points[points.length - 1].value;
-}
-
 const usableSung = (sung: SungContour | undefined, key: 'pitch' | 'level') => (sung?.[key]?.length ?? 0) >= 3;
 
 /** Phrase a track: shaped notes plus the breaths and key clicks around them. */
@@ -297,19 +285,6 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     if (louder > 0 && level <= louder * SLIDE_LEVEL) slides.add(note.id);
   }
   const sorted = all.filter((note) => !slides.has(note.id));
-  // How long the sung slide into each note lasted (the dropped slide notes before it), for its glide.
-  const slideInto = new Map<string, number>();
-  for (const note of all) {
-    if (!slides.has(note.id)) continue;
-    const target = sorted.find((other) => other.step >= note.step);
-    if (target) slideInto.set(target.id, (slideInto.get(target.id) ?? 0) + durationOf(note.durationSteps));
-  }
-  /** Seconds a slur into `note` glides: the feel's glide, or as long as the sung slide (within limits). */
-  const glideInto = (note: NoteEvent) => {
-    const sung = slideInto.get(note.id);
-    if (sung !== undefined) return Math.max(SLIDE_GLIDE_MIN_SEC, Math.min(SLIDE_GLIDE_MAX_SEC, sung));
-    return profile.kind === 'bowed' ? Math.min(0.03, feel.glide) : feel.glide;
-  };
   const startsAt = new Map<number, number>();
   for (const note of sorted) startsAt.set(note.step, (startsAt.get(note.step) ?? 0) + 1);
   const single = (note: NoteEvent) => startsAt.get(note.step) === 1;
@@ -319,20 +294,26 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   const beat = Math.max(1, Math.round(stepsPerBar / 4));
 
   // Phrases: split where the next note starts well after everything before it has ended,
-  // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest.
+  // and (winds) where a long phrase reaches a beat after BREATH_EVERY_SEC without a rest, or a long held note ends well into a phrase.
   const phrases: NoteEvent[][] = [];
-  const breathCut = new Set<string>();
+  const breathCut = new Map<string, number>();
+  /** Notes that start a phrase late to leave room for the breath after a held note: from there the whole line moves later. */
+  const breathDelay = new Map<string, number>();
   let latestEnd = Number.NEGATIVE_INFINITY;
   let phraseStart = 0;
   for (const note of sorted) {
     const current = phrases.at(-1);
     const rest = startSec(note) - latestEnd > PHRASE_BREAK_SEC;
     const previous = current?.at(-1);
-    const needsBreath = wind && current && previous && !rest && previous.step !== note.step
-      && startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0
-      && durationOf(previous.durationSteps) >= 0.25 && single(previous);
+    const connected = wind && current && previous && !rest && previous.step !== note.step && single(previous);
+    const longPhrase = connected && startSec(note) - phraseStart > BREATH_EVERY_SEC && note.step % beat === 0 && durationOf(previous.durationSteps) >= 0.25;
+    const held = connected && durationOf(previous.durationSteps) >= HELD_BREATH_SEC && startSec(note) - phraseStart >= HELD_BREATH_AFTER_SEC;
+    const needsBreath = longPhrase || held;
     if (!current || rest || needsBreath) {
-      if (needsBreath && previous) breathCut.add(previous.id);
+      if (needsBreath && previous) {
+        breathCut.set(previous.id, longPhrase ? BREATH_CUT_SEC : -HELD_LINGER_SEC);
+        if (!longPhrase) breathDelay.set(note.id, HELD_BREATH_GAP_SEC);
+      }
       phrases.push([]);
       phraseStart = startSec(note);
     }
@@ -344,7 +325,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
   const notesOut = new Map<string, PhrasedNote>();
   for (const id of slides) notesOut.set(id, { velocity: 0, silent: true });
   const extras: PhrasedExtra[] = [];
-  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0);
+  const heldGaps = [...breathDelay.keys()].map((id) => startSec(sorted.find((other) => other.id === id)!));
+  /** Late timing: the feel's lay-back, plus a breath's gap for every held-note breath before the note (the line lingers). */
+  const lay = (note: NoteEvent) => feel.layBack + (note.step % beat !== 0 ? feel.offbeatLayBack : 0)
+    + heldGaps.filter((at) => at <= startSec(note) + 1e-9).length * HELD_BREATH_GAP_SEC;
 
   for (let p = 0; p < phrases.length; p++) {
     const phrase = phrases[p];
@@ -355,9 +339,10 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
     const first = phrase[0];
     const before = p > 0 ? phrases[p - 1] : undefined;
     const gapBefore = before ? startSec(first) - Math.max(...before.map(endSec)) : Number.POSITIVE_INFINITY;
-    const afterCut = before ? breathCut.has(before.at(-1)!.id) : false;
+    const cutBefore = before ? breathCut.get(before.at(-1)!.id) : undefined;
+    const afterCut = cutBefore !== undefined;
     if (wind && feel.breath && (gapBefore >= 0.35 || afterCut)) {
-      const length = afterCut ? BREATH_CUT_SEC : BREATH_SEC;
+      const length = afterCut ? breathDelay.get(first.id) ?? cutBefore : BREATH_SEC;
       const at = startSec(first) + lay(first) - length;
       const stepLength = durationOf(1);
       const step = Math.floor(at / stepLength + 1e-9);
@@ -396,17 +381,20 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
       const slursInto = next && single(next) && startSec(next) - endSec(note) <= feel.slurGap ? next : undefined;
       const written = durationOf(note.durationSteps);
       // A slurred note holds a moment into the next one, so the next note is fully in before this one fades.
-      let duration = slursInto ? durationOf(slursInto.step - note.step) + LEGATO_OVERLAP_SEC + lay(slursInto) - offset : written;
-      if (breathCut.has(note.id)) duration = Math.max(written * 0.5, written - BREATH_CUT_SEC);
+      let duration = slursInto ? durationOf(slursInto.step - note.step) + lay(slursInto) - offset : written;
+      if (breathCut.has(note.id)) duration = Math.max(written * 0.5, written - breathCut.get(note.id)!);
       const firstOfPhrase = index === 0;
       const lastOfPhrase = index === starts.length - 1;
       const expression: VoiceExpression = {};
       if (slurredFrom) {
         expression.legato = true;
+        expression.crossfade = { in: true };
         expression.startJitterSec = Math.round(unit(`${seed}:${note.id}:o`) * 0.05 * 1000) / 1000;
       }
-      // The old note fades as the new one comes in (and glides along with it while it does).
-      if (slursInto) expression.releaseSec = LEGATO_CROSSFADE_SEC;
+      if (slursInto) {
+        expression.releaseSec = LEGATO_CROSSFADE_SEC;
+        expression.crossfade = { ...expression.crossfade, out: true };
+      }
       else if (wind) {
         const after = sorted.find((other) => other.step > note.step);
         const handover = after && single(after) ? monoHandover(startSec(note) + offset, duration, startSec(after) + lay(after)) : undefined;
@@ -449,52 +437,42 @@ export function phraseTrack(notes: readonly NoteEvent[], options: PhrasingOption
       }
 
       if (profile.kind === 'organ') continue;
-      // The note's own pitch movement: as sung (centred so it stays in tune), the bends it already carries
-      // (older hummed notes), or the feel's vibrato, scoop and fall.
-      let bends: PitchBendPoint[] = [];
-      const pitchChangeIn = slurredFrom && slurredFrom.pitch !== note.pitch;
-      const glide = pitchChangeIn ? glideInto(note) : 0;
       if (usableSung(note.sung, 'pitch')) {
-        bends = shapeContour(note.sung!.pitch, feel.sungPitch, -2, 2, 0).filter((point) => point.time <= duration + 0.1);
-      } else if (note.pitchBend?.length) {
-        bends = note.pitchBend.map((point) => ({ ...point }));
-      } else {
-        let vibratoFrom = glide;
-        if (!pitchChangeIn && feel.scoops && profile.bends && firstOfPhrase && duration >= 0.2) {
-          bends.push({ time: 0, value: -0.7 }, { time: 0.09, value: 0 });
-          vibratoFrom = 0.09;
-        }
-        const fall = feel.falls && profile.bends && lastOfPhrase && duration >= 0.3 && !breathCut.has(note.id);
-        const vibratoEnd = fall ? duration - 0.12 : duration;
-        if (profile.vibratoCents > 0 && feel.vibrato > 0 && duration >= 0.4) {
-          const delay = Math.max(vibratoFrom, profile.kind === 'bowed' ? Math.min(0.15, feel.vibratoDelay) : feel.vibratoDelay);
-          const semis = (profile.vibratoCents / 100) * feel.vibrato;
-          const rate = profile.vibratoHz * (1 + (unit(`${seed}:${note.id}:r`) - 0.5) * 0.08);
-          const quarter = 1 / (rate * 4);
-          const shape = [0, 1, 0, -1];
-          if (!bends.length) bends.push({ time: 0, value: 0 });
-          for (let k = 0, t = delay; t < vibratoEnd; k++, t = delay + k * quarter) {
-            const fade = Math.min(1, (t - delay) / 0.35);
-            bends.push({ time: t, value: semis * fade * shape[k % 4] });
-          }
-        }
-        if (fall) {
-          const last = bends.at(-1);
-          if (!last || last.time < duration - 0.12) bends.push({ time: duration - 0.12, value: last && last.time > duration - 0.3 ? last.value : 0 });
-          bends.push({ time: duration + 0.1, value: -2 });
+        // Slides and vibrato as sung, centred so the note stays in tune.
+        phrased.pitchBend = shapeContour(note.sung!.pitch, feel.sungPitch, -2, 2, 0).filter((point) => point.time <= duration + 0.1);
+        continue;
+      }
+      // An older hummed note keeps the bends it already carries.
+      if (note.pitchBend?.length) continue;
+
+      const bends: PitchBendPoint[] = [];
+      let vibratoFrom = 0;
+      if (slurredFrom && slurredFrom.pitch !== note.pitch) {
+        const glide = profile.kind === 'bowed' ? Math.min(0.03, feel.glide) : feel.glide;
+        bends.push({ time: 0, value: Math.max(-12, Math.min(12, slurredFrom.pitch - note.pitch)) }, { time: glide, value: 0 });
+        vibratoFrom = glide;
+      } else if (feel.scoops && profile.bends && firstOfPhrase && duration >= 0.2) {
+        bends.push({ time: 0, value: -0.7 }, { time: 0.09, value: 0 });
+        vibratoFrom = 0.09;
+      }
+      const fall = feel.falls && profile.bends && lastOfPhrase && duration >= 0.3 && !breathCut.has(note.id);
+      const vibratoEnd = fall ? duration - 0.12 : duration;
+      if (profile.vibratoCents > 0 && feel.vibrato > 0 && duration >= 0.4) {
+        const delay = Math.max(vibratoFrom, profile.kind === 'bowed' ? Math.min(0.15, feel.vibratoDelay) : feel.vibratoDelay);
+        const semis = (profile.vibratoCents / 100) * feel.vibrato;
+        const rate = profile.vibratoHz * (1 + (unit(`${seed}:${note.id}:r`) - 0.5) * 0.08);
+        const quarter = 1 / (rate * 4);
+        const shape = [0, 1, 0, -1];
+        if (!bends.length) bends.push({ time: 0, value: 0 });
+        for (let k = 0, t = delay; t < vibratoEnd; k++, t = delay + k * quarter) {
+          const fade = Math.min(1, (t - delay) / 0.35);
+          bends.push({ time: t, value: semis * fade * shape[k % 4] });
         }
       }
-      // Slurs between different pitches glide, and both notes move together: the new one comes from the old
-      // pitch while the old one, fading out, bends toward the new, so two pitches never sound at once.
-      if (pitchChangeIn) {
-        const from = Math.max(-12, Math.min(12, slurredFrom!.pitch - note.pitch));
-        bends = [{ time: 0, value: from }, { time: glide, value: valueAt(bends, glide) }, ...bends.filter((point) => point.time > glide)];
-      }
-      if (slursInto && slursInto.pitch !== note.pitch) {
-        const handover = durationOf(slursInto.step - note.step) + lay(slursInto) - offset;
-        const to = Math.max(-12, Math.min(12, slursInto.pitch - note.pitch));
-        bends = [...bends.filter((point) => point.time < handover), { time: handover, value: valueAt(bends, handover) },
-          { time: handover + glideInto(slursInto), value: to }];
+      if (fall) {
+        const last = bends.at(-1);
+        if (!last || last.time < duration - 0.12) bends.push({ time: duration - 0.12, value: last && last.time > duration - 0.3 ? last.value : 0 });
+        bends.push({ time: duration + 0.1, value: -2 });
       }
       if (bends.length) phrased.pitchBend = bends;
     }
