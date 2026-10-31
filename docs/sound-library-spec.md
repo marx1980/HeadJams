@@ -1258,7 +1258,7 @@ Validate pitch range, note duration, looping, velocity response, loading perform
 ### Deployment tests
 
 - Run production build checks.
-- Test the deployed GitHub Pages path under `/MusicMaker/`.
+- Test the deployed GitHub Pages path under `/HeadJams/`.
 - Confirm direct page loading and asset paths work.
 - Test Safari on iPhone and at least one desktop browser.
 

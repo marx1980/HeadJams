@@ -3,7 +3,7 @@
 // Needs Playwright with Chromium and a preview server:
 //   npx vite build && npx vite preview --port 5199 &  node scripts/offline-check.cjs
 const { chromium } = require('playwright');
-const URL_ = process.env.APP_URL ?? 'http://localhost:5199/MusicMaker/';
+const URL_ = process.env.APP_URL ?? 'http://localhost:5199/HeadJams/';
 const PROJECT_KEY = 'musicmaker.project.v4';
 
 (async () => {

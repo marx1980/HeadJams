@@ -19,7 +19,7 @@ function offlineWorkerPlugin(): Plugin {
         type: 'asset',
         fileName: 'service-worker.js',
         source: createOfflineWorkerSource(
-          ['index.html', ...files, 'manifest.webmanifest', 'icon-v3.png'],
+          ['index.html', ...files, 'manifest.webmanifest', 'icon-v3.png', 'icon-192.png'],
           `musicmaker-shell-${hash}`,
         ),
       });
@@ -30,7 +30,7 @@ function offlineWorkerPlugin(): Plugin {
 // Source entry lives in app/. GitHub Pages publishes the production dist artifact.
 export default defineConfig(({ mode }) => ({
   root: 'app',
-  base: mode === 'capacitor' ? './' : '/MusicMaker/',
+  base: mode === 'capacitor' ? './' : '/HeadJams/',
   plugins: [react(), offlineWorkerPlugin()],
   build: { outDir: '../dist', emptyOutDir: true, assetsDir: 'assets' },
   // Sampled-instrument renders take a few seconds on slower CI machines.
