@@ -102,6 +102,7 @@ export function compileStep(p: Project, step: number, durationOf: (steps: number
         ? monophonicLine(c.notes, durationOf) : undefined;
       for (const note of starting) {
         const shaped = phrased?.get(note.id);
+        if (shaped?.silent) continue;
         const handover = mono?.get(note.id);
         voices.push({
           ...base, kind: 'pitched', origin: 'note', offsetSec: shaped?.offsetSec ?? 0, pitch: note.pitch,
