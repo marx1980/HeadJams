@@ -27,7 +27,7 @@ const PROJECT_KEY = 'musicmaker.project.v4';
   // A project that uses every sampled sound family: one channel per instrument with a few notes.
   const ids = await page.evaluate(async (key) => {
     const project = JSON.parse(localStorage.getItem(key));
-    const sounds = ['grand-piano', 'electric-piano', 'electric-bass', 'strings', 'brass', 'nylon-guitar', 'clean-guitar', 'harp', 'flute', 'clarinet', 'french-horn', 'church-organ', 'marimba', 'glockenspiel', 'pizzicato-strings'];
+    const sounds = ['grand-piano', 'electric-piano', 'electric-bass', 'strings', 'brass', 'nylon-guitar', 'clean-guitar', 'harp', 'flute', 'clarinet', 'french-horn', 'church-organ', 'marimba', 'glockenspiel', 'pizzicato-strings', 'alto-sax', 'tenor-sax', 'baritone-sax', 'soprano-sax', 'timpani'];
     project.channels = sounds.map((soundId, index) => ({
       id: `off-${index}`, name: soundId, soundId, volume: 0.7, pan: 0, mute: false, solo: false,
       steps: Array(project.noteLength * project.loopBars).fill(false),

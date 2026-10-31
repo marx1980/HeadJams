@@ -1,0 +1,3 @@
+VS Chamber Orchestra 2: Community Edition by Versilian Studios (recorded by Sam Gossner and Simon Dalzell; sample cutting by Elan Hickler/Soundemote), CC0 1.0 Universal (public domain dedication): xylophone.
+Source: https://github.com/sgossner/VSCO-2-CE (commit 440300901dfe9275fd84e0b7763af1f8443ae62e; SFZ mappings from the SFZ branch). Homepage: http://vis.versilstudios.net/vsco-community.html
+This folder holds a processed subset; see processing notes in manifest.json.

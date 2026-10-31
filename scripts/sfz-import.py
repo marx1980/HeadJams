@@ -39,7 +39,10 @@ def parse_sfz(path, defines=None):
     """Return a list of regions as dicts with every inherited opcode resolved (#include and #define supported)."""
     defines = {} if defines is None else defines
     text = re.sub(r'//[^\n]*', '', path.read_text(errors='replace'))
-    text = re.sub(r'#include\s+"([^"]+)"', lambda m: (path.parent / m.group(1)).read_text(errors='replace'), text)
+    for _ in range(4):  # includes may include further files (MTG Solo Sax)
+        if '#include' not in text:
+            break
+        text = re.sub(r'#include\s+"([^"]+)"', lambda m: re.sub(r'//[^\n]*', '', (path.parent / m.group(1)).read_text(errors='replace')), text)
     for name, value in re.findall(r'#define\s+(\$\w+)\s+(\S+)', text):
         defines[name] = value
     text = re.sub(r'#define[^\n]*', '', text)

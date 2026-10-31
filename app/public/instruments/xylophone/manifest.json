@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "id": "xylophone",
+  "name": "Xylophone",
+  "family": "keys",
+  "version": 1,
+  "engine": "sampler",
+  "defaultArticulation": "sustain",
+  "maxPolyphony": 24,
+  "pitchShiftLimitSemitones": 3,
+  "preloadStrategy": "range",
+  "tags": [
+    "acoustic",
+    "bright",
+    "plucky"
+  ],
+  "envelope": {
+    "mode": "sustain",
+    "attackMs": 1,
+    "releaseMs": 200.0
+  },
+  "provenance": {
+    "source": "VS Chamber Orchestra 2: Community Edition (xylophone)",
+    "url": "https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e",
+    "creator": "Versilian Studios (Sam Gossner, Simon Dalzell)",
+    "licence": "CC0-1.0",
+    "obtained": "2026-10-31",
+    "redistribution": true,
+    "modification": true,
+    "processing": "Imported from Xylophone.sfz with scripts/sfz-import.py: velocity layers first,last, up to 1 round robins, MIDI roots 0-127; mono, 22050 Hz, cut to 2 s with a 400 ms fade; one gain for all files (peak -1 dBFS); 16-bit WAV."
+  },
+  "regions": [
+    {
+      "id": "n55-v1-rr1",
+      "file": "n55-v1-rr1.wav",
+      "rootMidi": 55,
+      "lowMidi": 55,
+      "highMidi": 57,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n55-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n60-v1-rr1",
+      "file": "n60-v1-rr1.wav",
+      "rootMidi": 60,
+      "lowMidi": 58,
+      "highMidi": 63,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n60-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n67-v1-rr1",
+      "file": "n67-v1-rr1.wav",
+      "rootMidi": 67,
+      "lowMidi": 64,
+      "highMidi": 69,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n67-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n72-v1-rr1",
+      "file": "n72-v1-rr1.wav",
+      "rootMidi": 72,
+      "lowMidi": 70,
+      "highMidi": 75,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n72-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n79-v1-rr1",
+      "file": "n79-v1-rr1.wav",
+      "rootMidi": 79,
+      "lowMidi": 76,
+      "highMidi": 81,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n79-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n84-v1-rr1",
+      "file": "n84-v1-rr1.wav",
+      "rootMidi": 84,
+      "lowMidi": 82,
+      "highMidi": 87,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n84-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n91-v1-rr1",
+      "file": "n91-v1-rr1.wav",
+      "rootMidi": 91,
+      "lowMidi": 88,
+      "highMidi": 93,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n91-v1",
+      "roundRobinIndex": 0
+    },
+    {
+      "id": "n96-v1-rr1",
+      "file": "n96-v1-rr1.wav",
+      "rootMidi": 96,
+      "lowMidi": 94,
+      "highMidi": 96,
+      "velocityLow": 1,
+      "velocityHigh": 127,
+      "articulation": "sustain",
+      "roundRobinGroup": "n96-v1",
+      "roundRobinIndex": 0
+    }
+  ]
+}
